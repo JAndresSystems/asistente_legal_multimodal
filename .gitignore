@@ -42,6 +42,7 @@ yarn-error.log*
 # Carpetas con los archivos subidos por los usuarios.
 # ¡CORREGIDO! Ignoramos la carpeta de la raíz Y la que está dentro del backend.
 /archivos_subidos/
+./archivos_subidos/
 /backend/archivos_subidos/
 
 
