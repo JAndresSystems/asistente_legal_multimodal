@@ -24,7 +24,7 @@ aplicacion = FastAPI(
     title="API del Asistente Legal Multimodal",
     description="Proyecto de grado para gestionar y analizar evidencia legal con agentes de IA.",
     version="0.1.0",
-    lifespan=lifespan # Le decimos a FastAPI que use nuestro evento de inicio.
+    lifespan=lifespan # FastAPI usa  evento de inicio.
 )
 
 origenes_permitidos = [

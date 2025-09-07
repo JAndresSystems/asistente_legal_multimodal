@@ -1,91 +1,66 @@
 # backend/herramientas/herramientas_audio.py
 
-import base64
-import mimetypes
+import os
 from pathlib import Path
+from dotenv import load_dotenv
+import torch
+import librosa
+from transformers import AutoProcessor, AutoModelForCTC
 
-# ¡LA IMPORTACIÓN CLAVE!
-# Importamos el modelo multimodal que ya inicializamos en nuestras herramientas de lenguaje.
-# Esto evita tener que cargarlo en memoria dos veces.
-from .herramientas_lenguaje import modelo_gemini_flash
-from langchain_core.messages import HumanMessage
+# --- CONFIGURACIÓN ---
+load_dotenv()
 
-def transcribir_audio_con_gemini(ruta_archivo_audio: str) -> str:
-    """
-    Procesa un archivo de audio utilizando el modelo multimodal Gemini 1.5 Flash
-    para realizar tanto la transcripción como la diarización (identificación de hablantes).
+# El identificador del modelo de Facebook AI. Es público y no necesita token.
+MODEL_ID = "facebook/wav2vec2-base-960h"
 
-    Esta función reemplaza completamente el uso de Whisper, alineándose con el requisito
-    de utilizar un modelo multimodal nativo para el análisis de audio.
+# --- CARGA DEL MODELO (PUEDE TARDAR UN POCO LA PRIMERA VEZ) ---
+try:
+    print(f"TOOL-SETUP: Cargando el procesador de audio desde '{MODEL_ID}'...")
+    procesador = AutoProcessor.from_pretrained(MODEL_ID)
+    
+    print(f"TOOL-SETUP: Cargando el modelo de audio '{MODEL_ID}' en memoria...")
+    # AutoModelForCTC es la clase correcta para este tipo de modelo.
+    modelo_asr = AutoModelForCTC.from_pretrained(MODEL_ID)
+    
+    print(f"TOOL-SETUP: Modelo de audio cargado correctamente.")
+    
+except Exception as e:
+    print(f"TOOL-SETUP-ERROR: No se pudo cargar el modelo de audio. Causa: {e}")
+    procesador = None
+    modelo_asr = None
 
-    Args:
-        ruta_archivo_audio (str): La ruta al archivo de audio (ej. MP3, WAV, etc.).
-
-    Returns:
-        str: Un string con la transcripción formateada, incluyendo la identificación
-             de cada hablante. Retorna un mensaje de error si el procesamiento falla.
-    """
-    print(f"      TOOL-SYSTEM: -> Herramienta NATIVA MULTIMODAL (Gemini) activada para {ruta_archivo_audio}")
-
-    try:
-        ruta = Path(ruta_archivo_audio)
-        if not ruta.is_file():
-            return "Error: El archivo de audio no fue encontrado en la ruta especificada."
-
-        with open(ruta, "rb") as archivo_audio:
-            audio_bytes = archivo_audio.read()
-        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
-
-        tipo_mime, _ = mimetypes.guess_type(ruta)
-        if not tipo_mime:
-            tipo_mime = "application/octet-stream"
-
-        mensaje_multimodal = HumanMessage(
-            content=[
-                {
-                    "type": "text",
-                    "text": """
-                    Eres un asistente legal experto en el análisis de evidencia de audio.
-                    Tu tarea es procesar el archivo de audio adjunto y generar una transcripción con diarización precisa.
-                    
-                    Requisitos estrictos de la salida:
-                    1. Identifica a cada hablante distinto y asígnale un alias numérico (ej. "Hablante 1", "Hablante 2").
-                    2. Formatea cada segmento de la transcripción exactamente así: [Hablante X]: [Texto transcrito]
-                    3. Asegúrate de que la transcripción sea literal, completa y en español.
-                    4. Si el audio no es claro, no contiene voz, o está en otro idioma, indícalo explícitamente.
-                    
-                    Procede con el análisis.
-                    """
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:{tipo_mime};base64,{audio_base64}"
-                    }
-                }
-            ]
-        )
-
-        print("      TOOL-SYSTEM: -> Enviando audio y prompt a Gemini 1.5 para análisis...")
-        respuesta = modelo_gemini_flash.invoke([mensaje_multimodal])
-        transcripcion = str(respuesta.content)
-
-        print("      TOOL-SYSTEM: -> ¡Análisis de audio completado! Transcripción recibida.")
-        return transcripcion
-
-    # --- BLOQUE DE MANEJO DE ERRORES CORREGIDO ---
-    except Exception as e:
-        # Imprimimos el error completo en el log para que nosotros (los desarrolladores) podamos verlo.
-        print(f"      ERROR-CRITICO: Fallo en la transcripción con Gemini: {e}")
-        # Pero retornamos un mensaje de error limpio y conciso para el sistema y el usuario.
-        # Esto evita que el "montonero de texto" se guarde en la base de datos.
-        return "Error: El modelo de IA no pudo procesar el archivo de audio. Posible causa: Límite de API excedido o archivo corrupto."
-
-# --- FUNCIÓN DE INTERFAZ PÚBLICA (NO CAMBIA) ---
-# Mantenemos esta función para no tener que cambiar el código de los agentes/nodos.
 def procesar_audio(ruta_archivo: str) -> str:
     """
-    Función principal de la herramienta de audio. Delega la transcripción
-    al modelo multimodal Gemini.
+    Procesa un archivo de audio transcribiéndolo con el modelo Wav2Vec2 local.
     """
-    return transcribir_audio_con_gemini(ruta_archivo)
+    print(f"      TOOL-SYSTEM: -> Iniciando procesamiento de audio local con '{MODEL_ID}' para {ruta_archivo}")
+    
+    if not modelo_asr or not procesador:
+        return "Error: El modelo de audio no está cargado. Revisa los logs de inicio."
+        
+    try:
+        # 1. Cargar el audio y asegurarse de que esté en el formato correcto (16kHz mono)
+        # Esto es crucial para que el modelo funcione bien.
+        audio_array, _ = librosa.load(ruta_archivo, sr=16000, mono=True)
+        
+        print(f"      TOOL-SYSTEM: -> Audio cargado y re-muestreado a 16kHz.")
+        
+        # 2. Preparar el audio para el modelo
+        inputs = procesador(audio_array, sampling_rate=16000, return_tensors="pt")
+        
+        # 3. Realizar la inferencia (la transcripción)
+        with torch.no_grad():
+            logits = modelo_asr(**inputs).logits
+
+        # 4. Decodificar la salida para obtener el texto
+        ids_predichos = torch.argmax(logits, dim=-1)
+        transcripcion = procesador.batch_decode(ids_predichos)[0]
+        
+        print("      TOOL-SYSTEM: -> Transcripción completada.")
+        return transcripcion.upper() # El modelo fue entrenado en mayúsculas.
+        
+    except Exception as e:
+        if "ffmpeg" in str(e).lower() or "WinError 2" in str(e):
+            return "Error: FFMPEG no está instalado. Instala FFMPEG para procesar audio."
+        print(f"      ERROR-CRITICO: Fallo durante el procesamiento de audio con Wav2Vec2: {e}")
+        return f"Error crítico durante el procesamiento de audio: {e}"

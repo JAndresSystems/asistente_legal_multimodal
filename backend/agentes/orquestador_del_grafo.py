@@ -1,6 +1,6 @@
 # backend/agentes/orquestador_del_grafo.py
 
-from langgraph.graph import StateGraph
+from langgraph.graph import StateGraph, END
 from .estado_del_grafo import EstadoDelGrafo
 from .nodos_del_grafo import (
     nodo_procesador_evidencia,
@@ -9,90 +9,94 @@ from .nodos_del_grafo import (
     nodo_guardian_calidad
 )
 
-# =================================================================================
-# PASO 1: DEFINIR EL GRAFO Y LOS NODOS (Sin cambios)
-# =================================================================================
-flujo_de_trabajo = StateGraph(EstadoDelGrafo)
 print("SETUP-LANGGRAPH: Creando el grafo de agentes...")
 
+# --- FUNCIÓN DE DECISIÓN 1: PUNTO DE CONTROL INICIAL (SINTAXIS CORREGIDA) ---
+def clasificar_resultado_del_procesamiento(estado: EstadoDelGrafo) -> str:
+    """
+    Después de procesar la evidencia, decide si continuar o finalizar.
+    Usa la sintaxis de objeto (estado.atributo), que es la correcta para este grafo.
+    """
+    print("\n--- Entrando en el Punto de Control Inicial ---")
+    
+    # La forma correcta de acceder al estado es como un objeto.
+    texto_extraido = estado.texto_extraido
+    
+    if texto_extraido and not texto_extraido.startswith("Error"):
+        print("    Decisión: El procesamiento fue exitoso. Continuando.")
+        return "continuar"
+    else:
+        print("    Decisión: El procesamiento inicial falló. Finalizando el flujo de trabajo.")
+        return "finalizar"
+
+# --- FUNCIÓN DE DECISIÓN 2: SUPERVISOR DE CALIDAD (BASADO EN TU CÓDIGO ORIGINAL) ---
+def supervisor_de_calidad(estado: EstadoDelGrafo) -> str:
+    """
+    Actúa como un supervisor inteligente para decidir el siguiente paso,
+    usando la sintaxis de objeto (estado.atributo).
+    """
+    print("\n--- Entrando en el Supervisor de Calidad ---")
+    
+    # Verificamos si los datos necesarios existen.
+    if not estado.borrador_estrategia or "Error" in estado.borrador_estrategia:
+        print("    Decisión: Faltan datos críticos. Finalizando.")
+        return "finalizar"
+    
+    # Lógica del veredicto.
+    veredicto = estado.verificacion_calidad
+    if veredicto and veredicto.get("verificado"): # .get() se usa aquí porque 'veredicto' SÍ es un diccionario
+        print("    Decisión: ¡El borrador cumple los estándares! Finalizando.")
+        return "finalizar"
+
+    # Lógica del límite de intentos.
+    MAXIMOS_INTENTOS = 2
+    intentos = estado.intentos_correccion
+    if intentos >= MAXIMOS_INTENTOS:
+        print(f"    Decisión: Límite de {MAXIMOS_INTENTOS} intentos alcanzado. Finalizando.")
+        return "finalizar"
+    
+    print(f"    Decisión: El borrador NO cumple (Intento {intentos}). Devolviendo para corrección.")
+    return "corregir"
+
+# --- CONSTRUCCIÓN DEL GRAFO (CORREGIDO Y SIMPLIFICADO) ---
+
+flujo_de_trabajo = StateGraph(EstadoDelGrafo)
+
+# 1. Añadir los nodos
 flujo_de_trabajo.add_node("procesador_evidencia", nodo_procesador_evidencia)
 flujo_de_trabajo.add_node("investigador_analista", nodo_investigador_analista)
 flujo_de_trabajo.add_node("sintetizador_estrategico", nodo_sintetizador_estrategico)
 flujo_de_trabajo.add_node("guardian_de_calidad", nodo_guardian_calidad)
 
-print("SETUP-LANGGRAPH: Nodos añadidos al grafo.")
-
-# =================================================================================
-# PASO 2: DEFINIR LA LÓGICA DE DECISIÓN (EL SUPERVISOR)
-# =================================================================================
-def supervisor_de_calidad(estado: EstadoDelGrafo) -> str:
-    """
-    Actúa como un supervisor inteligente para decidir el siguiente paso.
-    """
-    print("\n--- Entrando en el Supervisor de Calidad ---")
-    
-    # --- ¡LA CORRECCIÓN! ---
-    # Cambiamos de la sintaxis de diccionario (estado.get("clave")) a la
-    # sintaxis de objeto (estado.atributo) para acceder a los datos.
-    if estado.entidades_extraidas is None or estado.borrador_estrategia is None:
-        print("    Decisión: Faltan datos críticos de nodos anteriores. Finalizando el ciclo.")
-        return "__end__"
-    # -----------------------------------------------
-    
-    # Lógica del límite de intentos (esta ya era correcta)
-    MAXIMOS_INTENTOS = 2
-    intentos = estado.intentos_correccion
-    if intentos >= MAXIMOS_INTENTOS:
-        print(f"    Decisión: Se ha alcanzado el límite de {MAXIMOS_INTENTOS} intentos. Finalizando.")
-        return "__end__"
-
-    # Lógica del veredicto (esta ya era correcta)
-    veredicto = estado.verificacion_calidad
-    if veredicto and veredicto.get("verificado"): # Usamos .get() aquí porque 'veredicto' SÍ es un diccionario
-        print("    Decisión: El borrador cumple con los estándares. Finalizando.")
-        return "__end__"
-    else:
-        print(f"    Decisión: El borrador NO cumple (Intento {intentos}). Devolviendo al Sintetizador.")
-        return "sintetizador_estrategico"
-# =================================================================================
-# PASO 3: CONECTAR LOS NODOS PARA CREAR EL DIAGRAMA DE FLUJO
-# =================================================================================
-print("SETUP-LANGGRAPH: Definiendo las conexiones del grafo...")
-
-# 3.1. Punto de entrada
+# 2. Definir el punto de entrada
 flujo_de_trabajo.set_entry_point("procesador_evidencia")
 
-# 3.2. Conexiones lineales
-flujo_de_trabajo.add_edge("procesador_evidencia", "investigador_analista")
+# 3. Definir las conexiones
+flujo_de_trabajo.add_conditional_edges(
+    "procesador_evidencia",
+    clasificar_resultado_del_procesamiento,
+    {
+        "continuar": "investigador_analista",
+        "finalizar": END
+    }
+)
 flujo_de_trabajo.add_edge("investigador_analista", "sintetizador_estrategico")
 flujo_de_trabajo.add_edge("sintetizador_estrategico", "guardian_de_calidad")
 
-# 3.3. ¡LA NUEVA CONEXIÓN INTELIGENTE (BIFURCACIÓN)!
 flujo_de_trabajo.add_conditional_edges(
-    # Nodo de origen: Desde dónde se toma la decisión.
     "guardian_de_calidad",
-    # Función supervisora: La función que decide el camino.
     supervisor_de_calidad,
-    # Mapa de decisiones: Un diccionario que traduce la salida del supervisor
-    # a un destino.
     {
-        "sintetizador_estrategico": "sintetizador_estrategico", # Si devuelve "sintetizador...", vamos a ese nodo.
-        "__end__": "__end__"  # Si devuelve "__end__", terminamos.
+        "corregir": "sintetizador_estrategico",
+        "finalizar": END
     }
 )
+print("SETUP-LANGGRAPH: Conexiones y bucles definidos.")
 
-print("SETUP-LANGGRAPH: ¡Conexiones del grafo, incluyendo el bucle, definidas!")
-
-# =================================================================================
-# PASO 4: COMPILAR EL GRAFO (Sin cambios)
-# =================================================================================
-grafo_compilado = flujo_de_trabajo.compile()
-print("SETUP-LANGGRAPH: ¡Grafo de agentes compilado y listo para usar!")
-
+# 4. Compilar el grafo
 try:
-    imagen_en_bytes = grafo_compilado.get_graph().draw_png()
-    with open("grafo_agentes_con_bucle.png", "wb") as f:
-        f.write(imagen_en_bytes)
-    print("SETUP-LANGGRAPH: Se ha guardado una imagen del grafo en 'grafo_agentes_con_bucle.png'.")
+    grafo_compilado = flujo_de_trabajo.compile()
+    print("SETUP-LANGGRAPH: ¡Grafo de agentes compilado y listo para usar!")
 except Exception as e:
-    print(f"SETUP-LANGGRAPH-WARN: No se pudo generar la imagen del grafo. Causa: {e}")
+    print(f"SETUP-LANGGRAPH-ERROR: ¡No se pudo compilar el grafo! Causa: {e}")
+    grafo_compilado = None

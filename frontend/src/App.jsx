@@ -1,5 +1,5 @@
 // frontend/src/App.jsx
-import { useState, useEffect, useCallback } from 'react'; // 1. Importamos useCallback
+import { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import ListaCasos from './componentes/ListaCasos/ListaCasos';
 import VistaDetalleCaso from './componentes/VistaDetalleCaso/VistaDetalleCaso';
@@ -10,47 +10,33 @@ function App() {
   const [casos, setCasos] = useState([]);
   const [casoSeleccionado, setCasoSeleccionado] = useState(null);
 
-  // --- 2. ENVOLVEMOS LA FUNCIÓN EN useCallback ---
-  /**
-   * Esta función ahora está "memorizada" por React. Solo se creará una nueva
-   * versión de esta función si su dependencia (`casoSeleccionado`) cambia.
-   * Esto resuelve el bug de las "funciones viejas" en los re-renders.
-   */
-  const recargarDatos = useCallback(async () => {
+  // Esta función ahora es más simple y robusta.
+  const recargarDatosYSeleccionar = useCallback(async (idCasoSeleccionado) => {
     console.log("APP: Recargando todos los datos desde la API...");
     const datosActualizados = await obtenerTodosLosCasos();
     setCasos(datosActualizados);
 
-    // Si había un caso seleccionado, también actualizamos sus datos
-    if (casoSeleccionado) {
-      const casoRefrescado = datosActualizados.find(c => c.id_caso === casoSeleccionado.id_caso);
+    if (idCasoSeleccionado) {
+      const casoRefrescado = datosActualizados.find(c => c.id_caso === idCasoSeleccionado);
       setCasoSeleccionado(casoRefrescado);
     }
-  }, [casoSeleccionado]); // 3. Le decimos a useCallback que depende de `casoSeleccionado`
-  
+  }, []); // Sin dependencias, esta función nunca estará "vieja".
+
   useEffect(() => {
-    recargarDatos();
-  }, [recargarDatos]); // Ahora la dependencia de useEffect es la propia función memorizada
+    recargarDatosYSeleccionar();
+  }, [recargarDatosYSeleccionar]); // Se ejecuta una vez al inicio.
 
   const manejarSeleccionCaso = (caso) => {
     setCasoSeleccionado(caso);
   };
 
-  const manejarCasoCreado = async (nuevoCaso) => {
-    console.log("APP: Nuevo caso creado. Refrescando la lista de casos.");
-    await recargarDatos();
-    
-    // Después de recargar, la nueva lista de 'casos' contendrá el nuevo caso.
-    // Lo buscamos para asegurarnos de tener el objeto más actualizado.
-    const casoRecienCreado = await obtenerTodosLosCasos().then(lista => lista.find(c => c.id_caso === nuevoCaso.id_caso));
-    setCasoSeleccionado(casoRecienCreado);
+  const manejarCasoCreado = (nuevoCaso) => {
+    recargarDatosYSeleccionar(nuevoCaso.id_caso);
   };
   
   return (
     <div className="app-contenedor">
-      <header>
-        <h1>Asistente Legal Multimodal</h1>
-      </header>
+      <header><h1>Asistente Legal Multimodal</h1></header>
       <main className="main-layout">
         <div className="columna-izquierda">
           <FormularioCrearCaso onCasoCreado={manejarCasoCreado} />
@@ -63,9 +49,8 @@ function App() {
         <div className="columna-derecha">
           <VistaDetalleCaso 
             casoSeleccionado={casoSeleccionado}
-            // Pasamos la función memorizada a los hijos
-            onEvidenciaSubida={recargarDatos}
-            onAnalisisCompleto={recargarDatos}
+            onEvidenciaSubida={() => recargarDatosYSeleccionar(casoSeleccionado?.id_caso)}
+            onAnalisisCompleto={() => recargarDatosYSeleccionar(casoSeleccionado?.id_caso)}
           />
         </div>
       </main>

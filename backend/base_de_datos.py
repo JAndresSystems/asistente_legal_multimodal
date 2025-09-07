@@ -19,7 +19,7 @@ db_nombre = os.getenv("DB_NOMBRE")
 URL_CONEXION_BD = f"postgresql://{db_usuario}:{db_contrasena}@{db_host}:{db_puerto}/{db_nombre}"
 
 # 4. Creamos el motor, que ahora apunta a nuestro servidor de PostgreSQL.
-motor = create_engine(URL_CONEXION_BD, echo=True)
+motor = create_engine(URL_CONEXION_BD, echo=False)
 
 
 def inicializar_base_de_datos():
