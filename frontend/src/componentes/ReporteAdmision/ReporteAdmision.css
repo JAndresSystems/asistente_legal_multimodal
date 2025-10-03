@@ -1,0 +1,67 @@
+.reporte-contenedor {
+  background-color: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  font-family: sans-serif;
+  color: #333;
+}
+
+.reporte-titulo {
+  margin-top: 0;
+  color: #1a237e;
+  border-bottom: 2px solid #1a237e;
+  padding-bottom: 8px;
+}
+
+.reporte-seccion {
+  margin-top: 16px;
+}
+
+.reporte-subtitulo {
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.reporte-campo {
+  margin-bottom: 12px;
+}
+
+.reporte-campo strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #444;
+}
+
+.reporte-campo p, .reporte-campo span, .reporte-campo ul {
+  margin: 0;
+  padding: 0;
+}
+
+.reporte-campo ul {
+  list-style-position: inside;
+}
+
+.etiqueta-admisible, .etiqueta-no-admisible {
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: white;
+  font-weight: bold;
+}
+
+.etiqueta-admisible {
+  background-color: #2e7d32; /* Verde oscuro */
+}
+
+.etiqueta-no-admisible {
+  background-color: #c62828; /* Rojo oscuro */
+}
+
+.reporte-texto-plano {
+  white-space: pre-wrap; /* Para que el texto plano respete los saltos de línea */
+  word-wrap: break-word;
+  background-color: #f0f0f0;
+  padding: 10px;
+  border-radius: 5px;
+}
+
