@@ -1,4 +1,4 @@
-# backend/tareas.py
+#backend\tareas.py
 
 import uuid
 from .celery_configuracion import celery_app
@@ -10,10 +10,10 @@ from sqlmodel import Session
 @celery_app.task(name="procesar_evidencia_principal")
 def procesar_evidencia_tarea(id_evidencia_str: str):
     """
-    Tarea de Celery que se ejecuta en segundo plano para procesar un archivo de evidencia.
-    VERSIÓN CORREGIDA Y ROBUSTA FINAL.
+    Tarea de Celery que ejecuta la cadena completa de agentes (Triaje, Competencia, Reparto)
+    y guarda un resumen completo de los resultados.
     """
-    print(f"INFO: [CELERY-WORKER] Iniciando procesamiento para la evidencia: {id_evidencia_str}")
+    print(f"INFO: [CELERY-WORKER] Iniciando procesamiento con CADENA COMPLETA para evidencia: {id_evidencia_str}")
     
     db_session_gen = obtener_sesion()
     sesion: Session = next(db_session_gen)
@@ -30,53 +30,55 @@ def procesar_evidencia_tarea(id_evidencia_str: str):
         sesion.add(evidencia_db)
         sesion.commit()
         
+        historial_simulado = (
+            f"El usuario ha iniciado un caso sobre '{evidencia_db.caso.titulo}' "
+            f"y ha subido el archivo '{evidencia_db.nombre_archivo}'. "
+            f"El resumen inicial es: '{evidencia_db.caso.resumen}'. "
+            f"Por favor, iniciar el proceso de admisión."
+        )
+        
         estado_inicial = {
-            "id_caso": str(evidencia_db.id_caso),
-            "ruta_archivo": evidencia_db.ruta_archivo,
-            "tipo_contenido": evidencia_db.tipo_contenido,
-            "intentos_correccion": 0
+            "historial_conversacion": historial_simulado,
+            "rutas_archivos_evidencia": [evidencia_db.ruta_archivo],
         }
         
-        print(f"INFO: [CELERY-WORKER] Invocando el grafo de agentes para: {evidencia_db.nombre_archivo}")
+        print(f"INFO: [CELERY-WORKER] Invocando el grafo de agentes completo...")
         estado_final = grafo_compilado.invoke(estado_inicial)
-        print(f"INFO: [CELERY-WORKER] El grafo de agentes ha completado el análisis.")
+        print(f"INFO: [CELERY-WORKER] El grafo de agentes completo ha finalizado.")
 
-        # --- LÓGICA DE ACTUALIZACIÓN FINAL Y SEGURA ---
-        # La única fuente de verdad es el contenido de 'texto_extraido'.
+        # --- RECOPILACIÓN Y GUARDADO DE TODOS LOS RESULTADOS ---
+        es_admisible = estado_final.get("es_admisible")
+        justificacion = estado_final.get("justificacion_triaje", "N/A")
+        area_competencia = estado_final.get("area_competencia", "N/A")
+        id_estudiante = estado_final.get("id_estudiante_asignado", "N/A")
+        id_asesor = estado_final.get("id_asesor_asignado", "N/A")
 
-        texto_resultado = estado_final.get("texto_extraido")
-
-        if texto_resultado and texto_resultado.startswith("Error"):
-            # CASO 1: EL PROCESAMIENTO INICIAL FALLÓ
-            print(f"ERROR: [CELERY-WORKER] El procesamiento falló. Guardando estado de error.")
-            evidencia_db.texto_extraido = texto_resultado
-            evidencia_db.estado_procesamiento = "error_de_procesamiento"
-            # Nos aseguramos de que los otros campos estén vacíos para no guardar basura
-            evidencia_db.entidades_extraidas = []
-            evidencia_db.informacion_recuperada = []
-            evidencia_db.borrador_estrategia = None
-            evidencia_db.verificacion_calidad = None
+        # Construimos un reporte completo para guardarlo en la base de datos.
+        reporte_final = (
+            f"--- REPORTE DE ADMISIÓN AUTOMÁTICA ---\n\n"
+            f"VEREDICTO DEL TRIAJE: {'ADMISIBLE' if es_admisible else 'NO ADMISIBLE'}\n"
+            f"Justificación: {justificacion}\n\n"
+            f"--- CLASIFICACIÓN Y ASIGNACIÓN ---\n"
+            f"Área de Competencia Determinada: {area_competencia}\n"
+            f"Equipo Asignado (Simulado):\n"
+            f"  - ID Estudiante: {id_estudiante}\n"
+            f"  - ID Asesor: {id_asesor}\n"
+        )
         
-        elif texto_resultado:
-            # CASO 2: EL PROCESAMIENTO FUE EXITOSO
-            print(f"INFO: [CELERY-WORKER] Procesamiento exitoso. Guardando todos los resultados.")
-            evidencia_db.texto_extraido = texto_resultado
-            evidencia_db.entidades_extraidas = estado_final.get("entidades_extraidas")
-            evidencia_db.informacion_recuperada = estado_final.get("informacion_recuperada")
-            evidencia_db.borrador_estrategia = estado_final.get("borrador_estrategia")
-            evidencia_db.verificacion_calidad = estado_final.get("verificacion_calidad")
-            evidencia_db.estado_procesamiento = "completado"
+        evidencia_db.texto_extraido = reporte_final
 
+        if es_admisible:
+            evidencia_db.estado_procesamiento = "completado"
+            print(f"INFO: [CELERY-WORKER] Caso ADMISIBLE y ASIGNADO. Reporte guardado.")
         else:
-            # CASO 3: UN ERROR INESPERADO DONDE NO HAY TEXTO
-            print(f"ERROR: [CELERY-WORKER] Error inesperado, no se produjo texto. Marcando como error.")
-            evidencia_db.estado_procesamiento = "error_inesperado"
+            evidencia_db.estado_procesamiento = "error_de_procesamiento"
+            print(f"INFO: [CELERY-WORKER] Caso NO ADMISIBLE. Reporte guardado.")
 
         sesion.add(evidencia_db)
         sesion.commit()
 
     except Exception as e:
-        print(f"ERROR-CRITICO: [CELERY-WORKER] Ocurrió una excepción procesando {id_evidencia_str}: {e}")
+        print(f"ERROR-CRITICO: [CELERY-WORKER] Ocurrió una excepción en la tarea: {e}")
         if evidencia_db:
             evidencia_db.estado_procesamiento = "error_critico"
             sesion.add(evidencia_db)
@@ -84,4 +86,4 @@ def procesar_evidencia_tarea(id_evidencia_str: str):
             
     finally:
         sesion.close()
-        print(f"INFO: [CELERY-WORKER] Tarea finalizada y sesión de BD cerrada para: {id_evidencia_str}")
+        print(f"INFO: [CELERY-WORKER] Tarea finalizada para: {id_evidencia_str}")

@@ -1,255 +1,224 @@
-# backend/agentes/nodos_del_grafo.py
-
 from .estado_del_grafo import EstadoDelGrafo
-from ..herramientas import herramientas_audio, herramientas_documentos, herramientas_video,herramientas_lenguaje
+from ..herramientas import herramientas_lenguaje
 
-import time
-# =================================================================================
-# NODO 1: AGENTE PROCESADOR DE EVIDENCIA
-# =================================================================================
 
-def nodo_procesador_evidencia(estado: EstadoDelGrafo) -> dict:
+from ..base_de_datos import obtener_sesion
+
+from ..api.modelos_compartidos import Asignacion, Estudiante, Asesor # Suponiendo estos modelos
+def nodo_agente_triaje(estado: EstadoDelGrafo) -> dict:
     """
-    Este nodo es el primer paso en el grafo. Llama a la herramienta apropiada
-    (audio, pdf, video, imagen) para extraer el texto de la evidencia.
-    """
-    print("\n--- Entrando en el Nodo: Procesador de Evidencia ---")
-    
-    ruta_archivo = estado.ruta_archivo
-    tipo_contenido = estado.tipo_contenido
-    # El id_caso no se usa en esta versión simplificada, así que lo podemos ignorar.
-    
-    texto_extraido = None # Inicializamos la variable que contendrá el resultado
+    Implementa la lógica del Agente de Triaje.
 
-    # --- LÓGICA DE DECISIÓN SIMPLIFICADA Y CORREGIDA ---
-    try:
-        if 'audio' in tipo_contenido:
-            print("    Decisión: Es un AUDIO. Llamando a la herramienta de transcripción multimodal...")
-            # CAMBIO CLAVE: Ahora llamamos a la función genérica 'procesar_audio' del módulo.
-            # Esta es la función que internamente usa Gemini, como modificamos en el paso anterior.
-            texto_extraido = herramientas_audio.procesar_audio(ruta_archivo)
-
-        elif 'pdf' in tipo_contenido:
-            print("    Decisión: Es un PDF. Llamando a la herramienta de procesamiento (Nougat)...")
-            # CAMBIO MENOR: Adaptamos la llamada para que sea consistente con las demás.
-            resultado = herramientas_documentos.procesar_pdf_con_nougat(ruta_archivo)
-            texto_extraido = resultado.get("texto_extraido")
-
-        elif 'video' in tipo_contenido:
-            print("    Decisión: Es un VIDEO. Llamando a la herramienta de procesamiento de video...")
-            # CAMBIO MENOR: Adaptamos la llamada para que sea consistente con las demás.
-            resultado = herramientas_video.procesar_video_con_opencv_y_gemini(ruta_archivo, estado.id_caso)
-            texto_extraido = resultado.get("texto_extraido")
-        
-        elif 'image' in tipo_contenido:
-            print("    Decisión: Es una IMAGEN. Llamando a la herramienta de análisis de imágenes...")
-            # CAMBIO MENOR: Adaptamos la llamada para que sea consistente con las demás.
-            descripciones = herramientas_lenguaje.describir_imagenes_con_gemini(
-                rutas_imagenes=[ruta_archivo],
-                prompt_texto="Describe esta imagen en detalle para un informe legal."
-            )
-            texto_extraido = "\n".join(descripciones) if descripciones else None
-            
-        else:
-            print(f"    Alerta: Tipo de contenido no soportado: {tipo_contenido}")
-            texto_extraido = f"Error: Tipo de archivo '{tipo_contenido}' no es soportado."
-
-        if texto_extraido and not texto_extraido.startswith("Error"):
-            print(f"    Resultado: Texto extraído exitosamente ({len(texto_extraido)} caracteres).")
-        else:
-            print(f"    Resultado: No se pudo extraer texto. Causa: {texto_extraido}")
-        
-        # Devolvemos un diccionario para actualizar el estado del grafo.
-        return {"texto_extraido": texto_extraido}
-
-    except Exception as e:
-        print(f"    ERROR CRÍTICO en el nodo procesador: {e}")
-        return {"texto_extraido": f"Error crítico en el procesamiento del archivo: {e}"}
-
-# =================================================================================
-# NODO 2: AGENTE INVESTIGADOR Y ANALISTA
-# =================================================================================
-
-def nodo_investigador_analista(estado: EstadoDelGrafo) -> dict:
-    """
-    Este nodo toma el texto extraído y realiza la investigación.
-
-    Implementa una pausa inicial para dar un respiro a la API después de
-    posibles tareas intensivas del nodo anterior (como el análisis de video).
-    """
-    print("\n--- Entrando en el Nodo: Investigador y Analista ---")
-    
-    texto_para_analizar = estado.texto_extraido
-    
-    if not texto_para_analizar:
-        print("    Decisión: No hay texto para analizar. Saltando el nodo.")
-        return {}
-
-    # --- ¡CORRECCIÓN ESTRATÉGICA! ---
-    # Le damos un respiro a la API antes de empezar a trabajar.
-    pausa = 20
-    print(f"    Acción: Pausa de {pausa} segundos para estabilizar la conexión con la API...")
-    time.sleep(pausa)
-    # ----------------------------------
-
-    # 1. Extraer entidades
-    print("    Acción: Extrayendo entidades clave del texto...")
-    entidades = herramientas_lenguaje.extraer_entidades_con_llm(texto_para_analizar)
-    
-    if not entidades or "Error" in entidades[0].get("tipo", ""):
-        print("    Resultado: No se pudieron extraer entidades.")
-        # Devolvemos ambos campos como nulos para evitar errores en cascada
-        return {"entidades_extraidas": None, "informacion_recuperada": None}
-
-    print(f"    Resultado: Se extrajeron {len(entidades)} entidades.")
-
-    # 2. Buscar en la base de conocimiento (RAG)
-    consulta_rag = " ".join([ent["entidad"] for ent in entidades])
-    print(f"    Acción: Buscando en la base de conocimiento con la consulta: '{consulta_rag[:100]}...'")
-    
-    informacion_recuperada = herramientas_lenguaje.buscar_en_base_de_conocimiento(consulta_rag)
-    
-    print(f"    Resultado: Se recuperaron {len(informacion_recuperada)} fragmentos de información.")
-
-    return {
-        "entidades_extraidas": entidades,
-        "informacion_recuperada": informacion_recuperada
-    }
-
-# backend/agentes/nodos_del_grafo.py
-
-# (Imports y nodos anteriores van aquí arriba)
-
-# =================================================================================
-# NODO 3: AGENTE SINTETIZADOR ESTRATÉGICO
-# =================================================================================
-
-def nodo_sintetizador_estrategico(estado: EstadoDelGrafo) -> dict:
-    """
-    Este nodo compila toda la información para generar un borrador de estrategia.
-
-    VERSIÓN MEJORADA:
-    - Ahora revisa si hay un veredicto de calidad previo en el estado.
-    - Si el borrador anterior fue rechazado, incorpora las observaciones del
-      Guardián en un nuevo prompt para solicitar una versión corregida.
-    """
-    print("\n--- Entrando en el Nodo: Sintetizador Estratégico ---")
-
-    if not estado.texto_extraido or not estado.entidades_extraidas or not estado.informacion_recuperada:
-        print("    Decisión: Faltan datos. No se puede generar la síntesis.")
-        return {"borrador_estrategia": "Error: Faltan datos previos."}
-
-    # 1. Preparamos el contexto base (esto no cambia)
-    contexto_base = f"""
-    **Texto Original de la Evidencia:**
-    {estado.texto_extraido}
-    **Entidades Clave Identificadas:**
-    {estado.entidades_extraidas}
-    **Artículos y Leyes Relevantes Recuperados:**
-    {estado.informacion_recuperada}
-    """
-    
-    # 2. Lógica para manejar la corrección
-    veredicto_previo = estado.verificacion_calidad
-    if veredicto_previo and not veredicto_previo.get("verificado"):
-        # ¡Estamos en un bucle de corrección!
-        print("    Acción: Detectado un rechazo previo. Preparando prompt de corrección.")
-        observaciones = veredicto_previo.get("observaciones")
-        
-        prompt_final = f"""
-        Eres un abogado senior y tu borrador anterior fue rechazado por un auditor.
-        Tu tarea es generar una NUEVA Y MEJORADA versión del "Borrador de Estrategia Legal Preliminar"
-        basándote en el contexto original y corrigiendo OBLIGATORIAMENTE los errores señalados.
-
-        **Observaciones del Auditor (Errores a Corregir):**
-        {observaciones}
-
-        **Contexto Original (Úsalo como base):**
-        {contexto_base}
-
-        Genera una nueva versión que solucione los problemas mencionados.
-        """
-    else:
-        # Es la primera vez que pasamos por aquí.
-        print("    Acción: Primera pasada. Preparando prompt de síntesis inicial.")
-        prompt_final = f"""
-        Eres un abogado senior y director de un consultorio jurídico en Colombia.
-        Tu tarea es revisar el siguiente contexto y redactar un "Borrador de Estrategia Legal Preliminar".
-        El borrador debe ser claro, estructurado y profesional, usando Markdown.
-        Debes incluir:
-        1. Resumen breve del caso.
-        2. Fundamento legal principal.
-        3. Posibles demandados.
-        4. Consideración sobre la competencia del consultorio.
-        5. Próximo paso recomendado.
-
-        Contexto para analizar:
-        ---
-        {contexto_base}
-        ---
-        """
-
-    # 3. Llamamos a la IA con el prompt adecuado
-    print("    Acción: Solicitando la generación del borrador a la IA...")
-    borrador_generado = herramientas_lenguaje.generar_sintesis_con_llm(prompt_final)
-    
-    print("    Resultado: Nueva versión del borrador generada.")
-
-    # Incrementamos el contador de intentos y devolvemos el nuevo borrador
-    return {
-        "borrador_estrategia": borrador_generado,
-        "intentos_correccion": estado.intentos_correccion + 1
-    }
-
-
-# =================================================================================
-# NODO 4: AGENTE GUARDIÁN DE CALIDAD
-# =================================================================================
-
-def nodo_guardian_calidad(estado: EstadoDelGrafo) -> dict:
-    """
-    Este nodo revisa el borrador de estrategia para asegurar su calidad y
-    coherencia con la evidencia original.
+    Este nodo analiza la conversación inicial y la evidencia multimodal para
+    determinar si un caso cumple con los requisitos de admisibilidad del
+    consultorio jurídico.
 
     Args:
-        estado (EstadoDelGrafo): El estado actual, que debe contener el borrador
-                                 y el contexto original que lo generó.
+        estado (EstadoDelGrafo): El estado actual del grafo.
 
     Returns:
-        dict: Un diccionario con la 'verificacion_calidad' para actualizar el estado.
+        dict: Un diccionario con los resultados para actualizar el estado del grafo.
     """
-    print("\n--- Entrando en el Nodo: Guardián de Calidad ---")
+    print("\n--- Entrando en el Nodo: Agente de Triaje ---")
 
-    borrador_a_revisar = estado.borrador_estrategia
-    
-    if not borrador_a_revisar or "Error" in borrador_a_revisar:
-        print("    Decisión: No hay un borrador válido para revisar. Saltando el nodo.")
-        veredicto = {
-            "verificado": False,
-            "observaciones": "No se generó un borrador para poder revisar."
-        }
-        return {"verificacion_calidad": veredicto}
+    historial_chat = estado["historial_conversacion"]
+    rutas_evidencia = estado["rutas_archivos_evidencia"]
 
-    # 1. Reconstruimos el contexto original que se usó para la síntesis
-    contexto_original = f"""
-    **Texto Original de la Evidencia:**
-    {estado.texto_extraido}
+    # Creamos el prompt para Gemini, instruyéndolo a actuar como nuestro agente.
+    prompt = f"""
+    Eres el "Agente de Triaje" de un consultorio jurídico colombiano. Tu única misión
+    es analizar la conversación y la evidencia adjunta (imágenes, audios, PDFs) para
+    determinar objetivamente si el caso es admisible.
 
-    **Entidades Clave Identificadas:**
-    {estado.entidades_extraidas}
+    **Reglas de Admisibilidad (Ley 2113 y Reglamento Interno):**
+    1.  **Estrato Socioeconómico:** El solicitante debe ser de estrato ninguno o 1 o 2. Valídalo
+        buscando menciones en el texto o analizando recibos de servicios públicos si se adjuntan.
+    2.  **Cuantía del Caso:** El valor de las pretensiones no puede superar los 40 Salarios
+        Mínimos Legales Mensuales Vigentes (SMLMV). Asume un SMLMV de $1.300.000 COP.
+    3.  **Competencia Territorial:** El caso debe haber ocurrido en Norte de Santander.
+    4.  **Materia:** No se atienden casos penales (hurto, lesiones personales, etc.) ni de competencia
+        de la Jurisdicción Especial para la Paz (JEP).
 
-    **Artículos y Leyes Relevantes Recuperados de la Base de Conocimiento:**
-    {estado.informacion_recuperada}
+    **Tu Tarea:**
+    1.  Analiza TODA la información proporcionada (texto y archivos).
+    2.  Extrae los datos clave: 'materia', 'cuantia_estimada', 'estrato' y 'territorio'. Si un dato no se
+        puede determinar, déjalo como "No determinado".
+    3.  Toma una decisión final ('es_admisible': true o false).
+    4.  Escribe una 'justificacion_triaje' clara y breve explicando tu decisión,
+        basada en las reglas.
+
+    **Formato de Respuesta Obligatorio:**
+    Debes devolver tu análisis ÚNICAMENTE en formato JSON, sin texto introductorio ni explicaciones
+    adicionales. La estructura debe ser la siguiente:
+    ```json
+    {{
+      "datos_triaje": {{
+        "materia": "string",
+        "cuantia_estimada": "number | string",
+        "estrato": "number | string",
+        "territorio": "string"
+      }},
+      "es_admisible": "boolean",
+      "justificacion_triaje": "string"
+    }}
+    ```
+
+    **Conversación a Analizar:**
+    ---
+    {historial_chat}
+    ---
     """
-    print("    Acción: Reconstruyendo contexto para la revisión.")
 
-    # 2. Llamamos a la herramienta de verificación
-    print("    Acción: Solicitando la verificación de calidad a la IA...")
-    veredicto = herramientas_lenguaje.verificar_calidad_con_llm(
-        borrador=borrador_a_revisar,
-        contexto_original=contexto_original
+    # Invocamos nuestra herramienta central de Gemini.
+    resultado_analisis = herramientas_lenguaje.analizar_evidencia_con_gemini(
+        prompt=prompt,
+        rutas_archivos=rutas_evidencia
     )
-    
-    print(f"    Resultado: Veredicto de calidad recibido. Verificado: {veredicto.get('verificado')}")
 
-    return {"verificacion_calidad": veredicto}
+    # Verificamos si hubo un error en la herramienta.
+    if "error" in resultado_analisis:
+        print(f"    ERROR: El análisis multimodal falló. Causa: {resultado_analisis['error']}")
+        # Devolvemos un estado de error para que el grafo pueda manejarlo.
+        return {
+            "es_admisible": False,
+            "justificacion_triaje": f"Fallo técnico en el Agente de Triaje: {resultado_analisis['error']}"
+        }
+
+    # Extraemos los resultados del JSON devuelto por el modelo.
+    datos_triaje = resultado_analisis.get("datos_triaje", {})
+    es_admisible = resultado_analisis.get("es_admisible", False)
+    justificacion = resultado_analisis.get("justificacion_triaje", "No se proporcionó justificación.")
+
+    print(f"    Veredicto del Triaje: {'Admisible' if es_admisible else 'No Admisible'}.")
+    print(f"    Justificación: {justificacion}")
+
+    # Devolvemos el diccionario para actualizar el estado del grafo.
+    return {
+        "datos_triaje": datos_triaje,
+        "es_admisible": es_admisible,
+        "justificacion_triaje": justificacion
+    }
+
+
+
+# =================================================================================
+# NODO 2: AGENTE DETERMINADOR DE COMPETENCIAS
+# =================================================================================
+
+def nodo_agente_determinador_competencias(estado: EstadoDelGrafo) -> dict:
+    """
+    Implementa la lógica del Agente Determinador de Competencias.
+
+    Este nodo se activa solo si el caso es admisible. Su función es clasificar
+    el caso en una de las áreas de práctica del consultorio jurídico.
+
+    Args:
+        estado (EstadoDelGrafo): El estado actual del grafo.
+
+    Returns:
+        dict: Un diccionario con el área de competencia para actualizar el estado.
+    """
+    print("\n--- Entrando en el Nodo: Agente Determinador de Competencias ---")
+
+    historial_chat = estado["historial_conversacion"]
+    rutas_evidencia = estado["rutas_archivos_evidencia"]
+    datos_triaje = estado["datos_triaje"]
+
+    # Creamos un prompt específico para la tarea de clasificación.
+    prompt = f"""
+    Eres el "Agente Determinador de Competencias" de un consultorio jurídico.
+    Tu única misión es clasificar el siguiente caso en una de las áreas de práctica definidas.
+    Analiza la conversación inicial, los datos ya extraídos por el Agente de Triaje y
+    cualquier evidencia adjunta para tomar tu decisión.
+
+    **Áreas de Práctica Válidas:**
+    - Derecho Privado (Contratos, arrendamientos, deudas, etc.)
+    - Derecho Público (Problemas con el estado, servicios públicos, multas de tránsito)
+    - Derecho Laboral (Despidos, contratos de trabajo, liquidaciones)
+    - Derecho de Familia (Cuotas alimentarias, divorcios, custodia)
+    - Acciones Constitucionales (Derechos de petición, tutelas por derecho a la salud, etc.)
+    - Otro (Si no encaja claramente en ninguna de las anteriores)
+
+    **Tu Tarea:**
+    1.  Analiza toda la información.
+    2.  Escoge UNA de las áreas de práctica de la lista.
+    3.  Devuelve tu clasificación ÚNICAMENTE en formato JSON, sin texto introductorio,
+        con la siguiente estructura:
+        ```json
+        {{
+          "area_competencia": "string"
+        }}
+        ```
+
+    **Información del Caso a Clasificar:**
+    ---
+    **Conversación con el Usuario:**
+    {historial_chat}
+
+    **Datos del Triaje Inicial:**
+    {datos_triaje}
+    ---
+    """
+
+    # Reutilizamos nuestra herramienta central de Gemini.
+    resultado_analisis = herramientas_lenguaje.analizar_evidencia_con_gemini(
+        prompt=prompt,
+        rutas_archivos=rutas_evidencia
+    )
+
+    if "error" in resultado_analisis:
+        print(f"    ERROR: La clasificación de competencia falló. Causa: {resultado_analisis['error']}")
+        return {"area_competencia": "Error en clasificación"}
+
+    area_competencia = resultado_analisis.get("area_competencia", "Clasificación no determinada")
+
+    print(f"    Veredicto de Competencia: El caso pertenece a '{area_competencia}'.")
+
+    return {"area_competencia": area_competencia}
+
+# =================================================================================
+# NODO 3: AGENTE REPARTIDOR
+# =================================================================================
+
+def nodo_agente_repartidor(estado: EstadoDelGrafo) -> dict:
+    """
+    Implementa la lógica del Agente Repartidor.
+
+    Este nodo consulta la base de datos para encontrar al estudiante y asesor
+    con la menor carga de trabajo en el área de competencia asignada.
+
+    Args:
+        estado (EstadoDelGrafo): El estado actual del grafo.
+
+    Returns:
+        dict: Un diccionario con los IDs del equipo asignado.
+    """
+    print("\n--- Entrando en el Nodo: Agente Repartidor ---")
+    
+    area_competencia = estado["area_competencia"]
+    if not area_competencia or "Error" in area_competencia:
+        print("    ERROR: No hay un área de competencia válida para asignar.")
+        return {}
+
+    # --- SIMULACIÓN DE LÓGICA DE BASE DE DATOS ---
+    # En una implementación real, aquí se harían consultas SQL complejas
+    # para contar casos activos por estudiante/asesor en un área específica.
+    # Por ahora, simularemos la lógica para mantener el foco en la arquitectura de agentes.
+
+    print(f"    Acción: Buscando el equipo con menor carga en el área de '{area_competencia}'...")
+    
+    # Simulación: Suponemos que consultamos la BD y encontramos que el estudiante
+    # con ID 123 y el asesor con ID 456 son los más desocupados.
+    id_estudiante_simulado = 123
+    id_asesor_simulado = 456
+    
+    print(f"    Resultado: Equipo seleccionado (Estudiante ID: {id_estudiante_simulado}, Asesor ID: {id_asesor_simulado}).")
+    
+    # En una implementación real, aquí se crearía el registro de la asignación en la BD.
+    # sesion.add(nueva_asignacion)
+    # sesion.commit()
+
+    return {
+        "id_estudiante_asignado": id_estudiante_simulado,
+        "id_asesor_asignado": id_asesor_simulado,
+    }

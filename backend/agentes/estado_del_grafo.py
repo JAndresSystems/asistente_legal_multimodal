@@ -1,55 +1,49 @@
 # backend/agentes/estado_del_grafo.py
 
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import TypedDict, List, Dict, Any, Optional
 
-class EstadoDelGrafo(BaseModel):
+class EstadoDelGrafo(TypedDict):
     """
-    Representa la "hoja de datos" o el estado completo de un caso mientras
-    es procesado por nuestro grafo de agentes.
+    Define la estructura de datos que se comparte y modifica entre los agentes del grafo.
 
-    Este objeto se pasa de un nodo (agente) a otro, y cada agente puede
-    leerlo y añadirle información.
+    Actúa como el "expediente digital" del caso a medida que avanza por el sistema.
+    Cada agente lee de este estado y escribe sus resultados en él.
     """
-    
-    # --- Datos Iniciales ---
-    # Información que se recibe al inicio del proceso.
-    id_caso: str = Field(description="El identificador único del caso.")
-    ruta_archivo: str = Field(description="La ruta local del archivo de evidencia subido.")
-    tipo_contenido: str = Field(description="El tipo MIME del archivo (ej. 'video/mp4').")
 
-    # --- Resultados de los Agentes ---
-    # Cada agente llenará uno o más de estos campos a medida que avanza el grafo.
-    
-    texto_extraido: Optional[str] = Field(
-        default=None, 
-        description="El texto transcrito o extraído por el Agente Procesador."
-    )
-    
-    entidades_extraidas: Optional[List[Dict]] = Field(
-        default=None, 
-        description="Las entidades extraídas por el Agente Investigador/Analista."
-    )
-    
-    informacion_recuperada: Optional[List[str]] = Field(
-        default=None, 
-        description="La información relevante encontrada en la base de conocimiento por el Agente Investigador/Analista."
-    )
-    
-    borrador_estrategia: Optional[str] = Field(
-        default=None, 
-        description="El borrador de la estrategia legal generado por el Agente Sintetizador."
-    )
-    
-    verificacion_calidad: Optional[Dict] = Field(
-        default=None,
-        description="El veredicto del Agente Guardián de Calidad sobre el borrador."
-    )
+    # --- DATOS DE ENTRADA (Del Agente de Atención al Usuario) ---
+    historial_conversacion: str
+    """La transcripción completa de la conversación inicial con el usuario."""
 
-    # --- Control del Flujo ---
-    # Campos que nos ayudarán a decidir el camino en el grafo en el futuro.
+    rutas_archivos_evidencia: List[str]
+    """Una lista de rutas a los archivos de evidencia subidos por el usuario."""
+
+    # --- RESULTADOS DEL AGENTE DE TRIAJE ---
+    datos_triaje: Optional[Dict[str, Any]]
+    """
+    Un diccionario estructurado con los datos extraídos por el Agente de Triaje.
+    Ejemplo: {'materia': 'Laboral', 'cuantia_estimada': 5000000, 'estrato': 2}
+    """
+
+    es_admisible: Optional[bool]
+    """El veredicto final del Agente de Triaje (True si es admisible, False si no)."""
+
+    justificacion_triaje: Optional[str]
+    """La explicación del porqué un caso es o no es admisible."""
+
+    # --- RESULTADOS DEL AGENTE DETERMINADOR DE COMPETENCIAS ---
+    area_competencia: Optional[str]
+    """El área del derecho a la que pertenece el caso (Ej: 'Derecho Privado', 'Derecho Público')."""
+
+    # --- RESULTADOS DEL AGENTE REPARTIDOR ---
+    id_estudiante_asignado: Optional[int]
+    """El ID del estudiante al que se le ha asignado el caso."""
     
-    intentos_correccion: int = Field(
-        default=0,
-        description="Un contador para saber cuántas veces hemos intentado corregir el borrador."
-    )
+    id_asesor_asignado: Optional[int]
+    """El ID del asesor/supervisor asignado al caso."""
+
+    # --- DATOS DE APOYO (Para Agentes Auxiliares) ---
+    consulta_juridica_actual: Optional[str]
+    """La pregunta específica que un estudiante hace al Agente Jurídico."""
+    
+    tipo_documento_solicitado: Optional[str]
+    """El tipo de documento que un estudiante solicita al Agente Generador de Documentos."""

@@ -59,7 +59,7 @@ def subir_evidencia(sesion: Session = Depends(obtener_sesion), id_caso: uuid.UUI
         nombre_archivo=archivo.filename,
         ruta_archivo=str(ruta_archivo_final),
         tipo_contenido=archivo.content_type,
-        estado_procesamiento="encolado" # Este es el nuevo estado inicial
+        estado_procesamiento="encolado" #  estado inicial
     )
     
     sesion.add(nueva_evidencia_db)
