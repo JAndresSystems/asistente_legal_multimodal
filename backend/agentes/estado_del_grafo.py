@@ -47,3 +47,5 @@ class EstadoDelGrafo(TypedDict):
     
     tipo_documento_solicitado: Optional[str]
     """El tipo de documento que un estudiante solicita al Agente Generador de Documentos."""
+    respuesta_juridica: Optional[str]
+    """La respuesta generada por el Agente Jurídico a una consulta específica."""

@@ -27,7 +27,9 @@ ffmpeg-python
 langchain-google-genai
 
 
-
+sentence-transformers
+faiss-cpu
+langchain-text-splitters
 
 
 

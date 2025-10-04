@@ -4,6 +4,7 @@ from ..api.modelos_compartidos import Asignacion, Estudiante, Asesor
 from .estado_del_grafo import EstadoDelGrafo
 from ..herramientas import herramientas_lenguaje
 
+from ..herramientas import herramienta_rag
 # =================================================================================
 # NODO 1: AGENTE DE TRIAJE (PROMPT REFORZADO)
 # =================================================================================
@@ -141,3 +142,47 @@ def nodo_agente_repartidor(estado: EstadoDelGrafo) -> dict:
     except Exception as e:
         print(f"    ERROR CRÍTICO durante la consulta a la base de datos: {e}")
         return {}
+    
+# =================================================================================
+# NODO 4: AGENTE JURÍDICO (VERSIÓN CORREGIDA)
+# =================================================================================
+
+def nodo_agente_juridico(estado: EstadoDelGrafo) -> dict:
+    """
+    Implementa la lógica del Agente Jurídico usando RAG y generando texto plano.
+    """
+    print("\n--- Entrando en el Nodo: Agente Jurídico (con RAG) ---")
+    consulta = estado["consulta_juridica_actual"]
+    area_competencia = estado["area_competencia"]
+
+    if not consulta or not area_competencia:
+        return {"respuesta_juridica": "Error: Faltan datos para la consulta."}
+
+    print(f"    Acción: Buscando en la base de conocimiento de '{area_competencia}'...")
+    contexto_rag = herramienta_rag.buscar_en_base_de_conocimiento(
+        consulta=consulta, area_competencia=area_competencia, k=5
+    )
+    contexto_rag_str = "\n\n".join(contexto_rag)
+    print(f"    Resultado: Se recuperaron {len(contexto_rag)} fragmentos.")
+
+    prompt = f"""
+    Eres un asistente legal experto en derecho colombiano. Tu tarea es responder la
+    siguiente "Consulta del Usuario" de manera clara y fundamentada.
+    DEBES basar tu respuesta OBLIGATORIAMENTE en el "Contexto Relevante" que te proporciono.
+
+    **Contexto Relevante:**
+    ---
+    {contexto_rag_str}
+    ---
+    **Consulta del Usuario:**
+    ---
+    {consulta}
+    ---
+    Genera una respuesta bien estructurada.
+    """
+    
+    # CAMBIO CLAVE: Usamos la nueva función que devuelve texto plano.
+    respuesta_final = herramientas_lenguaje.generar_respuesta_texto(prompt)
+    
+    print("    Resultado: Respuesta jurídica generada.")
+    return {"respuesta_juridica": respuesta_final}    
