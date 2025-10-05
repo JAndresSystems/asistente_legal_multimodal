@@ -90,3 +90,14 @@ class CasoLectura(SQLModel):
 
 class CasoLecturaConEvidencias(CasoLectura):
     evidencias: List[EvidenciaLectura] = []
+
+
+# --- PARA EL CHAT ---
+
+class PreguntaChat(SQLModel):
+    """Define la estructura del JSON que el frontend debe enviar para el chat."""
+    pregunta: str
+
+class RespuestaChat(SQLModel):
+    """Define la estructura del JSON que el backend devolvera en el chat."""
+    respuesta: str    

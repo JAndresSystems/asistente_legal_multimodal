@@ -71,3 +71,18 @@ header h1 {
 .columna-izquierda > * + * {
   margin-top: 2rem;
 }
+
+.seccion-chat-introductoria {
+  width: 100%;
+  padding: 0 2rem; /* Añade un poco de espacio a los lados */
+  margin-bottom: 2rem; /* Separa el chat de la seccion de casos */
+  box-sizing: border-box; /* Asegura que el padding no cause desbordamiento */
+}
+
+/* Hacemos un pequeño ajuste al componente de chat para que no sea tan alto
+   y se sienta mas como una seccion de la pagina y no la pagina entera. */
+.seccion-chat-introductoria .contenedor-chat {
+  height: 50vh; /* Altura mas moderada */
+  max-width: 900px; /* Un poco mas ancho para aprovechar el espacio */
+  border-radius: 12px;
+}

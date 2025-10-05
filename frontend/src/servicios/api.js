@@ -94,3 +94,41 @@ export const obtenerEstadoEvidencia = async (idEvidencia) => {
     return { estado_procesamiento: 'error_en_sondeo' };
   }
 };
+
+
+
+/**
+ * Envia una pregunta al Agente de Atencion y devuelve su respuesta.
+ * @param {string} preguntaUsuario - El texto de la pregunta del usuario.
+ * @returns {Promise<string>} Una promesa que resuelve a la respuesta del agente.
+ */
+export const chatearConAgente = async (preguntaUsuario) => {
+  console.log(`Servicio API: Enviando pregunta al chat: "${preguntaUsuario}"`);
+  
+  const datosPregunta = {
+    pregunta: preguntaUsuario,
+  };
+
+  try {
+    const respuesta = await fetch(`${URL_BASE}/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(datosPregunta),
+    });
+
+    if (!respuesta.ok) {
+      throw new Error(`Error del servidor en el chat: ${respuesta.status}`);
+    }
+
+    const datosRespuesta = await respuesta.json();
+    console.log(`Servicio API: Respuesta del chat recibida: "${datosRespuesta.respuesta}"`);
+    return datosRespuesta.respuesta; // Devolvemos directamente el string de la respuesta
+
+  } catch (error) {
+    console.error("Servicio API: Error al chatear con el agente:", error);
+    // Devolvemos un mensaje de error generico para mostrar en el chat
+    return "Lo siento, no pude conectarme con el asistente en este momento.";
+  }
+};

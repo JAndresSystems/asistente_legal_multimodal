@@ -1,4 +1,5 @@
 // frontend/src/App.jsx
+
 import { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import ListaCasos from './componentes/ListaCasos/ListaCasos';
@@ -6,11 +7,14 @@ import VistaDetalleCaso from './componentes/VistaDetalleCaso/VistaDetalleCaso';
 import FormularioCrearCaso from './componentes/FormularioCrearCaso/FormularioCrearCaso';
 import { obtenerTodosLosCasos } from './servicios/api';
 
+// ¡NUEVA IMPORTACION! Importamos el componente de chat.
+import VistaChat from './componentes/VistaChat/VistaChat';
+
 function App() {
   const [casos, setCasos] = useState([]);
   const [casoSeleccionado, setCasoSeleccionado] = useState(null);
 
-  // Esta función ahora es más simple y robusta.
+  // Tu logica para recargar datos se mantiene intacta, es excelente.
   const recargarDatosYSeleccionar = useCallback(async (idCasoSeleccionado) => {
     console.log("APP: Recargando todos los datos desde la API...");
     const datosActualizados = await obtenerTodosLosCasos();
@@ -20,11 +24,11 @@ function App() {
       const casoRefrescado = datosActualizados.find(c => c.id_caso === idCasoSeleccionado);
       setCasoSeleccionado(casoRefrescado);
     }
-  }, []); // Sin dependencias, esta función nunca estará "vieja".
+  }, []);
 
   useEffect(() => {
     recargarDatosYSeleccionar();
-  }, [recargarDatosYSeleccionar]); // Se ejecuta una vez al inicio.
+  }, [recargarDatosYSeleccionar]);
 
   const manejarSeleccionCaso = (caso) => {
     setCasoSeleccionado(caso);
@@ -37,6 +41,13 @@ function App() {
   return (
     <div className="app-contenedor">
       <header><h1>Asistente Legal Multimodal</h1></header>
+      
+      {/* --- NUEVA SECCION DE CHAT --- */}
+      {/* La colocamos aqui, antes del layout principal de casos. */}
+      <section className="seccion-chat-introductoria">
+        <VistaChat />
+      </section>
+
       <main className="main-layout">
         <div className="columna-izquierda">
           <FormularioCrearCaso onCasoCreado={manejarCasoCreado} />

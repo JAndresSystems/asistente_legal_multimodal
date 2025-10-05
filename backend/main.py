@@ -3,18 +3,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-# --- Cambios para la Base de Datos ---
-# 1. Importamos la función que crea las tablas.
-from . import base_de_datos
-# 2. Renombramos el import del enrutador para que coincida con el nuevo nombre de archivo de los modelos.
-from .api import enrutador_principal
-# ------------------------------------
 
-# Creamos un "evento" que se ejecuta al iniciar la aplicación.
-# Esto asegura que las tablas de la base de datos se creen (si no existen)
-# justo cuando el servidor arranca.
+# Importamos la función de inicialización de la base de datos
+from . import base_de_datos
+# --- CAMBIO CLAVE ---
+# Ya no importamos 'enrutador_principal' completo.
+# En su lugar, importamos especificamente los DOS routers que creamos dentro de ese archivo.
+from .api.enrutador_principal import router_casos, router_chat
+# Importamos las herramientas para forzar su inicializacion al arranque.
+from .herramientas import herramienta_rag, herramienta_multimodal_gemini
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Gestiona los eventos de inicio y apagado de la aplicacion.
+    """
     print("INFO:     Iniciando la aplicación...")
     base_de_datos.inicializar_base_de_datos()
     yield
@@ -23,21 +26,33 @@ async def lifespan(app: FastAPI):
 aplicacion = FastAPI(
     title="API del Asistente Legal Multimodal",
     description="Proyecto de grado para gestionar y analizar evidencia legal con agentes de IA.",
-    version="0.1.0",
-    lifespan=lifespan # FastAPI usa  evento de inicio.
+    version="1.0.0", # Actualizamos la version para reflejar nuestros cambios
+    lifespan=lifespan
 )
 
-origenes_permitidos = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
+# Se mantiene la misma configuracion de CORS que ya tenias.
 aplicacion.add_middleware(
     CORSMiddleware,
-    allow_origins=origenes_permitidos,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-aplicacion.include_router(enrutador_principal.router)
+# --- CAMBIO CLAVE ---
+# En lugar de incluir un solo router, ahora incluimos los dos que hemos definido.
+# FastAPI gestionara los prefijos (/casos y /chat) que definimos en cada uno.
+print("INFO: Registrando enrutadores de la API...")
+aplicacion.include_router(router_casos)
+aplicacion.include_router(router_chat)
+print("-> Enrutadores de Casos y Chat registrados exitosamente.")
+
+@aplicacion.get("/", tags=["Root"])
+def leer_raiz():
+    """
+    Endpoint principal de bienvenida para verificar que la API esta en linea.
+    """
+    return {"mensaje": "Bienvenido a la API del Asistente Legal Multimodal."}

@@ -1,3 +1,4 @@
+#C:\react\asistente_legal_multimodal\backend\herramientas\herramienta_rag.py
 import os
 import glob
 from sentence_transformers import SentenceTransformer
