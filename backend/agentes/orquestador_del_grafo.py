@@ -1,72 +1,84 @@
 # backend/agentes/orquestador_del_grafo.py
 
 from langgraph.graph import StateGraph, END
+import mimetypes
 from .estado_del_grafo import EstadoDelGrafo
-# ¡IMPORTANTE! Importamos todos los nodos que hemos implementado.
+# --- ¡IMPORTACION COMPLETA! ---
+# Importamos TODOS los nodos que hemos construido y estabilizado.
 from .nodos_del_grafo import (
     nodo_agente_triaje,
+    nodo_agente_analizador_pdf,
+    nodo_agente_analizador_audio,
     nodo_agente_determinador_competencias,
     nodo_agente_repartidor,
     nodo_agente_juridico,
     nodo_agente_generador_documentos
 )
 
-# 1. Definir el grafo de estados
+# --- Construccion del Grafo ---
 workflow = StateGraph(EstadoDelGrafo)
 
-# 2. Añadir cada uno de nuestros agentes como un "nodo" en el grafo.
-#    Les damos un nombre unico en minusculas.
-print("SETUP-LANGGRAPH: Añadiendo nodos al grafo...")
+# 1. Añadir TODOS los nodos al grafo
+print("SETUP-LANGGRAPH: Añadiendo todos los nodos al grafo multimodal...")
 workflow.add_node("agente_triaje", nodo_agente_triaje)
+workflow.add_node("agente_analizador_pdf", nodo_agente_analizador_pdf)
+workflow.add_node("agente_analizador_audio", nodo_agente_analizador_audio)
 workflow.add_node("agente_determinador_competencias", nodo_agente_determinador_competencias)
 workflow.add_node("agente_repartidor", nodo_agente_repartidor)
 workflow.add_node("agente_juridico", nodo_agente_juridico)
 workflow.add_node("agente_generador_documentos", nodo_agente_generador_documentos)
 print("-> Nodos añadidos.")
 
-# 3. Definir las conexiones (las "aristas") entre los nodos.
-
-# El punto de entrada del flujo de trabajo es el agente de triaje.
+# 2. Definir el punto de entrada
 workflow.set_entry_point("agente_triaje")
 
-# Despues del triaje, necesitamos tomar una decision.
-def decidir_siguiente_paso_despues_del_triaje(estado: EstadoDelGrafo) -> str:
-    """
-    Funcion de decision. Revisa el resultado del triaje y dirige el flujo.
-    """
-    print("--- Decision: Evaluando resultado del triaje... ---")
+# 3. Logica de enrutamiento multimodal (establecida en el paso anterior)
+def enrutar_evidencia_despues_del_triaje(estado: EstadoDelGrafo) -> str:
+    print("--- Decision: Enrutando evidencia por tipo de archivo... ---")
     resultado_triaje = estado.get("resultado_triaje")
-    
-    # Si el caso es admisible, continuamos con la cadena de analisis.
-    if resultado_triaje and resultado_triaje.get("admisible"):
-        print("-> Veredicto: Admisible. Continuando a Determinador de Competencias.")
-        return "agente_determinador_competencias"
-    
-    # Si no es admisible, el flujo de trabajo termina aqui.
-    else:
-        print("-> Veredicto: No Admisible. Finalizando el flujo de trabajo.")
+    if not resultado_triaje or not resultado_triaje.get("admisible"):
+        print("-> Veredicto: No Admisible. Finalizando flujo.")
         return END
 
-# Creamos una arista condicional desde el triaje.
+    ruta_archivo = estado["rutas_archivos_evidencia"][0]
+    tipo_mime, _ = mimetypes.guess_type(ruta_archivo)
+    print(f"-> Evidencia: {ruta_archivo}, Tipo MIME detectado: {tipo_mime}")
+
+    if tipo_mime:
+        if "pdf" in tipo_mime:
+            return "agente_analizador_pdf"
+        elif "audio" in tipo_mime:
+            return "agente_analizador_audio"
+
+    return "agente_determinador_competencias"
+
+# 4. Conectar la decision del triaje
 workflow.add_conditional_edges(
     "agente_triaje",
-    decidir_siguiente_paso_despues_del_triaje,
+    enrutar_evidencia_despues_del_triaje,
     {
+        "agente_analizador_pdf": "agente_analizador_pdf",
+        "agente_analizador_audio": "agente_analizador_audio",
         "agente_determinador_competencias": "agente_determinador_competencias",
         END: END
     }
 )
 
-# Creamos las aristas secuenciales para el resto del flujo.
-# Despues de determinar competencias, va al repartidor.
+# 5. --- RECONEXION DE LA CADENA PRINCIPAL ---
+# La salida de CUALQUIER analizador especializado va al determinador de competencias.
+workflow.add_edge("agente_analizador_pdf", "agente_determinador_competencias")
+workflow.add_edge("agente_analizador_audio", "agente_determinador_competencias")
+
+# Despues de determinar la competencia, el flujo continua a traves de los
+# agentes que ya habiamos estabilizado.
 workflow.add_edge("agente_determinador_competencias", "agente_repartidor")
-# Despues del repartidor, ejecuta al agente juridico.
 workflow.add_edge("agente_repartidor", "agente_juridico")
-# Despues del agente juridico, ejecuta al generador de documentos.
 workflow.add_edge("agente_juridico", "agente_generador_documentos")
-# Despues de generar el documento, el flujo de trabajo termina.
+
+# Despues del ultimo agente, el flujo de trabajo termina.
 workflow.add_edge("agente_generador_documentos", END)
 
-# 4. Compilar el grafo en un objeto ejecutable.
+
+# 6. Compilar el grafo
 grafo_compilado = workflow.compile()
-print("SUCCESS (LANGGRAPH): Grafo de agentes completo y compilado exitosamente.")
+print("SUCCESS (LANGGRAPH): Grafo multimodal completo reensamblado y compilado.")

@@ -1,94 +1,86 @@
 # backend/tareas.py
 
 from sqlmodel import Session, select
-# CAMBIO CLAVE: Se corrige la importacion a relativa (se añade un punto).
-# Esto le dice a Python que busque 'celery_configuracion.py' en la misma carpeta que este archivo.
 from .celery_configuracion import celery_app
 from .base_de_datos import motor
 from .api.modelos_compartidos import Evidencia
 from .agentes.orquestador_del_grafo import grafo_compilado
 from .agentes.estado_del_grafo import EstadoDelGrafo
+import json # Importamos json para formatear los diccionarios
 
 @celery_app.task
 def procesar_evidencia_tarea(id_evidencia: int):
     """
-    Tarea de Celery que orquesta el procesamiento de una evidencia en segundo plano.
-
-    Esta funcion es el punto de entrada al nucleo de IA del sistema.
-    Su mision es:
-    1. Recuperar la informacion de la evidencia desde la base de datos.
-    2. Preparar el "expediente digital" inicial (EstadoDelGrafo).
-    3. Invocar el grafo de LangGraph para que los agentes hagan su trabajo.
-    4. Recibir el resultado final del grafo.
-    5. Construir un reporte y guardarlo en la base de datos, actualizando el estado.
-
-    Args:
-        id_evidencia (int): El ID de la evidencia que se debe procesar.
+    Tarea de Celery que orquesta el procesamiento de una evidencia.
+    Esta version actualizada incluye los resultados del analisis multimodal
+    en el reporte final.
     """
     print(f"Iniciando procesamiento para la evidencia con ID: {id_evidencia}")
 
     with Session(motor) as sesion:
-        # Paso 1: Recuperar la evidencia de la BD.
-        declaracion = select(Evidencia).where(Evidencia.id == id_evidencia)
-        evidencia = sesion.exec(declaracion).one_or_none()
-
+        evidencia = sesion.get(Evidencia, id_evidencia)
         if not evidencia:
             print(f"Error critico: No se encontro la evidencia con ID {id_evidencia}")
             return
 
-        # Paso 2: Construir el estado_inicial para el grafo.
+        # El estado inicial se mantiene igual, con los campos de resultados en None.
         estado_inicial: EstadoDelGrafo = {
             "id_caso": evidencia.id_caso,
             "rutas_archivos_evidencia": [evidencia.ruta_archivo],
-            "solicitud_agente_juridico": "Basado en la evidencia, cual es el marco legal aplicable y los pasos a seguir?",
-            "solicitud_agente_documentos": {"tipo_documento": "derecho_de_peticion"},
             "resultado_triaje": None,
+            "resultado_analisis_documento": None,
+            "resultado_analisis_audio": None,
             "resultado_determinador_competencias": None,
             "resultado_repartidor": None,
+            "solicitud_agente_juridico": "Cuales son los pasos a seguir segun el marco legal?",
+            "solicitud_agente_documentos": {"tipo_documento": "derecho_de_peticion"},
             "resultado_agente_juridico": None,
             "resultado_agente_generador_documentos": None,
         }
 
-        print("Estado inicial para el grafo construido exitosamente.")
-        print(estado_inicial)
-
         try:
-            # Paso 3: Invocar el grafo compilado.
             estado_final = grafo_compilado.invoke(estado_inicial)
             print("El grafo de LangGraph completo su ejecucion.")
-            print("Estado Final recibido:")
-            print(estado_final)
 
-            # Paso 4: Construir el reporte_final a partir del estado_final.
+            # --- ¡NUEVA LOGICA DE CONSTRUCCION DE REPORTE! ---
+            
+            # Extraemos los resultados de los nuevos agentes especializados.
+            # Usamos .get() para no generar un error si el campo no existe.
+            analisis_doc = estado_final.get('resultado_analisis_documento')
+            analisis_audio = estado_final.get('resultado_analisis_audio')
+
+            # Construimos el reporte final con etiquetas claras para el frontend.
             reporte_final = f"""
-            --- REPORTE DE ADMISION Y ANALISIS PRELIMINAR ---
-
-            [CASO_ID]
-            {estado_final.get('id_caso', 'No disponible')}
-            [/CASO_ID]
-
             [TRIAJE]
-            {estado_final.get('resultado_triaje', 'No ejecutado')}
+            {json.dumps(estado_final.get('resultado_triaje', {}), indent=2, ensure_ascii=False)}
             [/TRIAJE]
 
+            [ANALISIS_DOCUMENTO]
+            {json.dumps(analisis_doc, indent=2, ensure_ascii=False) if analisis_doc else 'No aplica'}
+            [/ANALISIS_DOCUMENTO]
+
+            [ANALISIS_AUDIO]
+            {json.dumps(analisis_audio, indent=2, ensure_ascii=False) if analisis_audio else 'No aplica'}
+            [/ANALISIS_AUDIO]
+
             [COMPETENCIA]
-            {estado_final.get('resultado_determinador_competencias', 'No ejecutado')}
+            {json.dumps(estado_final.get('resultado_determinador_competencias', {}), indent=2, ensure_ascii=False)}
             [/COMPETENCIA]
 
             [ASIGNACION]
-            {estado_final.get('resultado_repartidor', 'No ejecutado')}
+            {json.dumps(estado_final.get('resultado_repartidor', {}), indent=2, ensure_ascii=False)}
             [/ASIGNACION]
 
             [ANALISIS_JURIDICO]
-            {estado_final.get('resultado_agente_juridico', 'No ejecutado')}
+            {estado_final.get('resultado_agente_juridico', 'No aplica')}
             [/ANALISIS_JURIDICO]
 
             [DOCUMENTO_GENERADO]
-            {estado_final.get('resultado_agente_generador_documentos', 'No ejecutado')}
+            {estado_final.get('resultado_agente_generador_documentos', 'No aplica')}
             [/DOCUMENTO_GENERADO]
             """
 
-            # Paso 5: Guardar el reporte y actualizar el estado de la evidencia.
+            # Guardamos el reporte y actualizamos el estado.
             evidencia.estado = "completado"
             evidencia.reporte_analisis = reporte_final.strip()
             sesion.add(evidencia)
@@ -96,9 +88,8 @@ def procesar_evidencia_tarea(id_evidencia: int):
             print(f"Evidencia {id_evidencia} marcada como 'completado' y reporte guardado.")
 
         except Exception as e:
-            # En caso de un error en el grafo, lo registramos y actualizamos el estado.
             print(f"Error durante la ejecucion del grafo para evidencia {id_evidencia}: {e}")
             evidencia.estado = "error"
-            evidencia.reporte_analisis = f"Ocurrio un error en el servidor al procesar la evidencia: {str(e)}"
+            evidencia.reporte_analisis = f"Ocurrio un error en el servidor: {str(e)}"
             sesion.add(evidencia)
             sesion.commit()
