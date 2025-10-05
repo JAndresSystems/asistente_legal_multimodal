@@ -18,32 +18,30 @@ modelo_embeddings = None
 def inicializar_bases_de_conocimiento():
     """
     Carga, procesa y vectoriza TODAS las bases de conocimiento especializadas por área.
+    Esta versión es robusta y omite carpetas vacías para evitar errores.
     """
     global indices_rag, modelo_embeddings
     
-    if indices_rag: # Evita recargar si ya está inicializado
-        return
+    if indices_rag: return
 
     try:
         print("TOOL-SETUP (RAG): Iniciando la carga de MÚLTIPLES bases de conocimiento...")
-        
-        # 1. Cargar el modelo de embeddings una sola vez.
         print("TOOL-SETUP (RAG): Cargando el modelo de embeddings (SentenceTransformer)...")
         modelo_embeddings = SentenceTransformer(MODELO_EMBEDDINGS)
 
-        # 2. Iterar por cada subcarpeta (área de competencia) en la base de conocimiento.
         for area_dir in os.listdir(RUTA_BASE):
             ruta_area = os.path.join(RUTA_BASE, area_dir)
             if os.path.isdir(ruta_area):
                 area_competencia = area_dir
                 print(f"--- Procesando área: {area_competencia} ---")
 
-                # 3. Cargar y fragmentar todos los archivos .txt de esa área.
                 textos_completos = []
                 for filepath in glob.glob(os.path.join(ruta_area, "*.txt")):
                     with open(filepath, 'r', encoding='utf-8') as f:
                         textos_completos.append(f.read())
                 
+                # --- CAMBIO CLAVE ---
+                # Si no se encontraron archivos de texto, se omite esta área y se continúa.
                 if not textos_completos:
                     print(f"    Advertencia: No se encontraron archivos .txt en {area_competencia}. Omitiendo.")
                     continue
@@ -51,16 +49,13 @@ def inicializar_bases_de_conocimiento():
                 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
                 documentos_fragmentados = text_splitter.create_documents(textos_completos)
                 textos_fragmentados = [doc.page_content for doc in documentos_fragmentados]
-                
                 print(f"    - {len(textos_fragmentados)} fragmentos de texto encontrados.")
 
-                # 4. Crear embeddings y el índice FAISS para ESTA área.
                 embeddings = modelo_embeddings.encode(textos_fragmentados, convert_to_tensor=False)
                 dimension_vector = embeddings.shape[1]
                 indice_faiss = faiss.IndexFlatL2(dimension_vector)
                 indice_faiss.add(np.array(embeddings, dtype=np.float32))
 
-                # 5. Guardar el índice y los fragmentos en nuestro diccionario global.
                 indices_rag[area_competencia] = {
                     "indice": indice_faiss,
                     "fragmentos": textos_fragmentados

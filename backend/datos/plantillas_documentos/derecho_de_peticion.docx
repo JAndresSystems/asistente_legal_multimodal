@@ -1,0 +1,25 @@
+Ciudad y fecha: {{FECHA_ACTUAL}}
+
+Señores
+ENTIDAD DESTINATARIA
+Ciudad
+
+Asunto: Derecho de Petición - Solicitud de Información del Caso ID {{ID_CASO}}
+
+Respetados señores,
+
+Yo, {{NOMBRE_COMPLETO_USUARIO}}, identificado(a) como aparece al pie de mi firma, en ejercicio del derecho de petición consagrado en el artículo 23 de la Constitución Política de Colombia, me dirijo a ustedes con el fin de solicitar respetuosamente la siguiente información relacionada con mi caso:
+
+RESUMEN DE HECHOS:
+{{RESUMEN_HECHOS}}
+
+PETICIÓN:
+Basado en los hechos anteriormente expuestos, solicito se me informe sobre [ESCRIBIR AQUÍ LA PETICIÓN CONCRETA].
+
+Agradezco de antemano su atención y pronta respuesta.
+
+Cordialmente,
+
+_________________________
+{{NOMBRE_COMPLETO_USUARIO}}
+C.C. [Número de Cédula]

@@ -1,80 +1,104 @@
-#backend\tareas.py
+# backend/tareas.py
 
-import uuid
+from sqlmodel import Session, select
+# CAMBIO CLAVE: Se corrige la importacion a relativa (se añade un punto).
+# Esto le dice a Python que busque 'celery_configuracion.py' en la misma carpeta que este archivo.
 from .celery_configuracion import celery_app
-from .agentes.orquestador_del_grafo import grafo_compilado
-from .base_de_datos import obtener_sesion
+from .base_de_datos import motor
 from .api.modelos_compartidos import Evidencia
-from sqlmodel import Session
+from .agentes.orquestador_del_grafo import grafo_compilado
+from .agentes.estado_del_grafo import EstadoDelGrafo
 
-@celery_app.task(name="procesar_evidencia_principal")
-def procesar_evidencia_tarea(id_evidencia_str: str):
-    print(f"INFO: [CELERY-WORKER] Iniciando procesamiento con RAG para evidencia: {id_evidencia_str}")
-    
-    db_session_gen = obtener_sesion()
-    sesion: Session = next(db_session_gen)
-    id_evidencia = uuid.UUID(id_evidencia_str)
-    evidencia_db = None
+@celery_app.task
+def procesar_evidencia_tarea(id_evidencia: int):
+    """
+    Tarea de Celery que orquesta el procesamiento de una evidencia en segundo plano.
 
-    try:
-        evidencia_db = sesion.get(Evidencia, id_evidencia)
-        if not evidencia_db: return
-            
-        evidencia_db.estado_procesamiento = "procesando"
-        sesion.add(evidencia_db)
-        sesion.commit()
-        
-        historial_simulado = (
-            f"El usuario ha iniciado un caso sobre '{evidencia_db.caso.titulo}' y ha subido el archivo "
-            f"'{evidencia_db.nombre_archivo}'. El resumen es: '{evidencia_db.caso.resumen}'."
-        )
-        pregunta_juridica_simulada = (
-            "¿Cuáles son los elementos esenciales de un contrato de arrendamiento "
-            "según el código civil colombiano?"
-        )
+    Esta funcion es el punto de entrada al nucleo de IA del sistema.
+    Su mision es:
+    1. Recuperar la informacion de la evidencia desde la base de datos.
+    2. Preparar el "expediente digital" inicial (EstadoDelGrafo).
+    3. Invocar el grafo de LangGraph para que los agentes hagan su trabajo.
+    4. Recibir el resultado final del grafo.
+    5. Construir un reporte y guardarlo en la base de datos, actualizando el estado.
 
-        estado_inicial = {
-            "historial_conversacion": historial_simulado,
-            "rutas_archivos_evidencia": [evidencia_db.ruta_archivo],
-            "consulta_juridica_actual": pregunta_juridica_simulada,
+    Args:
+        id_evidencia (int): El ID de la evidencia que se debe procesar.
+    """
+    print(f"Iniciando procesamiento para la evidencia con ID: {id_evidencia}")
+
+    with Session(motor) as sesion:
+        # Paso 1: Recuperar la evidencia de la BD.
+        declaracion = select(Evidencia).where(Evidencia.id == id_evidencia)
+        evidencia = sesion.exec(declaracion).one_or_none()
+
+        if not evidencia:
+            print(f"Error critico: No se encontro la evidencia con ID {id_evidencia}")
+            return
+
+        # Paso 2: Construir el estado_inicial para el grafo.
+        estado_inicial: EstadoDelGrafo = {
+            "id_caso": evidencia.id_caso,
+            "rutas_archivos_evidencia": [evidencia.ruta_archivo],
+            "solicitud_agente_juridico": "Basado en la evidencia, cual es el marco legal aplicable y los pasos a seguir?",
+            "solicitud_agente_documentos": {"tipo_documento": "derecho_de_peticion"},
+            "resultado_triaje": None,
+            "resultado_determinador_competencias": None,
+            "resultado_repartidor": None,
+            "resultado_agente_juridico": None,
+            "resultado_agente_generador_documentos": None,
         }
-        
-        print(f"INFO: [CELERY-WORKER] Invocando grafo con consulta RAG: '{pregunta_juridica_simulada}'")
-        estado_final = grafo_compilado.invoke(estado_inicial)
-        print(f"INFO: [CELERY-WORKER] El grafo de agentes con RAG ha finalizado.")
 
-        es_admisible = estado_final.get("es_admisible")
-        justificacion = estado_final.get("justificacion_triaje", "N/A")
-        area_competencia = estado_final.get("area_competencia", "N/A")
-        id_estudiante = estado_final.get("id_estudiante_asignado", "N/A")
-        id_asesor = estado_final.get("id_asesor_asignado", "N/A")
-        respuesta_juridica = estado_final.get("respuesta_juridica", "El Agente Jurídico no generó respuesta.")
+        print("Estado inicial para el grafo construido exitosamente.")
+        print(estado_inicial)
 
-        # --- CAMBIO CLAVE: AJUSTAMOS EL FORMATO DEL REPORTE ---
-        # Ahora las etiquetas coinciden exactamente con las que busca el componente ReporteAdmision.jsx
-        reporte_final = (
-            f"--- REPORTE DE ADMISIÓN AUTOMÁTICA ---\n\n"
-            f"VEREDICTO DEL TRIAJE: { 'ADMISIBLE' if es_admisible else 'NO ADMISIBLE' }\n"
-            f"Justificación: {justificacion}\n\n"
-            f"--- CLASIFICACIÓN Y ASIGNACIÓN ---\n"
-            f"Área de Competencia Determinada: {area_competencia}\n"
-            f"Equipo Asignado (Simulado):\n"
-            f"  - ID Estudiante: {id_estudiante}\n"
-            f"  - ID Asesor: {id_asesor}\n\n"
-            f"--- CONSULTA JURÍDICA (RAG) ---\n"
-            f"Pregunta: {pregunta_juridica_simulada}\n"
-            f"Respuesta del Agente Jurídico:\n{respuesta_juridica}"
-        )
-        
-        evidencia_db.texto_extraido = reporte_final
-        evidencia_db.estado_procesamiento = "completado" if es_admisible else "error_de_procesamiento"
+        try:
+            # Paso 3: Invocar el grafo compilado.
+            estado_final = grafo_compilado.invoke(estado_inicial)
+            print("El grafo de LangGraph completo su ejecucion.")
+            print("Estado Final recibido:")
+            print(estado_final)
 
-        sesion.add(evidencia_db)
-        sesion.commit()
+            # Paso 4: Construir el reporte_final a partir del estado_final.
+            reporte_final = f"""
+            --- REPORTE DE ADMISION Y ANALISIS PRELIMINAR ---
 
-    except Exception as e:
-        print(f"ERROR-CRITICO: [CELERY-WORKER] Ocurrió una excepción en la tarea: {e}")
-            
-    finally:
-        sesion.close()
-        print(f"INFO: [CELERY-WORKER] Tarea finalizada para: {id_evidencia_str}")
+            [CASO_ID]
+            {estado_final.get('id_caso', 'No disponible')}
+            [/CASO_ID]
+
+            [TRIAJE]
+            {estado_final.get('resultado_triaje', 'No ejecutado')}
+            [/TRIAJE]
+
+            [COMPETENCIA]
+            {estado_final.get('resultado_determinador_competencias', 'No ejecutado')}
+            [/COMPETENCIA]
+
+            [ASIGNACION]
+            {estado_final.get('resultado_repartidor', 'No ejecutado')}
+            [/ASIGNACION]
+
+            [ANALISIS_JURIDICO]
+            {estado_final.get('resultado_agente_juridico', 'No ejecutado')}
+            [/ANALISIS_JURIDICO]
+
+            [DOCUMENTO_GENERADO]
+            {estado_final.get('resultado_agente_generador_documentos', 'No ejecutado')}
+            [/DOCUMENTO_GENERADO]
+            """
+
+            # Paso 5: Guardar el reporte y actualizar el estado de la evidencia.
+            evidencia.estado = "completado"
+            evidencia.reporte_analisis = reporte_final.strip()
+            sesion.add(evidencia)
+            sesion.commit()
+            print(f"Evidencia {id_evidencia} marcada como 'completado' y reporte guardado.")
+
+        except Exception as e:
+            # En caso de un error en el grafo, lo registramos y actualizamos el estado.
+            print(f"Error durante la ejecucion del grafo para evidencia {id_evidencia}: {e}")
+            evidencia.estado = "error"
+            evidencia.reporte_analisis = f"Ocurrio un error en el servidor al procesar la evidencia: {str(e)}"
+            sesion.add(evidencia)
+            sesion.commit()

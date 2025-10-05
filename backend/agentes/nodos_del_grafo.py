@@ -1,188 +1,166 @@
+# backend/agentes/nodos_del_grafo.py
+
 from sqlmodel import Session, select, func
-from ..base_de_datos import motor
-from ..api.modelos_compartidos import Asignacion, Estudiante, Asesor
+from typing import Dict, Any, Optional
+
+# --- SECCION DE IMPORTACIONES CORREGIDA ---
+# Usamos '.' para importar desde la misma carpeta (agentes).
 from .estado_del_grafo import EstadoDelGrafo
-from ..herramientas import herramientas_lenguaje
+# Usamos '..' para subir un nivel (a 'backend') y luego entrar a las carpetas correspondientes.
+from ..herramientas.herramientas_lenguaje import analizar_evidencia_con_gemini, generar_respuesta_texto
+from ..herramientas.herramienta_rag import buscar_en_base_de_conocimiento
+from ..herramientas.herramienta_documentos import generar_documento_desde_plantilla
+from ..base_de_datos import motor
+from ..api.modelos_compartidos import Estudiante, Asesor, Asignacion, Caso, Usuario
 
-from ..herramientas import herramienta_rag
-# =================================================================================
-# NODO 1: AGENTE DE TRIAJE (PROMPT REFORZADO)
-# =================================================================================
-def nodo_agente_triaje(estado: EstadoDelGrafo) -> dict:
-    print("\n--- Entrando en el Nodo: Agente de Triaje ---")
-    historial_chat = estado["historial_conversacion"]
-    rutas_evidencia = estado["rutas_archivos_evidencia"]
-
-    # --- PROMPT REFORZADO ---
-    prompt = f"""
-    Eres un servicio API automatizado llamado "Agente de Triaje". Tu única función es analizar
-    información y devolver un objeto JSON. No eres un asistente conversacional. No saludes.
-
-    **Reglas de Admisibilidad:**
-    1. Estrato Socioeconómico: 1 o 2.
-    2. Cuantía: Menor a 40 SMLMV (SMLMV = $1,300,000 COP).
-    3. Territorio: Cúcuta, Norte de Santander.
-    4. Materia: No penal, no JEP.
-
-    **Tarea:**
-    Analiza la siguiente información y la evidencia adjunta. Extrae los datos, decide la
-    admisibilidad y justifica tu decisión.
-
-    **Información del Caso:**
-    ---
-    {historial_chat}
-    ---
-
-    **Instrucción Final OBLIGATORIA:**
-    Tu respuesta debe ser EXCLUSIVAMENTE un bloque de código JSON válido, sin texto
-    introductorio, sin explicaciones adicionales y sin usar markdown (```json).
-    La estructura debe ser:
-    {{
-      "datos_triaje": {{"materia": "string", "cuantia_estimada": "number | string", "estrato": "number | string", "territorio": "string"}},
-      "es_admisible": "boolean",
-      "justificacion_triaje": "string"
-    }}
+# --- NODO 1: AGENTE DE TRIAJE (Estable) ---
+def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
+    print("--- Ejecutando Nodo: Agente de Triaje ---")
+    rutas_archivos = estado["rutas_archivos_evidencia"]
+    id_caso = estado["id_caso"]
+    print(f"Agente de Triaje analizando {len(rutas_archivos)} archivo(s) para el caso ID: {id_caso}.")
+    prompt_sistema = """
+    ERES un asistente legal experto en la regulacion de consultorios juridicos en Colombia.
+    TU MISION es analizar la evidencia multimodal (imagenes, documentos, texto) y determinar
+    la admisibilidad del caso segun las siguientes REGLAS INQUEBRABLES:
+    1.  Solo puedes responder con un objeto JSON valido, sin texto introductorio ni explicaciones.
+    2.  El JSON debe tener la siguiente estructura: {"admisible": boolean, "justificacion": "string", "datos_extraidos": {"tipo_documento": "string", "hechos_clave": "string"}}
+    3.  Criterios de Admisibilidad: El caso es admisible si la evidencia sugiere un conflicto legal que no sea de competencia penal y que parezca ser de una persona de bajos recursos.
+    4.  Extrae los hechos mas importantes del caso en 'hechos_clave'.
     """
-    
-    resultado_analisis = herramientas_lenguaje.analizar_evidencia_con_gemini(prompt=prompt, rutas_archivos=rutas_evidencia)
-    
-    if "error" in resultado_analisis:
-        print(f"    ERROR: El análisis multimodal falló. Causa: {resultado_analisis['error']}")
-        return {"es_admisible": False, "justificacion_triaje": f"Fallo técnico: {resultado_analisis['error']}"}
-    
-    datos_triaje = resultado_analisis.get("datos_triaje", {})
-    es_admisible = resultado_analisis.get("es_admisible", False)
-    justificacion = resultado_analisis.get("justificacion_triaje", "No se proporcionó justificación.")
-    
-    print(f"    Veredicto del Triaje: {'Admisible' if es_admisible else 'No Admisible'}.")
-    print(f"    Justificación: {justificacion}")
-    
-    return {"datos_triaje": datos_triaje, "es_admisible": es_admisible, "justificacion_triaje": justificacion}
-
-# =================================================================================
-# NODO 2: AGENTE DETERMINADOR DE COMPETENCIAS (PROMPT REFORZADO)
-# =================================================================================
-def nodo_agente_determinador_competencias(estado: EstadoDelGrafo) -> dict:
-    print("\n--- Entrando en el Nodo: Agente Determinador de Competencias ---")
-    historial_chat = estado["historial_conversacion"]
-    rutas_evidencia = estado["rutas_archivos_evidencia"]
-    datos_triaje = estado["datos_triaje"]
-
-    # --- PROMPT REFORZADO ---
-    prompt = f"""
-    Eres un servicio API de clasificación llamado "Agente Determinador de Competencias".
-    Tu única función es analizar un caso y devolver un objeto JSON. No eres un asistente
-    conversacional. No saludes.
-
-    **Áreas de Práctica Válidas:**
-    - Derecho Privado
-    - Derecho Público
-    - Derecho Laboral
-    - Derecho de Familia
-    - Acciones Constitucionales
-    - Otro
-
-    **Tarea:**
-    Analiza la información del caso y clasifícalo en UNA de las áreas de práctica válidas.
-
-    **Información del Caso:**
-    ---
-    **Conversación:** {historial_chat}
-    **Datos del Triaje:** {datos_triaje}
-    ---
-
-    **Instrucción Final OBLIGATORIA:**
-    Tu respuesta debe ser EXCLUSIVAMENTE un bloque de código JSON válido, sin texto
-    introductorio y sin usar markdown (```json). La estructura debe ser:
-    {{
-      "area_competencia": "string"
-    }}
-    """
-    
-    resultado_analisis = herramientas_lenguaje.analizar_evidencia_con_gemini(prompt=prompt, rutas_archivos=rutas_evidencia)
-    
-    if "error" in resultado_analisis:
-        print(f"    ERROR: La clasificación de competencia falló. Causa: {resultado_analisis['error']}")
-        return {"area_competencia": "Error en clasificación"}
-        
-    area_competencia = resultado_analisis.get("area_competencia", "Clasificación no determinada")
-    
-    print(f"    Veredicto de Competencia: El caso pertenece a '{area_competencia}'.")
-    
-    return {"area_competencia": area_competencia}
-
-# =================================================================================
-# NODO 3: AGENTE REPARTIDOR (LÓGICA REAL - Sin cambios)
-# =================================================================================
-def nodo_agente_repartidor(estado: EstadoDelGrafo) -> dict:
-    # ... (El código de este nodo se mantiene exactamente igual)
-    print("\n--- Entrando en el Nodo: Agente Repartidor (Lógica Real) ---")
-    area_competencia = estado["area_competencia"]
-    if not area_competencia or "Error" in area_competencia:
-        print(f"    ERROR: No hay un área de competencia válida ('{area_competencia}') para asignar.")
-        return {}
-    id_estudiante_asignado = None
-    id_asesor_asignado = None
-    try:
-        with Session(motor) as sesion:
-            print(f"    Acción: Consultando la base de datos para el área de '{area_competencia}'...")
-            subconsulta_asesor = (select(Asignacion.id_asesor, func.count(Asignacion.id_caso).label("total_casos")).group_by(Asignacion.id_asesor).subquery())
-            consulta_asesor = (select(Asesor.id_asesor).join(subconsulta_asesor, Asesor.id_asesor == subconsulta_asesor.c.id_asesor, isouter=True).where(Asesor.area_competencia == area_competencia).order_by(func.coalesce(subconsulta_asesor.c.total_casos, 0)).limit(1))
-            resultado_asesor = sesion.exec(consulta_asesor).first()
-            if resultado_asesor: id_asesor_asignado = resultado_asesor
-            subconsulta_estudiante = (select(Asignacion.id_estudiante, func.count(Asignacion.id_caso).label("total_casos")).group_by(Asignacion.id_estudiante).subquery())
-            consulta_estudiante = (select(Estudiante.id_estudiante).join(subconsulta_estudiante, Estudiante.id_estudiante == subconsulta_estudiante.c.id_estudiante, isouter=True).where(Estudiante.area_competencia == area_competencia).order_by(func.coalesce(subconsulta_estudiante.c.total_casos, 0)).limit(1))
-            resultado_estudiante = sesion.exec(consulta_estudiante).first()
-            if resultado_estudiante: id_estudiante_asignado = resultado_estudiante
-            if not id_estudiante_asignado or not id_asesor_asignado:
-                print("    ADVERTENCIA: No se encontró un equipo completo disponible en esta área.")
-                return {}
-            print(f"    Resultado: Equipo seleccionado (Estudiante ID: {id_estudiante_asignado}, Asesor ID: {id_asesor_asignado}).")
-            return {"id_estudiante_asignado": id_estudiante_asignado, "id_asesor_asignado": id_asesor_asignado}
-    except Exception as e:
-        print(f"    ERROR CRÍTICO durante la consulta a la base de datos: {e}")
-        return {}
-    
-# =================================================================================
-# NODO 4: AGENTE JURÍDICO (VERSIÓN CORREGIDA)
-# =================================================================================
-
-def nodo_agente_juridico(estado: EstadoDelGrafo) -> dict:
-    """
-    Implementa la lógica del Agente Jurídico usando RAG y generando texto plano.
-    """
-    print("\n--- Entrando en el Nodo: Agente Jurídico (con RAG) ---")
-    consulta = estado["consulta_juridica_actual"]
-    area_competencia = estado["area_competencia"]
-
-    if not consulta or not area_competencia:
-        return {"respuesta_juridica": "Error: Faltan datos para la consulta."}
-
-    print(f"    Acción: Buscando en la base de conocimiento de '{area_competencia}'...")
-    contexto_rag = herramienta_rag.buscar_en_base_de_conocimiento(
-        consulta=consulta, area_competencia=area_competencia, k=5
+    resultado_analisis = analizar_evidencia_con_gemini(
+        archivos_locales=rutas_archivos,
+        prompt_usuario="Analiza la siguiente evidencia y determina la admisibilidad del caso segun las reglas.",
+        prompt_sistema=prompt_sistema
     )
-    contexto_rag_str = "\n\n".join(contexto_rag)
-    print(f"    Resultado: Se recuperaron {len(contexto_rag)} fragmentos.")
+    print("--- Resultado del Agente de Triaje ---")
+    print(resultado_analisis)
+    return {"resultado_triaje": resultado_analisis}
 
-    prompt = f"""
-    Eres un asistente legal experto en derecho colombiano. Tu tarea es responder la
-    siguiente "Consulta del Usuario" de manera clara y fundamentada.
-    DEBES basar tu respuesta OBLIGATORIAMENTE en el "Contexto Relevante" que te proporciono.
-
-    **Contexto Relevante:**
-    ---
-    {contexto_rag_str}
-    ---
-    **Consulta del Usuario:**
-    ---
-    {consulta}
-    ---
-    Genera una respuesta bien estructurada.
+# --- NODO 2: AGENTE DETERMINADOR DE COMPETENCIAS (Estable) ---
+def nodo_agente_determinador_competencias(estado: EstadoDelGrafo) -> Dict[str, Any]:
+    print("--- Ejecutando Nodo: Agente Determinador de Competencias ---")
+    resultado_triaje = estado.get("resultado_triaje")
+    id_caso = estado["id_caso"]
+    if not resultado_triaje or not resultado_triaje.get("admisible"):
+        print(f"El caso {id_caso} no es admisible o el triaje fallo. Omitiendo determinacion de competencia.")
+        return {"resultado_determinador_competencias": {"area_competencia": "No Aplica - Caso No Admisible"}}
+    print(f"Agente Determinador de Competencias clasificando el caso ID: {id_caso}.")
+    rutas_archivos = estado["rutas_archivos_evidencia"]
+    hechos_clave = resultado_triaje.get("datos_extraidos", {}).get("hechos_clave", "No disponibles")
+    prompt_sistema = """
+    ERES un jurista experto en la estructura del derecho en Colombia.
+    TU MISION es clasificar el caso presentado en una de las siguientes areas de competencia del consultorio juridico.
+    REGLAS INQUEBRABLES:
+    1.  Solo puedes responder con un objeto JSON valido.
+    2.  El JSON debe tener la estructura: {"area_competencia": "string", "justificacion_breve": "string"}
+    3.  Las unicas areas de competencia validas son: "Derecho Privado", "Derecho Publico", "Derecho Laboral", "Derecho de Familia", "No Clasificable".
+    4.  Basa tu decision en los hechos clave y la evidencia proporcionada.
     """
-    
-    # CAMBIO CLAVE: Usamos la nueva función que devuelve texto plano.
-    respuesta_final = herramientas_lenguaje.generar_respuesta_texto(prompt)
-    
-    print("    Resultado: Respuesta jurídica generada.")
-    return {"respuesta_juridica": respuesta_final}    
+    prompt_usuario = f"Basado en la evidencia y los hechos clave, clasifica el caso:\nHechos Clave: {hechos_clave}"
+    resultado_clasificacion = analizar_evidencia_con_gemini(
+        archivos_locales=rutas_archivos,
+        prompt_usuario=prompt_usuario,
+        prompt_sistema=prompt_sistema
+    )
+    print("--- Resultado del Agente Determinador de Competencias ---")
+    print(resultado_clasificacion)
+    return {"resultado_determinador_competencias": resultado_clasificacion}
+
+# --- NODO 3: AGENTE REPARTIDOR (Estable) ---
+def encontrar_persona_con_menos_carga(sesion: Session, modelo: Any, area: str) -> Optional[int]:
+    declaracion = (
+        select(modelo.id, func.count(Asignacion.id_caso).label("carga_trabajo"))
+        .join(Asignacion, modelo.id == getattr(Asignacion, f"id_{modelo.__name__.lower()}"), isouter=True)
+        .where(modelo.area_especialidad == area)
+        .group_by(modelo.id)
+        .order_by(func.count(Asignacion.id_caso).asc())
+    )
+    resultado = sesion.exec(declaracion).first()
+    return resultado.id if resultado else None
+
+def nodo_agente_repartidor(estado: EstadoDelGrafo) -> Dict[str, Any]:
+    print("--- Ejecutando Nodo: Agente Repartidor ---")
+    id_caso = estado["id_caso"]
+    resultado_competencias = estado.get("resultado_determinador_competencias")
+    area_competencia = resultado_competencias.get("area_competencia") if resultado_competencias else None
+    areas_no_validas = ["No Aplica - Caso No Admisible", "No Clasificable", None]
+    if not area_competencia or area_competencia in areas_no_validas:
+        print(f"No se puede repartir el caso {id_caso} debido a un area de competencia no valida: {area_competencia}")
+        return {"resultado_repartidor": {"id_estudiante_asignado": None, "id_asesor_asignado": None, "detalle": "No se asigno por area de competencia invalida."}}
+    print(f"Buscando personal en el area '{area_competencia}' para el caso {id_caso}...")
+    try:
+        with Session(motor) as sesion_db:
+            id_estudiante_seleccionado = encontrar_persona_con_menos_carga(sesion_db, Estudiante, area_competencia)
+            id_asesor_seleccionado = encontrar_persona_con_menos_carga(sesion_db, Asesor, area_competencia)
+        resultado = {"id_estudiante_asignado": id_estudiante_seleccionado, "id_asesor_asignado": id_asesor_seleccionado, "detalle": f"Asignacion para el area de {area_competencia} procesada."}
+        print(f"--- Resultado del Agente Repartidor para caso {id_caso} ---")
+        print(resultado)
+        return {"resultado_repartidor": resultado}
+    except Exception as e:
+        print(f"Error critico durante la consulta a la base de datos en el Agente Repartidor: {e}")
+        return {"resultado_repartidor": {"id_estudiante_asignado": None, "id_asesor_asignado": None, "detalle": f"Error en la base de datos: {e}"}}
+
+# --- NODO 4: AGENTE JURIDICO (Estable) ---
+def nodo_agente_juridico(estado: EstadoDelGrafo) -> Dict[str, Any]:
+    print("--- Ejecutando Nodo: Agente Juridico ---")
+    pregunta = estado.get("solicitud_agente_juridico")
+    if not pregunta:
+        return {"resultado_agente_juridico": "No se proporciono ninguna solicitud para el agente juridico."}
+    resultado_competencias = estado.get("resultado_determinador_competencias")
+    area_competencia = resultado_competencias.get("area_competencia") if resultado_competencias else None
+    if not area_competencia or area_competencia == "No Clasificable":
+        return {"resultado_agente_juridico": f"No se pudo ejecutar la busqueda RAG por falta de un area de competencia valida."}
+    print(f"Agente Juridico investigando: '{pregunta}' en el area de '{area_competencia}'")
+    contexto_recuperado = buscar_en_base_de_conocimiento(consulta=pregunta, area_conocimiento=area_competencia)
+    print(f"Contexto recuperado de la base de conocimiento: {contexto_recuperado[:200]}...")
+    prompt_final = f"""
+    Eres un abogado experto y un asistente de investigacion. Responde la pregunta del usuario de manera clara y fundamentada, utilizando UNICAMENTE el siguiente contexto. No debes inventar informacion ni usar conocimiento externo.
+    --- CONTEXTO RECUPERADO ---
+    {contexto_recuperado}
+    --- FIN DEL CONTEXTO ---
+    PREGUNTA DEL USUARIO: {pregunta}
+    RESPUESTA FUNDAMENTADA:
+    """
+    respuesta_sintetizada = generar_respuesta_texto(prompt=prompt_final)
+    print("--- Resultado del Agente Juridico ---")
+    print(respuesta_sintetizada)
+    return {"resultado_agente_juridico": respuesta_sintetizada}
+
+# --- NODO 5: AGENTE GENERADOR DE DOCUMENTOS (Estable) ---
+def nodo_agente_generador_documentos(estado: EstadoDelGrafo) -> Dict[str, Any]:
+    print("--- Ejecutando Nodo: Agente Generador de Documentos ---")
+    id_caso = estado.get("id_caso")
+    solicitud = estado.get("solicitud_agente_documentos")
+    if not id_caso or not solicitud:
+        mensaje_error = "No se puede generar el documento: falta el 'id_caso' o la 'solicitud' en el estado."
+        print(f"ERROR: {mensaje_error}")
+        return {"resultado_agente_generador_documentos": mensaje_error}
+    print(f"Agente Generador de Documentos iniciando para el caso ID: {id_caso}. ¡El ID fue recibido correctamente!")
+    tipo_documento = solicitud.get("tipo_documento", "documento_generico")
+    try:
+        with Session(motor) as sesion_db:
+            declaracion = select(Caso, Usuario).join(Usuario).where(Caso.id == id_caso)
+            resultado_db = sesion_db.exec(declaracion).one_or_none()
+            if not resultado_db:
+                return {"resultado_agente_generador_documentos": f"Error: No se encontro el caso con ID {id_caso} en la base de datos."}
+            caso, usuario = resultado_db
+            datos_plantilla = {
+                "nombre_completo": usuario.nombre,
+                "cedula": usuario.cedula,
+                "email": usuario.email,
+                "hechos_del_caso": caso.descripcion_hechos,
+            }
+            print(f"Datos para la plantilla recuperados: {datos_plantilla}")
+            ruta_archivo_generado = generar_documento_desde_plantilla(
+                nombre_plantilla=f"{tipo_documento}.docx",
+                datos=datos_plantilla,
+                id_caso=id_caso
+            )
+            print(f"--- Resultado del Agente Generador de Documentos ---")
+            print(f"Documento generado en: {ruta_archivo_generado}")
+            return {"resultado_agente_generador_documentos": ruta_archivo_generado}
+    except Exception as e:
+        mensaje_error = f"Error critico durante la generacion del documento para el caso {id_caso}: {e}"
+        print(f"ERROR: {mensaje_error}")
+        return {"resultado_agente_generador_documentos": mensaje_error}

@@ -4,48 +4,76 @@ from typing import TypedDict, List, Dict, Any, Optional
 
 class EstadoDelGrafo(TypedDict):
     """
-    Define la estructura de datos que se comparte y modifica entre los agentes del grafo.
+    Define la estructura de datos que se comparte y modifica entre los agentes.
 
-    Actúa como el "expediente digital" del caso a medida que avanza por el sistema.
-    Cada agente lee de este estado y escribe sus resultados en él.
+    Este es el "expediente digital" del caso. Actua como un contrato que
+    todos los agentes deben seguir. Cada agente tiene sus propios "cajones"
+    (atributos) para leer la informacion que necesita y escribir sus resultados.
+    El uso de 'Optional' indica que muchos de estos campos estaran vacios al
+    inicio y se iran llenando a medida que el caso avanza por el grafo.
     """
 
-    # --- DATOS DE ENTRADA (Del Agente de Atención al Usuario) ---
-    historial_conversacion: str
-    """La transcripción completa de la conversación inicial con el usuario."""
+    # --- DATOS DE ENTRADA PRINCIPALES ---
+    # Informacion con la que se inicia el proceso del grafo.
+    id_caso: int
+    """
+    El identificador unico del caso en la base de datos PostgreSQL.
+    Es el dato mas importante para garantizar la persistencia.
+    """
 
     rutas_archivos_evidencia: List[str]
-    """Una lista de rutas a los archivos de evidencia subidos por el usuario."""
+    """
+    Una lista que contiene las rutas locales donde se guardaron los
+    archivos de evidencia (PDF, imagenes, audios) subidos por el usuario.
+    """
 
     # --- RESULTADOS DEL AGENTE DE TRIAJE ---
-    datos_triaje: Optional[Dict[str, Any]]
+    # Campos que son escritos exclusivamente por el 'nodo_agente_triaje'.
+    resultado_triaje: Optional[Dict[str, Any]]
     """
-    Un diccionario estructurado con los datos extraídos por el Agente de Triaje.
-    Ejemplo: {'materia': 'Laboral', 'cuantia_estimada': 5000000, 'estrato': 2}
+    El diccionario JSON completo devuelto por el modelo de IA tras el triaje.
+    Contiene la decision de admisibilidad y los datos extraidos.
+    Ejemplo: {'admisible': True, 'justificacion': '...', 'datos_extraidos': {...}}
     """
-
-    es_admisible: Optional[bool]
-    """El veredicto final del Agente de Triaje (True si es admisible, False si no)."""
-
-    justificacion_triaje: Optional[str]
-    """La explicación del porqué un caso es o no es admisible."""
 
     # --- RESULTADOS DEL AGENTE DETERMINADOR DE COMPETENCIAS ---
-    area_competencia: Optional[str]
-    """El área del derecho a la que pertenece el caso (Ej: 'Derecho Privado', 'Derecho Público')."""
+    # Campo escrito exclusivamente por el 'nodo_agente_determinador_competencias'.
+    resultado_determinador_competencias: Optional[Dict[str, Any]]
+    """
+    El diccionario JSON devuelto por el modelo de IA que clasifica el area.
+    Ejemplo: {'area_competencia': 'Derecho Privado', 'sub_area': 'Contratos'}
+    """
 
     # --- RESULTADOS DEL AGENTE REPARTIDOR ---
-    id_estudiante_asignado: Optional[int]
-    """El ID del estudiante al que se le ha asignado el caso."""
-    
-    id_asesor_asignado: Optional[int]
-    """El ID del asesor/supervisor asignado al caso."""
+    # Campos escritos exclusivamente por el 'nodo_agente_repartidor'.
+    resultado_repartidor: Optional[Dict[str, Any]]
+    """
+    Diccionario con los IDs del personal asignado tras consultar la base de datos.
+    Ejemplo: {'id_estudiante_asignado': 12, 'id_asesor_asignado': 4}
+    """
 
-    # --- DATOS DE APOYO (Para Agentes Auxiliares) ---
-    consulta_juridica_actual: Optional[str]
-    """La pregunta específica que un estudiante hace al Agente Jurídico."""
-    
-    tipo_documento_solicitado: Optional[str]
-    """El tipo de documento que un estudiante solicita al Agente Generador de Documentos."""
-    respuesta_juridica: Optional[str]
-    """La respuesta generada por el Agente Jurídico a una consulta específica."""
+    # --- ENTRADAS PARA AGENTES AUXILIARES (SIMULADAS POR AHORA) ---
+    # Informacion que simula una peticion de un estudiante a los agentes de apoyo.
+    solicitud_agente_juridico: Optional[str]
+    """
+    La pregunta especifica que se le hara al Agente Juridico.
+    Ejemplo: 'Cuales son las causales de divorcio en Colombia?'
+    """
+
+    solicitud_agente_documentos: Optional[Dict[str, str]]
+    """
+    La peticion especifica para el Agente Generador de Documentos.
+    Ejemplo: {'tipo_documento': 'derecho_de_peticion', 'destinatario': 'EPS SaludTotal'}
+    """
+
+    # --- RESULTADOS DE AGENTES AUXILIARES ---
+    # Campos escritos por los agentes de apoyo al final del flujo.
+    resultado_agente_juridico: Optional[str]
+    """
+    La respuesta en texto plano generada por el Agente Juridico.
+    """
+
+    resultado_agente_generador_documentos: Optional[str]
+    """
+    La ruta al archivo .docx final generado por el Agente de Documentos.
+    """

@@ -5,26 +5,29 @@ import { crearNuevoCaso } from '../../servicios/api';
 import './FormularioCrearCaso.css';
 
 const FormularioCrearCaso = ({ onCasoCreado }) => {
-  const [titulo, setTitulo] = useState('');
-  const [resumen, setResumen] = useState('');
+  // El estado ahora solo maneja 'descripcion_hechos'
+  const [descripcionHechos, setDescripcionHechos] = useState('');
   const [estaCreando, setEstaCreando] = useState(false);
 
   const manejarEnvio = async (evento) => {
     evento.preventDefault();
-    if (!titulo.trim()) {
-      alert("El título del caso no puede estar vacío.");
+    if (!descripcionHechos.trim()) {
+      alert("La descripción de los hechos no puede estar vacía.");
       return;
     }
     setEstaCreando(true);
     try {
-      const nuevoCaso = await crearNuevoCaso(titulo, resumen);
-      onCasoCreado(nuevoCaso);
-      setTitulo('');
-      setResumen('');
-    } catch (error) { // La variable 'error' se captura aquí
-      // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
-      // Ahora usamos la variable 'error' para mostrar más detalles en la consola.
-      // Esto elimina la advertencia y mejora nuestra capacidad de depuración.
+      // Creamos el objeto con la estructura que la API espera
+      const datosNuevoCaso = {
+        descripcion_hechos: descripcionHechos,
+        id_usuario: 1 // Usamos el ID del usuario de prueba
+      };
+      
+      const nuevoCaso = await crearNuevoCaso(datosNuevoCaso);
+      
+      onCasoCreado(nuevoCaso); // Llama a la funcion del padre para recargar
+      setDescripcionHechos(''); // Limpia el formulario
+    } catch (error) {
       console.error("Detalles del error al crear el caso:", error);
       alert("Hubo un error al crear el caso. Revisa la consola para más detalles.");
     } finally {
@@ -37,26 +40,17 @@ const FormularioCrearCaso = ({ onCasoCreado }) => {
       <h3>Crear Nuevo Caso</h3>
       <form onSubmit={manejarEnvio} className="formulario-crear-caso">
         <div className="grupo-formulario">
-          <label htmlFor="titulo-caso">Título del Caso</label>
-          <input
-            id="titulo-caso"
-            type="text"
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            placeholder="Ej: Accidente de tránsito Pérez"
+          <label htmlFor="descripcion-caso">Descripción de los Hechos</label>
+          <textarea
+            id="descripcion-caso"
+            value={descripcionHechos}
+            onChange={(e) => setDescripcionHechos(e.target.value)}
+            placeholder="Narra brevemente los hechos principales del caso..."
+            rows={5} // Hacemos el area de texto un poco mas grande
             required
           />
         </div>
-        <div className="grupo-formulario">
-          <label htmlFor="resumen-caso">Resumen Preliminar</label>
-          <textarea
-            id="resumen-caso"
-            value={resumen}
-            onChange={(e) => setResumen(e.target.value)}
-            placeholder="Breve descripción de los hechos..."
-          />
-        </div>
-        <button type="submit" disabled={estaCreando || !titulo}>
+        <button type="submit" disabled={estaCreando || !descripcionHechos}>
           {estaCreando ? 'Creando...' : 'Crear Caso'}
         </button>
       </form>

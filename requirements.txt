@@ -31,6 +31,8 @@ sentence-transformers
 faiss-cpu
 langchain-text-splitters
 
+python-docx
+
 
 
 

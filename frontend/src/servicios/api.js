@@ -1,14 +1,11 @@
 // frontend/src/servicios/api.js
 
+// --- LA CORRECCIÓN ESTÁ EN ESTA LÍNEA ---
+// Antes decia '122.0.0.1', lo correcto es '127.0.0.1'.
 const URL_BASE = 'http://127.0.0.1:8000';
 
-export const crearNuevoCaso = async (titulo, resumen) => {
-  const datosFormulario = {
-    titulo: titulo,
-    resumen: resumen,
-  };
-
-  console.log("Servicio API: Enviando datos para crear caso:", datosFormulario);
+export const crearNuevoCaso = async (datosDelFormulario) => {
+  console.log("Servicio API: Enviando datos para crear caso:", datosDelFormulario);
 
   try {
     const respuesta = await fetch(`${URL_BASE}/casos`, {
@@ -16,8 +13,15 @@ export const crearNuevoCaso = async (titulo, resumen) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(datosFormulario),
+      body: JSON.stringify(datosDelFormulario),
     });
+
+    if (respuesta.status === 422) {
+      console.error("Error de validacion (422). Datos enviados:", datosDelFormulario);
+      const detallesError = await respuesta.json();
+      console.error("Detalles del error:", detallesError);
+      throw new Error(`Error de validacion de datos: ${JSON.stringify(detallesError)}`);
+    }
 
     if (!respuesta.ok) {
       throw new Error(`Error del servidor: ${respuesta.status}`);
@@ -29,11 +33,9 @@ export const crearNuevoCaso = async (titulo, resumen) => {
 
   } catch (error) {
     console.error("Servicio API: Error al crear el caso:", error);
-    // "Relanzamos" el error para que el componente que llamó sepa que algo salió mal.
     throw error;
   }
 };
-
 
 export const obtenerTodosLosCasos = async () => {
   console.log("Servicio API: Pidiendo la lista de todos los casos...");
@@ -51,12 +53,7 @@ export const obtenerTodosLosCasos = async () => {
   }
 };
 
-// En el futuro, aquí añadiremos más funciones como:
-// export const subirEvidencia = async (idCaso, archivo) => { ... }
-// export const obtenerCaso = async (idCaso) => { ... }
-
 export const subirEvidencia = async (idCaso, archivo) => {
-  // Usamos FormData para enviar archivos
   const formData = new FormData();
   formData.append("archivo", archivo);
 
@@ -65,8 +62,6 @@ export const subirEvidencia = async (idCaso, archivo) => {
   try {
     const respuesta = await fetch(`${URL_BASE}/casos/${idCaso}/evidencia`, {
       method: 'POST',
-      // ¡Importante! No establecemos 'Content-Type'. 
-      // El navegador lo hará automáticamente con el 'boundary' correcto para FormData.
       body: formData,
     });
 
@@ -83,16 +78,8 @@ export const subirEvidencia = async (idCaso, archivo) => {
   }
 };
 
-
-/**
- * Consulta el estado de una evidencia específica.
- * @param {string} idEvidencia - El UUID de la evidencia a consultar.
- * @returns {Promise<object>} Una promesa que resuelve a un objeto con el estado.
- *                            Ej: { estado_procesamiento: 'completado' }
- */
 export const obtenerEstadoEvidencia = async (idEvidencia) => {
   try {
-    // Usamos fetch para hacer la petición GET al nuevo endpoint
     const respuesta = await fetch(`${URL_BASE}/evidencias/${idEvidencia}/estado`);
     
     if (!respuesta.ok) {
@@ -104,7 +91,6 @@ export const obtenerEstadoEvidencia = async (idEvidencia) => {
 
   } catch (error) {
     console.error(`Error al obtener el estado de la evidencia ${idEvidencia}:`, error);
-    // Devolvemos un estado de error para que el polling pueda detenerse si falla la llamada
     return { estado_procesamiento: 'error_en_sondeo' };
   }
 };
