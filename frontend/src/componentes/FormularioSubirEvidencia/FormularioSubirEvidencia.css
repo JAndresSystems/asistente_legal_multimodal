@@ -1,51 +1,139 @@
-/* frontend/src/componentes/FormularioSubirEvidencia/FormularioSubirEvidencia.css */
-
-.upload-form { /* Usando el nombre de clase de tu componente */
+/* ============================================================================== */
+/* Contenedor Principal                                                           */
+/* ============================================================================== */
+.formulario-subir-evidencia-contenedor {
   width: 100%;
-  padding: 1rem;
-  border: 1px dashed var(--color-borde);
-  border-radius: var(--radio-borde);
-  background-color: #fdfdfe;
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 25px 30px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-.upload-form h4 {
+.formulario-subir-evidencia-contenedor h3 {
   margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 22px;
+  color: #333;
   text-align: center;
-  color: var(--color-texto-secundario);
 }
 
-.upload-form input[type="file"] {
-  width: 100%;
-  margin-bottom: 1rem;
-  /* Estilos básicos para el selector de archivo */
-  border: 1px solid var(--color-borde);
-  padding: 0.5rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-}
-
-.upload-form button {
-  width: 100%;
-  padding: 0.8rem 1rem;
-  background-color: #22c55e; /* Un color verde para la acción de "subir" */
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
+/* ============================================================================== */
+/* Zona para Seleccionar Archivos                                                 */
+/* ============================================================================== */
+.zona-seleccion-archivo {
+  border: 2px dashed #007aff;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
+  background-color: #f5faff;
+  margin-bottom: 20px;
+  transition: background-color 0.2s;
 }
 
-.upload-form button:hover {
-  background-color: #16a34a; /* Un verde más oscuro */
+.zona-seleccion-archivo:hover {
+  background-color: #e9f5ff;
 }
 
-.upload-form button:active {
-  transform: scale(0.98);
+.zona-seleccion-archivo p {
+  margin: 0;
+  font-size: 16px;
+  color: #555;
 }
 
-.upload-form button:disabled {
-  background-color: #a0a0a0;
+.input-oculto {
+  display: none;
+}
+
+/* ============================================================================== */
+/* Lista de Archivos Seleccionados                                                */
+/* ============================================================================== */
+.lista-archivos-seleccionados {
+  margin-top: 20px;
+  list-style: none;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.item-archivo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.nombre-archivo {
+  font-size: 14px;
+  color: #333;
+  /* Evita que el texto largo rompa el layout */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 10px;
+}
+
+.boton-eliminar-archivo {
+  background: none;
+  border: none;
+  color: #ff3b30;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 5px;
+  line-height: 1;
+}
+
+/* ============================================================================== */
+/* Boton de Subida y Feedback                                                     */
+/* ============================================================================== */
+.contenedor-acciones-subida {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.boton-subir {
+  padding: 12px 25px;
+  border: none;
+  background-color: #28a745;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.boton-subir:disabled {
+  background-color: #a3d9b1;
   cursor: not-allowed;
+}
+
+.mensaje-feedback {
+  margin-top: 15px;
+  font-size: 14px;
+  color: #555;
+  text-align: center;
+}
+
+.progreso-subida {
+  margin-top: 10px;
+  width: 100%;
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.barra-progreso {
+  height: 100%;
+  width: 0; /* Se actualizara con JS */
+  background-color: #007aff;
+  transition: width 0.3s ease-in-out;
 }

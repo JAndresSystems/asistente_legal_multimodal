@@ -44,11 +44,14 @@ function FormularioCrearCaso({ onCasoCreado }) {
     }
     setEstaCreando(true);
     try {
+      // --- INICIO DE LA CORRECCION ---
+      // El backend espera un objeto que incluya tanto la descripcion
+      // como el ID del usuario que crea el caso.
       const datosDelCaso = {
         descripcion_hechos: descripcionDeHechos,
-        // NOTA: El id_usuario se manejara en el backend. Por ahora, asumimos
-        // que el backend puede identificar al usuario o usar uno por defecto.
+        id_usuario: 1, // Usamos un ID de usuario de prueba. ¡ESTA ES LA CORRECCION!
       };
+      // --- FIN DE LA CORRECCION ---
       
       const casoCreado = await crearNuevoCaso(datosDelCaso);
       
@@ -60,7 +63,6 @@ function FormularioCrearCaso({ onCasoCreado }) {
       console.error("FORMULARIO: Error al crear el caso:", error);
       alert("Ocurrio un error al registrar tu caso. Por favor, intentalo de nuevo.");
     } finally {
-      // Esta linea se ejecuta tanto si hubo exito como si hubo error.
       setEstaCreando(false);
     }
   };
