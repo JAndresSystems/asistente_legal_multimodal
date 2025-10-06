@@ -1,53 +1,78 @@
 /* frontend/src/componentes/ListaCasos/ListaCasos.css */
 
-/* --- Contenedor Principal del Componente --- */
 .lista-casos-contenedor {
-  /* No necesita muchos estilos, ya que la columna le da el fondo y el padding. */
-  width: 100%;
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; /* Ocupa el espacio disponible en la columna */
+  overflow: hidden; /* Controla el desbordamiento de la lista */
 }
 
-.lista-casos-contenedor h2,
-.lista-casos-contenedor h3 {
+.lista-casos-contenedor h4 {
   margin-top: 0;
-  color: var(--color-primario);
-  border-bottom: 2px solid var(--color-borde);
-  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+  color: #004085;
 }
 
-/* --- Estilos para la Lista (<ul>) --- */
-.lista-casos {
-  list-style-type: none; /* Quitamos los puntos (bullets) de la lista */
+.lista-scrollable {
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.lista-scrollable ul {
+  list-style: none;
   padding: 0;
   margin: 0;
 }
 
-/* --- Estilos para cada Elemento de la Lista (<li>) --- */
-.caso-item {
-  padding: 0.8rem 1rem;
-  border-bottom: 1px solid var(--color-borde);
-  /* Hacemos que el cursor cambie a una mano para indicar que es clickeable */
+.item-caso {
+  padding: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
   cursor: pointer;
-  /* Añadimos una transición suave para el cambio de color de fondo */
-  transition: background-color 0.2s ease-in-out;
-  border-radius: 6px; /* Bordes ligeramente redondeados */
-  margin-bottom: 0.5rem; /* Pequeño espacio entre los items */
+  transition: all 0.2s ease-in-out;
 }
 
-/* --- Efecto Hover: se activa cuando el ratón está encima --- */
-.caso-item:hover {
-  background-color: #f0f4f8; /* Un color de fondo muy sutil */
+.item-caso:hover {
+  border-color: #0d6efd;
+  background-color: #f8f9fa;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-/* --- Estilo para el Último Elemento --- */
-/* Le quitamos el borde de abajo al último item para que no se vea doble. */
-.caso-item:last-child {
-  border-bottom: none;
+.item-caso.activo {
+  background-color: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
 }
 
-/* --- Estilo Activo: se aplica al caso que está seleccionado --- */
-.caso-item.activo {
-  background-color: var(--color-primario); /* Color principal de fondo */
-  color: white; /* Texto blanco para que sea legible */
-  font-weight: 600; /* Hacemos la letra un poco más gruesa */
-  box-shadow: 0 1px 3px rgba(0, 90, 156, 0.3); /* Una sombra sutil para darle profundidad */
+.item-caso-id {
+  font-family: monospace;
+  font-size: 0.8rem;
+  display: block;
+  margin-bottom: 0.5rem;
+  opacity: 0.7;
+}
+
+.item-caso.activo .item-caso-id {
+  opacity: 1;
+}
+
+.item-caso-descripcion {
+  margin: 0;
+  font-size: 0.95rem;
+  /* Trunca el texto si es muy largo */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lista-vacia-mensaje {
+  color: #6c757d;
+  text-align: center;
+  margin-top: 2rem;
 }

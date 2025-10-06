@@ -1,69 +1,94 @@
-// frontend/src/App.jsx
-
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import './App.css';
-import ListaCasos from './componentes/ListaCasos/ListaCasos';
-import VistaDetalleCaso from './componentes/VistaDetalleCaso/VistaDetalleCaso';
-import FormularioCrearCaso from './componentes/FormularioCrearCaso/FormularioCrearCaso';
-import { obtenerTodosLosCasos } from './servicios/api';
 
-// ¡NUEVA IMPORTACION! Importamos el componente de chat.
+// ==============================================================================
+// Importacion de Componentes Reales
+// ==============================================================================
 import VistaChat from './componentes/VistaChat/VistaChat';
 
+
+// ==============================================================================
+// Componentes Marcadores de Posicion (Stubs)
+// ==============================================================================
+// Mantenemos los stubs para los pasos que aun no hemos construido.
+
+const FormularioCrearCaso = () => (
+  <div className="vista-contenedor">
+    <h1>Paso 2: Describir el Caso</h1>
+    <p>Aqui el usuario describira los hechos de su situacion.</p>
+  </div>
+);
+
+const FormularioSubirEvidencia = () => (
+  <div className="vista-contenedor">
+    <h1>Paso 3: Subir Evidencias</h1>
+    <p>Aqui el usuario podra subir multiples archivos (PDF, audio, imagenes).</p>
+  </div>
+);
+
+const VistaProgresoAnalisis = () => (
+  <div className="vista-contenedor">
+    <h1>Paso 4: Analisis en Progreso</h1>
+    <p>Aqui el usuario vera el estado de procesamiento de sus evidencias en tiempo real.</p>
+  </div>
+);
+
+const VistaReporteFinal = () => (
+  <div className="vista-contenedor">
+    <h1>Paso 5: Reporte Final</h1>
+    <p>Aqui se presentaran los resultados del analisis de la IA de forma estructurada.</p>
+  </div>
+);
+
+
+// ==============================================================================
+// Componente Principal de la Aplicacion (El Cerebro del Wizard)
+// ==============================================================================
+
 function App() {
-  const [casos, setCasos] = useState([]);
-  const [casoSeleccionado, setCasoSeleccionado] = useState(null);
+  /**
+   * """
+   * Docstring:
+   * El componente App es el orquestador principal de la interfaz de usuario.
+   * Su unica responsabilidad es gestionar la vista que se le muestra al usuario
+   * en cada momento del flujo de trabajo, funcionando como un "wizard".
+   * """
+   */
 
-  // Tu logica para recargar datos se mantiene intacta, es excelente.
-  const recargarDatosYSeleccionar = useCallback(async (idCasoSeleccionado) => {
-    console.log("APP: Recargando todos los datos desde la API...");
-    const datosActualizados = await obtenerTodosLosCasos();
-    setCasos(datosActualizados);
+  // ----------------------------------------------------------------------------
+  // Estado
+  // ----------------------------------------------------------------------------
+  const [vistaActual, setVistaActual] = useState('VISTA_CHAT');
 
-    if (idCasoSeleccionado) {
-      const casoRefrescado = datosActualizados.find(c => c.id_caso === idCasoSeleccionado);
-      setCasoSeleccionado(casoRefrescado);
+  // ----------------------------------------------------------------------------
+  // Renderizado Condicional de Vistas
+  // ----------------------------------------------------------------------------
+  const renderizarVistaActual = () => {
+    switch (vistaActual) {
+      case 'VISTA_CHAT':
+        // Ahora renderizamos el componente importado, pasandole la funcion
+        // para que pueda controlar el cambio a la siguiente vista.
+        return <VistaChat onIniciarCaso={() => setVistaActual('VISTA_CREAR_CASO')} />;
+      case 'VISTA_CREAR_CASO':
+        return <FormularioCrearCaso />;
+      case 'VISTA_SUBIR_EVIDENCIA':
+        return <FormularioSubirEvidencia />;
+      case 'VISTA_PROGRESO_ANALISIS':
+        return <VistaProgresoAnalisis />;
+      case 'VISTA_REPORTE_FINAL':
+        return <VistaReporteFinal />;
+      default:
+        return <VistaChat onIniciarCaso={() => setVistaActual('VISTA_CREAR_CASO')} />;
     }
-  }, []);
-
-  useEffect(() => {
-    recargarDatosYSeleccionar();
-  }, [recargarDatosYSeleccionar]);
-
-  const manejarSeleccionCaso = (caso) => {
-    setCasoSeleccionado(caso);
   };
 
-  const manejarCasoCreado = (nuevoCaso) => {
-    recargarDatosYSeleccionar(nuevoCaso.id_caso);
-  };
-  
   return (
-    <div className="app-contenedor">
-      <header><h1>Asistente Legal Multimodal</h1></header>
-      
-      {/* --- NUEVA SECCION DE CHAT --- */}
-      {/* La colocamos aqui, antes del layout principal de casos. */}
-      <section className="seccion-chat-introductoria">
-        <VistaChat />
-      </section>
-
-      <main className="main-layout">
-        <div className="columna-izquierda">
-          <FormularioCrearCaso onCasoCreado={manejarCasoCreado} />
-          <ListaCasos 
-            casos={casos} 
-            onSeleccionarCaso={manejarSeleccionCaso} 
-            casoActivoId={casoSeleccionado ? casoSeleccionado.id_caso : null}
-          />
-        </div>
-        <div className="columna-derecha">
-          <VistaDetalleCaso 
-            casoSeleccionado={casoSeleccionado}
-            onEvidenciaSubida={() => recargarDatosYSeleccionar(casoSeleccionado?.id_caso)}
-            onAnalisisCompleto={() => recargarDatosYSeleccionar(casoSeleccionado?.id_caso)}
-          />
-        </div>
+    <div className="aplicacion-principal">
+      <header className="app-header">
+        <h1>Asistente Legal Multimodal</h1>
+      </header>
+      <main className="app-contenido">
+        {renderizarVistaActual()}
       </main>
     </div>
   );

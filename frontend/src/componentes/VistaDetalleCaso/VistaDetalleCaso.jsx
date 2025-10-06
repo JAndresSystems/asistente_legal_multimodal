@@ -1,108 +1,96 @@
+// frontend/src/componentes/VistaDetalleCaso/VistaDetalleCaso.jsx
 import React, { useState, useEffect } from 'react';
-import './VistaDetalleCaso.css';
+import { obtenerEstadoEvidencia } from '../../servicios/api'; 
 import FormularioSubirEvidencia from '../FormularioSubirEvidencia/FormularioSubirEvidencia';
-import { subirEvidencia, obtenerEstadoEvidencia } from '../../servicios/api';
-
-// 1. IMPORTAMOS NUESTRO NUEVO COMPONENTE
 import ReporteAdmision from '../ReporteAdmision/ReporteAdmision';
+import './VistaDetalleCaso.css';
 
-const VistaDetalleCaso = ({ casoSeleccionado, onEvidenciaSubida, onAnalisisCompleto }) => {
-  const [idEvidenciaEnSondeo, setIdEvidenciaEnSondeo] = useState(null);
-  const [estaProcesando, setEstaProcesando] = useState(false);
+function VistaDetalleCaso({ casoSeleccionado, onEvidenciaSubida, onAnalisisCompleto }) {
+  const [reporteVisibleId, setReporteVisibleId] = useState(null);
 
-  // --- El resto de tus funciones (manejarSubidaDeArchivo, useEffect) se mantienen exactamente igual ---
-  const manejarSubidaDeArchivo = async (archivo) => {
-    if (!casoSeleccionado) return;
-    setEstaProcesando(true);
-    try {
-      const casoActualizado = await subirEvidencia(casoSeleccionado.id_caso, archivo);
-      const nuevaEvidencia = casoActualizado.evidencias[casoActualizado.evidencias.length - 1];
-      onEvidenciaSubida(casoActualizado);
-      setIdEvidenciaEnSondeo(nuevaEvidencia.id_evidencia);
-    } catch (error) {
-      console.error("Error en el proceso de subida:", error);
-      setEstaProcesando(false);
-    }
-  };
-
+  // Efecto para el polling (sondeo) del estado de la evidencia
   useEffect(() => {
-    if (!idEvidenciaEnSondeo) return;
+    if (!casoSeleccionado) return;
+
+    const evidenciaEnProceso = casoSeleccionado.evidencias.find(
+      e => e.estado === 'encolado' || e.estado === 'procesando'
+    );
+
+    if (!evidenciaEnProceso) return;
+
+    console.log(`POLLING: Iniciando monitoreo para evidencia ID: ${evidenciaEnProceso.id}`);
     const intervalo = setInterval(async () => {
-      const respuesta = await obtenerEstadoEvidencia(idEvidenciaEnSondeo);
-      const estadoActual = respuesta.estado_procesamiento;
-      if (estadoActual === 'completado' || estadoActual.includes('error')) {
+      const data = await obtenerEstadoEvidencia(evidenciaEnProceso.id);
+      if (data.estado === 'completado' || data.estado === 'error') {
+        console.log(`POLLING: Análisis finalizado con estado '${data.estado}'. Recargando datos.`);
         clearInterval(intervalo);
-        console.log("ANÁLISIS COMPLETO: Avisando al componente App para que refresque los datos.");
         onAnalisisCompleto();
-        setIdEvidenciaEnSondeo(null);
-        setEstaProcesando(false);
       }
     }, 5000);
-    return () => clearInterval(intervalo);
-  }, [idEvidenciaEnSondeo, onAnalisisCompleto]);
 
+    return () => clearInterval(intervalo);
+  }, [casoSeleccionado, onAnalisisCompleto]);
 
   if (!casoSeleccionado) {
-    return <div className="vista-detalle-contenedor placeholder"><p>Selecciona un caso...</p></div>;
+    return (
+      <div className="vista-detalle-vacia">
+        <h3>Panel de Detalles</h3>
+        <p>Selecciona un caso de la lista para ver sus detalles, gestionar sus evidencias y ver los resultados del análisis de la IA.</p>
+      </div>
+    );
   }
 
+  const manejarClickVerReporte = (evidencia) => {
+    setReporteVisibleId(reporteVisibleId === evidencia.id ? null : evidencia.id);
+  };
+  
+  const evidenciasOrdenadas = [...(casoSeleccionado.evidencias || [])].sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+
   return (
-    <div className="vista-detalle-contenedor">
-      <h2>Detalle del Caso: {casoSeleccionado.titulo}</h2>
-      <p><strong>Resumen:</strong> {casoSeleccionado.resumen || 'No proporcionado'}</p>
-      <p><strong>ID:</strong> {casoSeleccionado.id_caso}</p>
-      
-      <hr />
+    <div className="vista-detalle-caso">
+      <div className="detalle-cabecera">
+        <h3>Detalle del Caso</h3>
+        <span className="caso-id">ID: {casoSeleccionado.id}</span>
+      </div>
+      <p className="descripcion-hechos">{casoSeleccionado.descripcion_hechos}</p>
 
-      <FormularioSubirEvidencia 
-        onArchivoSeleccionado={manejarSubidaDeArchivo}
-        estaProcesando={estaProcesando}
-      />
+      <hr className="separador-seccion" />
 
-      <h3>Evidencias ({casoSeleccionado.evidencias.length})</h3>
-      {casoSeleccionado.evidencias.map(evidencia => (
-        <div key={evidencia.id_evidencia} className="evidencia-card">
-          <h4>Archivo: {evidencia.nombre_archivo}</h4>
-          <p><strong>Estado:</strong> {evidencia.estado_procesamiento}</p>
-          
-          {estaProcesando && idEvidenciaEnSondeo === evidencia.id_evidencia && (
-            <p className="procesando-indicador"><strong>(Procesando en segundo plano...)</strong></p>
-          )}
+      <FormularioSubirEvidencia idCaso={casoSeleccionado.id} onEvidenciaSubida={onEvidenciaSubida} />
 
-          {/* --- 2. AQUÍ ESTÁ LA NUEVA LÓGICA DE VISUALIZACIÓN --- */}
-          {evidencia.texto_extraido && (
-            <div className="detalle-seccion">
-              {/*
-                Verificamos si el texto_extraido es uno de nuestros reportes.
-                Si lo es, usamos el componente especializado ReporteAdmision.
-                Si no lo es, mostramos el texto plano como antes (<pre>).
-              */}
-              {evidencia.texto_extraido.includes("--- REPORTE DE ADMISIÓN AUTOMÁTICA ---") ? (
-                <ReporteAdmision reporteTexto={evidencia.texto_extraido} />
-              ) : (
-                <>
-                  <h5>Resultado del Análisis</h5>
-                  <pre>{evidencia.texto_extraido}</pre>
-                </>
-              )}
-            </div>
-          )}
+      <hr className="separador-seccion" />
 
-          {/* El resto de los campos (entidades, borrador, etc.) no son generados
-              por nuestra nueva cadena de agentes, así que podemos ocultarlos
-              o eliminarlos por ahora para mantener la interfaz limpia.
-              En este caso, los voy a comentar para que los tengas de referencia. */}
-          
-          {/*
-          {evidencia.entidades_extraidas?.length > 0 && ( ... )}
-          {evidencia.informacion_recuperada?.length > 0 && ( ... )}
-          {evidencia.borrador_estrategia && ( ... )}
-          {evidencia.verificacion_calidad && ( ... )}
-          */}
-        </div>
-      ))}
+      <div className="seccion-evidencias">
+        <h4>Evidencias Adjuntas</h4>
+        {evidenciasOrdenadas.length > 0 ? (
+          <ul className="lista-evidencias">
+            {evidenciasOrdenadas.map((evidencia) => (
+              <li key={evidencia.id} className="item-evidencia-contenedor">
+                <div className="item-evidencia">
+                  <span className="nombre-archivo">{evidencia.ruta_archivo.split(/[\\/]/).pop()}</span>
+                  <span className={`estado-evidencia ${evidencia.estado}`}>{evidencia.estado}</span>
+                  <button
+                    onClick={() => manejarClickVerReporte(evidencia)}
+                    disabled={evidencia.estado !== 'completado'}
+                    className="btn-ver-reporte"
+                  >
+                    {reporteVisibleId === evidencia.id ? 'Ocultar Reporte' : 'Ver Reporte'}
+                  </button>
+                </div>
+                {reporteVisibleId === evidencia.id && evidencia.reporte_analisis && (
+                  <div className="reporte-incrustado">
+                    <ReporteAdmision reporteTexto={evidencia.reporte_analisis} />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="sin-evidencias-mensaje">Este caso aún no tiene evidencias. Sube un archivo para comenzar el análisis.</p>
+        )}
+      </div>
     </div>
   );
-};
+}
 
 export default VistaDetalleCaso;

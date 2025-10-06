@@ -2,36 +2,44 @@
 import React from 'react';
 import './ListaCasos.css';
 
-/**
- * Muestra la lista de casos.
- * AHORA PASA EL OBJETO 'caso' COMPLETO AL HACER CLIC.
- */
-const ListaCasos = ({ casos, onSeleccionarCaso, casoActivoId }) => {
+function ListaCasos({ casos, onSeleccionarCaso, casoActivoId }) {
+  // Verificamos que 'casos' sea un array antes de intentar ordenarlo para evitar errores.
+  const casosOrdenados = Array.isArray(casos) 
+    ? [...casos].sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion))
+    : [];
+
   return (
     <div className="lista-casos-contenedor">
-      <h2>Casos Creados</h2>
-      {casos && casos.length > 0 ? (
-        <ul className="lista-casos">
-          {casos.map((caso) => (
-            // Agregamos una comprobación para asegurarnos de que 'caso' no sea undefined
-            caso && (
-              <li 
-                key={caso.id_caso} 
-                className={`caso-item ${caso.id_caso === casoActivoId ? 'activo' : ''}`}
-                // --- ¡LA CORRECCIÓN CLAVE ESTÁ AQUÍ! ---
-                // Le pasamos el objeto 'caso' completo a la función del padre.
-                onClick={() => onSeleccionarCaso(caso)}
-              >
-                {caso.titulo}
-              </li>
-            )
-          ))}
-        </ul>
-      ) : (
-        <p>Aún no has creado ningún caso.</p>
-      )}
+      <h4>Casos Creados</h4>
+      <div className="lista-scrollable">
+        {casosOrdenados.length > 0 ? (
+          <ul>
+            {casosOrdenados.map((caso) => {
+              // Comprobacion adicional para robustez, aunque no deberia ser necesaria.
+              if (!caso || !caso.id) return null;
+
+              const estaActivo = caso.id === casoActivoId;
+              return (
+                <li
+                  key={caso.id}
+                  className={`item-caso ${estaActivo ? 'activo' : ''}`}
+                  onClick={() => onSeleccionarCaso(caso)}
+                >
+                  <span className="item-caso-id">ID DEL CASO: {caso.id}</span>
+                  <p className="item-caso-descripcion">
+                    {/* Usamos 'descripcion_hechos' como la fuente principal de texto */}
+                    {caso.descripcion_hechos || "Este caso no tiene descripción."}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="lista-vacia-mensaje">No hay casos registrados en el sistema.</p>
+        )}
+      </div>
     </div>
   );
-};
+}
 
 export default ListaCasos;

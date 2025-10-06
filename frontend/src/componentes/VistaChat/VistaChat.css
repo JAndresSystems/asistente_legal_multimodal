@@ -1,72 +1,102 @@
-/* frontend/src/componentes/VistaChat/VistaChat.css */
-
+/* ============================================================================== */
+/* Contenedor Principal del Chat                                                  */
+/* ============================================================================== */
 .contenedor-chat {
-  display: flex;
-  flex-direction: column;
-  height: 80vh; /* Ocupa una buena parte de la altura de la pantalla */
+  width: 100%;
   max-width: 700px;
   margin: 2rem auto;
-  border: 1px solid #ccc;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.historial-mensajes {
-  flex-grow: 1;
-  padding: 20px;
-  overflow-y: auto;
-  background-color: #f9f9f9;
   display: flex;
   flex-direction: column;
+  height: 70vh;
+  background-color: #f9f9f9;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================================================== */
+/* Historial de Mensajes                                                          */
+/* ============================================================================== */
+.historial-mensajes {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .mensaje {
+  display: flex;
   max-width: 80%;
-  margin-bottom: 15px;
-  padding: 10px 15px;
-  border-radius: 18px;
+}
+
+.mensaje p {
+  padding: 12px 18px;
+  border-radius: 20px;
+  margin: 0;
   line-height: 1.5;
-}
-
-.mensaje.usuario {
-  background-color: #007bff;
-  color: white;
-  align-self: flex-end;
-  border-bottom-right-radius: 4px;
-}
-
-.mensaje.agente {
-  background-color: #e9ecef;
   color: #333;
+}
+
+/* Estilos para los mensajes del agente */
+.mensaje.agente {
   align-self: flex-start;
+}
+
+.mensaje.agente p {
+  background-color: #e9e9eb;
   border-bottom-left-radius: 4px;
 }
 
+/* Estilos para los mensajes del usuario */
+.mensaje.usuario {
+  align-self: flex-end;
+}
+
+.mensaje.usuario p {
+  background-color: #007aff;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+/* ============================================================================== */
+/* Formulario de Entrada de Texto                                                 */
+/* ============================================================================== */
 .formulario-chat {
   display: flex;
   padding: 15px;
-  border-top: 1px solid #ccc;
+  border-top: 1px solid #e0e0e0;
   background-color: #fff;
 }
 
 .formulario-chat input {
   flex-grow: 1;
-  padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #ccc;
   border-radius: 20px;
-  margin-right: 10px;
-  font-size: 1rem;
+  padding: 10px 15px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.formulario-chat input:focus {
+  border-color: #007aff;
+}
+
+.formulario-chat input:disabled {
+  background-color: #f0f0f0;
 }
 
 .formulario-chat button {
+  margin-left: 10px;
   padding: 10px 20px;
   border: none;
-  background-color: #007bff;
+  background-color: #007aff;
   color: white;
   border-radius: 20px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 16px;
   transition: background-color 0.2s;
 }
 
@@ -75,18 +105,41 @@
 }
 
 .formulario-chat button:disabled {
-  background-color: #a0a0a0;
+  background-color: #a0c7e4;
   cursor: not-allowed;
 }
 
-/* Animacion para el indicador de "escribiendo..." */
+/* ============================================================================== */
+/* Boton para Iniciar Caso y Animacion de "Escribiendo..."                       */
+/* ============================================================================== */
+.contenedor-acciones-chat {
+  padding: 0 20px 20px 20px;
+  background-color: #f9f9f9;
+  text-align: center;
+}
+
+.boton-iniciar-caso {
+  padding: 12px 25px;
+  border: none;
+  background-color: #28a745;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.boton-iniciar-caso:hover {
+  background-color: #218838;
+}
+
 .indicador-escribiendo span {
   animation-name: blink;
   animation-duration: 1.4s;
   animation-iteration-count: infinite;
   animation-fill-mode: both;
-  font-size: 1.5rem;
-  font-weight: bold;
+  margin: 0 1px;
 }
 
 .indicador-escribiendo span:nth-child(2) {
