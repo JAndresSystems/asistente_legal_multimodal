@@ -20,7 +20,6 @@ workflow.add_node("agente_analizador_pdf", nodo_agente_analizador_pdf)
 workflow.add_node("agente_analizador_audio", nodo_agente_analizador_audio)
 workflow.add_node("agente_determinador_competencias", nodo_agente_determinador_competencias)
 workflow.add_node("agente_repartidor", nodo_agente_repartidor)
-# Los agentes auxiliares se mantienen definidos pero no en el flujo principal
 workflow.add_node("agente_juridico", nodo_agente_juridico)
 workflow.add_node("agente_generador_documentos", nodo_agente_generador_documentos)
 print("-> Nodos añadidos exitosamente.")
@@ -34,7 +33,13 @@ def enrutar_evidencia_despues_del_triaje(estado: EstadoDelGrafo) -> str:
         print("-> Veredicto: No Admisible. Finalizando flujo de trabajo.")
         return END
 
+    # ==============================================================================
+    # INICIO DE LA CORRECCION FINAL
+    # La clave correcta definida en tareas.py es 'rutas_archivos_evidencia'
     ruta_archivo = estado["rutas_archivos_evidencia"][0]
+    # FIN DE LA CORRECCION FINAL
+    # ==============================================================================
+    
     tipo_mime, _ = mimetypes.guess_type(ruta_archivo)
     print(f"-> Evidencia: {ruta_archivo}, Tipo MIME detectado: {tipo_mime}")
 
@@ -63,13 +68,9 @@ workflow.add_conditional_edges(
 workflow.add_edge("agente_analizador_pdf", "agente_determinador_competencias")
 workflow.add_edge("agente_analizador_audio", "agente_determinador_competencias")
 workflow.add_edge("agente_determinador_competencias", "agente_repartidor")
-
-# ==============================================================================
-# INICIO DE LA CORRECCION
-# El proceso de analisis inicial termina despues de asignar el caso.
-workflow.add_edge("agente_repartidor", END)
-# FIN DE LA CORRECCION
-# ==============================================================================
+workflow.add_edge("agente_repartidor", "agente_juridico")
+workflow.add_edge("agente_juridico", "agente_generador_documentos")
+workflow.add_edge("agente_generador_documentos", END)
 
 grafo_compilado = workflow.compile()
 print("SUCCESS (LANGGRAPH): Grafo multimodal completo y final compilado exitosamente.")

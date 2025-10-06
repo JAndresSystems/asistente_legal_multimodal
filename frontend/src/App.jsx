@@ -2,24 +2,13 @@ import React, { useState } from 'react';
 import './App.css';
 
 // ==============================================================================
-// Importacion de Componentes Reales
+// Importacion de Todos los Componentes Reales
 // ==============================================================================
 import VistaChat from './componentes/VistaChat/VistaChat';
 import FormularioCrearCaso from './componentes/FormularioCrearCaso/FormularioCrearCaso';
 import FormularioSubirEvidencia from './componentes/FormularioSubirEvidencia/FormularioSubirEvidencia';
 import VistaProgresoAnalisis from './componentes/VistaProgresoAnalisis/VistaProgresoAnalisis';
-
-
-// ==============================================================================
-// Componentes Marcadores de Posicion (Stubs)
-// ==============================================================================
-// Solo nos queda un stub por construir.
-const VistaReporteFinal = ({ casoId }) => (
-  <div className="vista-contenedor">
-    <h1>Paso 5: Reporte Final del Caso #{casoId}</h1>
-    <p>Aqui se presentaran los resultados del analisis de la IA de forma estructurada.</p>
-  </div>
-);
+import VistaReporteFinal from './componentes/VistaReporteFinal/VistaReporteFinal';
 
 
 // ==============================================================================
@@ -31,7 +20,8 @@ function App() {
    * """
    * Docstring:
    * El componente App es el orquestador principal de la interfaz de usuario.
-   * Gestiona la vista activa y el estado global simple (como el ID del caso).
+   * Gestiona la vista activa y el estado global simple (como el ID del caso),
+   * guiando al usuario a traves del flujo completo de la aplicacion.
    * """
    */
 

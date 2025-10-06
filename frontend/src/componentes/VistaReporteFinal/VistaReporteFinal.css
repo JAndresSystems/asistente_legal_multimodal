@@ -1,0 +1,115 @@
+/* ============================================================================== */
+/* Contenedor Principal del Reporte                                               */
+/* ============================================================================== */
+.vista-reporte-contenedor {
+  width: 100%;
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 25px 30px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.vista-reporte-contenedor h3 {
+  margin-top: 0;
+  margin-bottom: 25px;
+  font-size: 22px;
+  color: #333;
+  text-align: center;
+}
+
+/* ============================================================================== */
+/* Estructura del Acordeon                                                        */
+/* ============================================================================== */
+.acordeon-contenedor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item-acordeon {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow: hidden; /* Para que los bordes redondeados afecten a los hijos */
+}
+
+.cabecera-acordeon {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #f7f7f7;
+  cursor: pointer;
+  border-bottom: 1px solid #ddd;
+}
+
+.cabecera-acordeon.activo {
+  background-color: #e9f5ff;
+}
+
+.cabecera-acordeon:hover {
+  background-color: #f0f0f0;
+}
+
+.titulo-evidencia {
+  font-weight: bold;
+  color: #333;
+}
+
+.icono-acordeon {
+  font-size: 20px;
+  transition: transform 0.3s ease;
+}
+
+.icono-acordeon.abierto {
+  transform: rotate(90deg);
+}
+
+.panel-acordeon {
+  padding: 20px;
+  background-color: #fff;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.panel-acordeon.abierto {
+  max-height: 1000px; /* Un valor grande para permitir cualquier contenido */
+  padding: 20px;
+}
+
+/* ============================================================================== */
+/* Contenido del Reporte Estructurado                                             */
+/* ============================================================================== */
+.seccion-reporte {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+}
+
+.seccion-reporte:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.titulo-seccion {
+  font-size: 16px;
+  font-weight: bold;
+  color: #0056b3;
+  margin-top: 0;
+  margin-bottom: 10px;
+  text-transform: capitalize;
+}
+
+.detalle-reporte {
+  white-space: pre-wrap; /* Respeta los saltos de linea y espacios */
+  font-family: 'Courier New', Courier, monospace;
+  background-color: #f5f5f5;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.6;
+}
