@@ -60,35 +60,45 @@
   border-bottom-right-radius: 4px;
 }
 
+/* =... (Estilos anteriores se mantienen) ... */
+
 /* ============================================================================== */
-/* Formulario de Entrada de Texto                                                 */
+/* Formulario de Entrada de Texto (MODIFICADO PARA TEXTAREA)                      */
 /* ============================================================================== */
 .formulario-chat {
   display: flex;
   padding: 15px;
   border-top: 1px solid #e0e0e0;
   background-color: #fff;
+  align-items: flex-end; /* Alinea los items abajo para que el boton no se estire */
 }
 
-.formulario-chat input {
+/* REEMPLAZAMOS INPUT CON TEXTAREA */
+.formulario-chat textarea {
   flex-grow: 1;
   border: 1px solid #ccc;
   border-radius: 20px;
   padding: 10px 15px;
   font-size: 16px;
+  font-family: inherit;
+  line-height: 1.4;
   outline: none;
   transition: border-color 0.2s;
+  resize: none; /* Deshabilitamos el redimensionamiento manual */
+  overflow-y: hidden; /* Ocultamos la barra de scroll vertical */
+  min-height: 24px; /* Altura minima de una linea */
 }
 
-.formulario-chat input:focus {
+.formulario-chat textarea:focus {
   border-color: #007aff;
 }
 
-.formulario-chat input:disabled {
+.formulario-chat textarea:disabled {
   background-color: #f0f0f0;
 }
 
 .formulario-chat button {
+/* ... (El resto de los estilos del boton y demas se mantienen igual) ... */
   margin-left: 10px;
   padding: 10px 20px;
   border: none;
@@ -98,6 +108,8 @@
   cursor: pointer;
   font-size: 16px;
   transition: background-color 0.2s;
+  align-self: flex-end; /* Mantiene el boton alineado abajo */
+  margin-bottom: 2px; /* Pequeño ajuste de alineacion */
 }
 
 .formulario-chat button:hover {
@@ -108,6 +120,8 @@
   background-color: #a0c7e4;
   cursor: not-allowed;
 }
+
+
 
 /* ============================================================================== */
 /* Boton para Iniciar Caso y Animacion de "Escribiendo..."                       */
@@ -155,3 +169,5 @@
   20% { opacity: 1; }
   100% { opacity: 0.2; }
 }
+
+

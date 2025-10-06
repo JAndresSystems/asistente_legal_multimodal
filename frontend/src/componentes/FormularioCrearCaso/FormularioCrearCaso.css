@@ -1,79 +1,85 @@
-/* frontend/src/componentes/FormularioCrearCaso/FormularioCrearCaso.css */
-
+/* ============================================================================== */
+/* Contenedor Principal del Formulario                                            */
+/* ============================================================================== */
 .formulario-crear-caso-contenedor {
   width: 100%;
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 25px 30px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .formulario-crear-caso-contenedor h3 {
   margin-top: 0;
-  color: var(--color-primario);
-  border-bottom: 2px solid var(--color-borde);
-  padding-bottom: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 20px;
+  font-size: 22px;
+  color: #333;
+  text-align: center;
 }
 
-.formulario-crear-caso .grupo-formulario {
-  margin-bottom: 1rem;
+/* ============================================================================== */
+/* Estructura del Formulario y sus Elementos                                      */
+/* ============================================================================== */
+.formulario-crear-caso {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.formulario-crear-caso label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-  color: var(--color-texto-secundario);
-  font-size: 0.9rem;
+.grupo-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-/* Estilo unificado para los campos de texto y áreas de texto */
-.formulario-crear-caso input[type="text"],
-.formulario-crear-caso textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--color-borde);
+.grupo-formulario label {
+  font-weight: bold;
+  font-size: 16px;
+  color: #555;
+}
+
+.grupo-formulario textarea {
+  padding: 12px;
+  border: 1px solid #ccc;
   border-radius: 6px;
-  font-size: 1rem;
-  box-sizing: border-box; /* Asegura que el padding no aumente el tamaño total */
-  transition: border-color 0.2s, box-shadow 0.2s;
-  background-color: #fdfdfe;
-}
-
-/* Efecto visual cuando el usuario hace clic en un campo */
-.formulario-crear-caso input[type="text"]:focus,
-.formulario-crear-caso textarea:focus {
+  font-size: 16px;
+  font-family: inherit; /* Usa la misma fuente que el resto de la pagina */
+  line-height: 1.6;
+  resize: vertical; /* Permite al usuario cambiar la altura */
   outline: none;
-  border-color: var(--color-primario);
-  box-shadow: 0 0 0 3px rgba(0, 90, 156, 0.1);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.formulario-crear-caso textarea {
-  min-height: 80px;
-  resize: vertical; /* Permite al usuario cambiar la altura verticalmente */
+.grupo-formulario textarea:focus {
+  border-color: #007aff;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
 }
 
-/* Estilo para el botón principal de la aplicación */
+/* ============================================================================== */
+/* Boton de Envio                                                                 */
+/* ============================================================================== */
 .formulario-crear-caso button {
-  width: 100%;
-  padding: 0.8rem 1rem;
-  background-color: var(--color-primario);
-  color: white;
+  padding: 12px 20px;
   border: none;
+  background-color: #007aff;
+  color: white;
   border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
+  font-size: 16px;
+  font-weight: bold;
+  align-self: center; /* Centra el boton */
+  min-width: 150px;
+  transition: background-color 0.2s;
 }
 
 .formulario-crear-caso button:hover {
-  background-color: #004a80; /* Un azul un poco más oscuro */
-}
-
-.formulario-crear-caso button:active {
-  transform: scale(0.98); /* Efecto de "presionado" */
+  background-color: #0056b3;
 }
 
 .formulario-crear-caso button:disabled {
-  background-color: #a0a0a0;
+  background-color: #a0c7e4;
   cursor: not-allowed;
-  transform: scale(1);
 }

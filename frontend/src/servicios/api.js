@@ -11,7 +11,6 @@
 // ==============================================================================
 // Configuracion
 // ==============================================================================
-// La URL base donde se esta ejecutando nuestro backend de FastAPI.
 const URL_BASE_BACKEND = "http://127.0.0.1:8000";
 
 
@@ -46,8 +45,31 @@ export const chatearConAgente = async (textoPregunta) => {
     }
 
     const datosRespuesta = await respuesta.json();
-    console.log(`API: Respuesta del chat recibida: "${datosRespuesta.respuesta}"`);
-    return datosRespuesta.respuesta;
+    let respuestaDelAgente = datosRespuesta.respuesta;
+    console.log(`API: Respuesta original recibida: "${respuestaDelAgente}"`);
+
+    // --- INICIO DE LA LOGICA DE SIMULACION MEJORADA ---
+    // Buscamos palabras clave en lugar de frases exactas.
+    const palabrasClaveDeViabilidad = [
+      "califica",
+      "cumple",
+      "atendemos",
+      "requisitos",
+      "elegibilidad",
+      "procedente",
+      "admisible"
+    ];
+
+    const respuestaEnMinusculas = respuestaDelAgente.toLowerCase();
+    const esViable = palabrasClaveDeViabilidad.some(palabra => respuestaEnMinusculas.includes(palabra));
+
+    if (esViable) {
+      console.log("API (Simulacion): Se detecto un caso viable por palabra clave. Añadiendo señal.");
+      respuestaDelAgente += " [INICIAR_CASO]";
+    }
+    // --- FIN DE LA LOGICA DE SIMULACION ---
+
+    return respuestaDelAgente;
 
   } catch (error) {
     console.error("API: Error al chatear con el agente:", error);
@@ -55,6 +77,8 @@ export const chatearConAgente = async (textoPregunta) => {
   }
 };
 
+
+// ... (El resto de las funciones del archivo permanecen exactamente iguales) ...
 
 /**
  * """
@@ -91,7 +115,6 @@ export const crearNuevoCaso = async (datosCaso) => {
   }
 };
 
-
 /**
  * """
  * Docstring:
@@ -119,7 +142,6 @@ export const obtenerCasos = async () => {
     throw error;
   }
 };
-
 
 /**
  * """
@@ -157,7 +179,6 @@ export const subirEvidencia = async (idCaso, archivo) => {
     throw error;
   }
 };
-
 
 /**
  * """

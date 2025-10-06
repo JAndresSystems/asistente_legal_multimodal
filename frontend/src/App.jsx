@@ -5,23 +5,16 @@ import './App.css';
 // Importacion de Componentes Reales
 // ==============================================================================
 import VistaChat from './componentes/VistaChat/VistaChat';
+import FormularioCrearCaso from './componentes/FormularioCrearCaso/FormularioCrearCaso';
 
 
 // ==============================================================================
 // Componentes Marcadores de Posicion (Stubs)
 // ==============================================================================
-// Mantenemos los stubs para los pasos que aun no hemos construido.
-
-const FormularioCrearCaso = () => (
+// Modificamos FormularioSubirEvidencia para que muestre el ID del caso que recibe.
+const FormularioSubirEvidencia = ({ casoId }) => (
   <div className="vista-contenedor">
-    <h1>Paso 2: Describir el Caso</h1>
-    <p>Aqui el usuario describira los hechos de su situacion.</p>
-  </div>
-);
-
-const FormularioSubirEvidencia = () => (
-  <div className="vista-contenedor">
-    <h1>Paso 3: Subir Evidencias</h1>
+    <h1>Paso 3: Subir Evidencias para el Caso #{casoId}</h1>
     <p>Aqui el usuario podra subir multiples archivos (PDF, audio, imagenes).</p>
   </div>
 );
@@ -50,8 +43,7 @@ function App() {
    * """
    * Docstring:
    * El componente App es el orquestador principal de la interfaz de usuario.
-   * Su unica responsabilidad es gestionar la vista que se le muestra al usuario
-   * en cada momento del flujo de trabajo, funcionando como un "wizard".
+   * Gestiona la vista activa y el estado global simple (como el ID del caso).
    * """
    */
 
@@ -59,6 +51,26 @@ function App() {
   // Estado
   // ----------------------------------------------------------------------------
   const [vistaActual, setVistaActual] = useState('VISTA_CHAT');
+  const [casoId, setCasoId] = useState(null);
+
+  // ----------------------------------------------------------------------------
+  // Manejadores de Flujo
+  // ----------------------------------------------------------------------------
+  /**
+   * """
+   * Docstring:
+   * Se ejecuta cuando el FormularioCrearCaso notifica que un caso ha sido
+   * creado exitosamente en el backend.
+   *
+   * Args:
+   *   idDelNuevoCaso (number): El ID del caso devuelto por la API.
+   * """
+   */
+  const manejarCasoCreado = (idDelNuevoCaso) => {
+    console.log("APP: Caso creado con ID:", idDelNuevoCaso, ". Avanzando a la siguiente vista.");
+    setCasoId(idDelNuevoCaso);
+    setVistaActual('VISTA_SUBIR_EVIDENCIA');
+  };
 
   // ----------------------------------------------------------------------------
   // Renderizado Condicional de Vistas
@@ -66,17 +78,20 @@ function App() {
   const renderizarVistaActual = () => {
     switch (vistaActual) {
       case 'VISTA_CHAT':
-        // Ahora renderizamos el componente importado, pasandole la funcion
-        // para que pueda controlar el cambio a la siguiente vista.
         return <VistaChat onIniciarCaso={() => setVistaActual('VISTA_CREAR_CASO')} />;
+      
       case 'VISTA_CREAR_CASO':
-        return <FormularioCrearCaso />;
+        return <FormularioCrearCaso onCasoCreado={manejarCasoCreado} />;
+      
       case 'VISTA_SUBIR_EVIDENCIA':
-        return <FormularioSubirEvidencia />;
+        return <FormularioSubirEvidencia casoId={casoId} />;
+      
       case 'VISTA_PROGRESO_ANALISIS':
         return <VistaProgresoAnalisis />;
+      
       case 'VISTA_REPORTE_FINAL':
         return <VistaReporteFinal />;
+      
       default:
         return <VistaChat onIniciarCaso={() => setVistaActual('VISTA_CREAR_CASO')} />;
     }
