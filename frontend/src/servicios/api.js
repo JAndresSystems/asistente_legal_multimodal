@@ -3,8 +3,7 @@
  * Docstring:
  * Este modulo centraliza todas las funciones que interactuan con la API
  * del backend (FastAPI). Abstrae la logica de las llamadas fetch, el
- * manejo de errores y la estructura de los datos JSON para mantener los
- * componentes limpios de logica de comunicacion.
+ * manejo de errores y la estructura de los datos JSON.
  * """
  */
 
@@ -18,19 +17,6 @@ const URL_BASE_BACKEND = "http://127.0.0.1:8000";
 // Funciones de la API
 // ==============================================================================
 
-/**
- * """
- * Docstring:
- * Envia una pregunta del usuario al Agente de Atencion en el backend.
- *
- * Args:
- *   textoPregunta (string): El mensaje que el usuario escribio.
- *
- * Returns:
- *   (string): La respuesta de texto generada por el agente de IA.
- *             En caso de error, devuelve un mensaje de error informativo.
- * """
- */
 export const chatearConAgente = async (textoPregunta) => {
   console.log(`API: Enviando pregunta al chat: "${textoPregunta}"`);
   try {
@@ -48,27 +34,15 @@ export const chatearConAgente = async (textoPregunta) => {
     let respuestaDelAgente = datosRespuesta.respuesta;
     console.log(`API: Respuesta original recibida: "${respuestaDelAgente}"`);
 
-    // --- INICIO DE LA LOGICA DE SIMULACION MEJORADA ---
-    // Buscamos palabras clave en lugar de frases exactas.
-    const palabrasClaveDeViabilidad = [
-      "califica",
-      "cumple",
-      "atendemos",
-      "requisitos",
-      "elegibilidad",
-      "procedente",
-      "admisible"
-    ];
-
+    const palabrasClaveDeViabilidad = ["califica", "cumple", "atendemos", "requisitos", "elegibilidad", "procedente", "admisible"];
     const respuestaEnMinusculas = respuestaDelAgente.toLowerCase();
     const esViable = palabrasClaveDeViabilidad.some(palabra => respuestaEnMinusculas.includes(palabra));
 
     if (esViable) {
-      console.log("API (Simulacion): Se detecto un caso viable por palabra clave. Añadiendo señal.");
+      console.log("API (Simulacion): Se detecto un caso viable. Añadiendo señal.");
       respuestaDelAgente += " [INICIAR_CASO]";
     }
-    // --- FIN DE LA LOGICA DE SIMULACION ---
-
+    
     return respuestaDelAgente;
 
   } catch (error) {
@@ -77,21 +51,6 @@ export const chatearConAgente = async (textoPregunta) => {
   }
 };
 
-
-// ... (El resto de las funciones del archivo permanecen exactamente iguales) ...
-
-/**
- * """
- * Docstring:
- * Envia los datos de un nuevo caso al backend para su creacion.
- *
- * Args:
- *   datosCaso (object): Un objeto con la informacion del caso a crear.
- *
- * Returns:
- *   (object): El objeto del caso recien creado, devuelto por el backend.
- * """
- */
 export const crearNuevoCaso = async (datosCaso) => {
   console.log("API: Enviando datos para crear caso:", datosCaso);
   try {
@@ -115,47 +74,6 @@ export const crearNuevoCaso = async (datosCaso) => {
   }
 };
 
-/**
- * """
- * Docstring:
- * Solicita al backend la lista completa de todos los casos existentes.
- *
- * Args:
- *   Ninguno.
- *
- * Returns:
- *   (Array<object>): Un array con todos los objetos de los casos.
- * """
- */
-export const obtenerCasos = async () => {
-  console.log("API: Pidiendo la lista de todos los casos...");
-  try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/casos`);
-    if (!respuesta.ok) {
-      throw new Error(`Error del servidor: ${respuesta.status}`);
-    }
-    const casos = await respuesta.json();
-    console.log("API: Lista de casos recibida.");
-    return casos;
-  } catch (error) {
-    console.error("API: Error al obtener los casos:", error);
-    throw error;
-  }
-};
-
-/**
- * """
- * Docstring:
- * Sube un archivo de evidencia para un caso especifico.
- *
- * Args:
- *   idCaso (number): El ID del caso al que pertenece la evidencia.
- *   archivo (File): El objeto de archivo seleccionado por el usuario.
- *
- * Returns:
- *   (object): El objeto del caso actualizado con la nueva evidencia.
- * """
- */
 export const subirEvidencia = async (idCaso, archivo) => {
   const formData = new FormData();
   formData.append("archivo", archivo);
@@ -170,37 +88,37 @@ export const subirEvidencia = async (idCaso, archivo) => {
     if (!respuesta.ok) {
       throw new Error(`Error del servidor: ${respuesta.status}`);
     }
-
-    const casoActualizado = await respuesta.json();
-    console.log("API: Evidencia subida. Caso actualizado:", casoActualizado);
-    return casoActualizado;
+    return await respuesta.json();
   } catch (error) {
     console.error("API: Error al subir la evidencia:", error);
     throw error;
   }
 };
 
+// --- NUEVA FUNCION AÑADIDA EN ESTE PASO ---
 /**
  * """
  * Docstring:
- * Consulta el estado de procesamiento de una evidencia especifica.
+ * Obtiene todos los detalles de un caso especifico, incluyendo la lista
+ * de sus evidencias y el estado de cada una.
  *
  * Args:
- *   idEvidencia (number): El ID de la evidencia a consultar.
+ *   idCaso (number): El ID del caso a consultar.
  *
  * Returns:
- *   (object): Un objeto con el estado actual de la evidencia.
+ *   (object): El objeto completo del caso con sus evidencias.
  * """
  */
-export const obtenerEstadoEvidencia = async (idEvidencia) => {
+export const obtenerDetallesCaso = async (idCaso) => {
+  console.log(`API: Solicitando detalles para el caso ID: ${idCaso}`);
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/evidencias/${idEvidencia}/estado`);
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/casos/${idCaso}`);
     if (!respuesta.ok) {
       throw new Error(`Error del servidor: ${respuesta.status}`);
     }
     return await respuesta.json();
   } catch (error) {
-    console.error(`API: Error al obtener estado de evidencia ${idEvidencia}:`, error);
-    return { estado: 'error_de_red' };
+    console.error(`API: Error al obtener los detalles del caso ${idCaso}:`, error);
+    throw error;
   }
 };

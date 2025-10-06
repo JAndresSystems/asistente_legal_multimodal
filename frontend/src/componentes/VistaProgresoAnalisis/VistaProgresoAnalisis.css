@@ -1,0 +1,125 @@
+/* ============================================================================== */
+/* Contenedor Principal                                                           */
+/* ============================================================================== */
+.vista-progreso-contenedor {
+  width: 100%;
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 25px 30px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.vista-progreso-contenedor h3 {
+  margin-top: 0;
+  margin-bottom: 25px;
+  font-size: 22px;
+  color: #333;
+  text-align: center;
+}
+
+/* ============================================================================== */
+/* Lista de Evidencias                                                            */
+/* ============================================================================== */
+.lista-evidencias {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item-evidencia {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 6px;
+}
+
+.nombre-evidencia {
+  font-weight: 500;
+  color: #333;
+}
+
+/* ============================================================================== */
+/* Indicadores de Estado                                                          */
+/* ============================================================================== */
+.estado-evidencia {
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.estado-evidencia.encolado {
+  background-color: #e0e0e0;
+  color: #666;
+}
+
+.estado-evidencia.procesando {
+  background-color: #fff8e1;
+  color: #f57f17;
+}
+
+.estado-evidencia.completado {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.estado-evidencia.error {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+/* Animacion de Spinner para el estado "procesando" */
+.spinner {
+  border: 2px solid #f57f17;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ============================================================================== */
+/* Acciones y Boton Final                                                         */
+/* ============================================================================== */
+.contenedor-acciones-progreso {
+  text-align: center;
+  margin-top: 30px;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 20px;
+}
+
+.boton-ver-reporte {
+  padding: 12px 25px;
+  border: none;
+  background-color: #007aff;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.boton-ver-reporte:disabled {
+  background-color: #a0c7e4;
+  cursor: not-allowed;
+  opacity: 0.7;
+}

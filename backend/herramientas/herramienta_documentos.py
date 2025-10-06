@@ -1,3 +1,4 @@
+#C:\react\asistente_legal_multimodal\backend\herramientas\herramienta_documentos.py
 import os
 from docx import Document
 from typing import Dict

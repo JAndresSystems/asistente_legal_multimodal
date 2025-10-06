@@ -1,5 +1,3 @@
-# backend/api/enrutador_principal.py
-
 from fastapi import APIRouter, HTTPException, File, UploadFile, Depends
 import shutil
 from pathlib import Path
@@ -13,12 +11,12 @@ from .modelos_compartidos import (
 from ..tareas import procesar_evidencia_tarea
 from ..agentes.agente_atencion import grafo_atencion_compilado
 
-# --- CONFIGURACION DE ENRUTADORES (CORREGIDO) ---
-# Eliminamos el argumento 'trailing_slash=False' que causaba el error.
+# --- CONFIGURACION DE ENRUTADORES ---
+# Mantenemos tu estructura de enrutadores separados
 router_casos = APIRouter(prefix="/casos", tags=["Gestion de Casos"])
 router_chat = APIRouter(prefix="/chat", tags=["Chat de Atencion"])
 
-# --- ENDPOINT DEL CHATBOT (Estable) ---
+# --- ENDPOINT DEL CHATBOT ---
 @router_chat.post("", response_model=RespuestaChat)
 def conversar_con_agente_atencion(pregunta: PreguntaChat):
     estado_inicial_chat = {"pregunta_usuario": pregunta.pregunta}
@@ -26,7 +24,7 @@ def conversar_con_agente_atencion(pregunta: PreguntaChat):
     respuesta_generada = estado_final_chat.get("respuesta_agente", "Error al procesar la pregunta.")
     return RespuestaChat(respuesta=respuesta_generada)
 
-# --- ENDPOINTS DE GESTION DE CASOS (Estables) ---
+# --- ENDPOINTS DE GESTION DE CASOS ---
 @router_casos.post("", response_model=CasoLecturaConEvidencias, status_code=201)
 def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_sesion)):
     nuevo_caso_db = Caso.from_orm(caso_a_crear)
@@ -39,6 +37,23 @@ def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_ses
 def listar_casos(sesion: Session = Depends(obtener_sesion)):
     casos = sesion.query(Caso).all()
     return casos
+
+# ==============================================================================
+# INICIO DE LA CORRECCION - ENDPOINT AÑADIDO
+# ==============================================================================
+@router_casos.get("/{id_caso}", response_model=CasoLecturaConEvidencias)
+def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion)):
+    """
+    Obtiene un caso especifico por su ID, incluyendo todas sus evidencias.
+    Este es el endpoint que la vista de progreso necesita.
+    """
+    caso = sesion.get(Caso, id_caso)
+    if not caso:
+        raise HTTPException(status_code=404, detail="Caso no encontrado")
+    return caso
+# ==============================================================================
+# FIN DE LA CORRECCION
+# ==============================================================================
 
 @router_casos.post("/{id_caso}/evidencia", response_model=Evidencia)
 def subir_evidencia(id_caso: int, archivo: UploadFile = File(...), sesion: Session = Depends(obtener_sesion)):

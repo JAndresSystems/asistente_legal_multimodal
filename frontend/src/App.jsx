@@ -7,22 +7,16 @@ import './App.css';
 import VistaChat from './componentes/VistaChat/VistaChat';
 import FormularioCrearCaso from './componentes/FormularioCrearCaso/FormularioCrearCaso';
 import FormularioSubirEvidencia from './componentes/FormularioSubirEvidencia/FormularioSubirEvidencia';
+import VistaProgresoAnalisis from './componentes/VistaProgresoAnalisis/VistaProgresoAnalisis';
 
 
 // ==============================================================================
 // Componentes Marcadores de Posicion (Stubs)
 // ==============================================================================
-// Solo nos quedan dos stubs por construir.
-const VistaProgresoAnalisis = ({ casoId }) => (
+// Solo nos queda un stub por construir.
+const VistaReporteFinal = ({ casoId }) => (
   <div className="vista-contenedor">
-    <h1>Paso 4: Analizando Evidencias del Caso #{casoId}</h1>
-    <p>Aqui el usuario vera el estado de procesamiento de sus evidencias en tiempo real.</p>
-  </div>
-);
-
-const VistaReporteFinal = () => (
-  <div className="vista-contenedor">
-    <h1>Paso 5: Reporte Final</h1>
+    <h1>Paso 5: Reporte Final del Caso #{casoId}</h1>
     <p>Aqui se presentaran los resultados del analisis de la IA de forma estructurada.</p>
   </div>
 );
@@ -41,9 +35,6 @@ function App() {
    * """
    */
 
-  // ----------------------------------------------------------------------------
-  // Estado
-  // ----------------------------------------------------------------------------
   const [vistaActual, setVistaActual] = useState('VISTA_CHAT');
   const [casoId, setCasoId] = useState(null);
 
@@ -51,7 +42,7 @@ function App() {
   // Manejadores de Flujo
   // ----------------------------------------------------------------------------
   const manejarCasoCreado = (idDelNuevoCaso) => {
-    console.log("APP: Caso creado con ID:", idDelNuevoCaso, ". Avanzando a subida de evidencia.");
+    console.log("APP: Caso creado con ID:", idDelNuevoCaso);
     setCasoId(idDelNuevoCaso);
     setVistaActual('VISTA_SUBIR_EVIDENCIA');
   };
@@ -59,6 +50,11 @@ function App() {
   const manejarSubidaCompletada = () => {
     console.log("APP: Todas las evidencias subidas. Avanzando a vista de progreso.");
     setVistaActual('VISTA_PROGRESO_ANALISIS');
+  };
+
+  const manejarAnalisisCompletado = () => {
+    console.log("APP: Todos los analisis completados. Avanzando al reporte final.");
+    setVistaActual('VISTA_REPORTE_FINAL');
   };
 
   // ----------------------------------------------------------------------------
@@ -76,11 +72,10 @@ function App() {
         return <FormularioSubirEvidencia casoId={casoId} onSubidaCompletada={manejarSubidaCompletada} />;
       
       case 'VISTA_PROGRESO_ANALISIS':
-        // Pasamos el casoId para que esta vista sepa que evidencias consultar.
-        return <VistaProgresoAnalisis casoId={casoId} />;
+        return <VistaProgresoAnalisis casoId={casoId} onAnalisisCompletado={manejarAnalisisCompletado} />;
       
       case 'VISTA_REPORTE_FINAL':
-        return <VistaReporteFinal />;
+        return <VistaReporteFinal casoId={casoId} />;
       
       default:
         return <VistaChat onIniciarCaso={() => setVistaActual('VISTA_CREAR_CASO')} />;
