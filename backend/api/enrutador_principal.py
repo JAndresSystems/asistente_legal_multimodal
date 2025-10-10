@@ -1,3 +1,5 @@
+# backend/api/enrutador_principal.py
+
 from fastapi import APIRouter, HTTPException, File, UploadFile, Depends
 import shutil
 from pathlib import Path
@@ -9,22 +11,69 @@ from .modelos_compartidos import (
     PreguntaChat, RespuestaChat
 )
 from ..tareas import procesar_evidencia_tarea
+# ==============================================================================
+# INICIO DE LA RESTAURACION
+# Volvemos a importar el grafo compilado, que es lo que este enrutador espera.
+# ==============================================================================
 from ..agentes.agente_atencion import grafo_atencion_compilado
+# ==============================================================================
+# FIN DE LA RESTAURACION
+# ==============================================================================
+
 
 # --- CONFIGURACION DE ENRUTADORES ---
-# Mantenemos tu estructura de enrutadores separados
 router_casos = APIRouter(prefix="/casos", tags=["Gestion de Casos"])
 router_chat = APIRouter(prefix="/chat", tags=["Chat de Atencion"])
 
-# --- ENDPOINT DEL CHATBOT ---
+
+# ==============================================================================
+# INICIO DE LA RESTAURACION
+# Volvemos al cuerpo original de la funcion que invoca el grafo.
+# Se han añadido prints para depuracion y claridad.
+# ==============================================================================
 @router_chat.post("", response_model=RespuestaChat)
 def conversar_con_agente_atencion(pregunta: PreguntaChat):
-    estado_inicial_chat = {"pregunta_usuario": pregunta.pregunta}
-    estado_final_chat = grafo_atencion_compilado.invoke(estado_inicial_chat)
-    respuesta_generada = estado_final_chat.get("respuesta_agente", "Error al procesar la pregunta.")
-    return RespuestaChat(respuesta=respuesta_generada)
+    """
+    Docstring:
+    Endpoint para interactuar con el Agente de Atencion.
+    Recibe la pregunta del usuario, la pasa al grafo de LangGraph del agente
+    y devuelve la respuesta generada.
 
-# --- ENDPOINTS DE GESTION DE CASOS ---
+    Args:
+        pregunta (PreguntaChat): El objeto con el texto de la pregunta del usuario.
+
+    Returns:
+        RespuestaChat: El objeto con el texto de la respuesta del agente.
+    """
+    try:
+        print(f"\n--- [API /chat] Peticion recibida. Pregunta: '{pregunta.pregunta}'")
+        
+        # 1. Preparamos el diccionario de entrada para el grafo.
+        estado_inicial_chat = {"pregunta_usuario": pregunta.pregunta}
+        print(f"--- [API /chat] Invocando el grafo del agente con el estado: {estado_inicial_chat}")
+
+        # 2. Invocamos el grafo y esperamos el resultado.
+        estado_final_chat = grafo_atencion_compilado.invoke(estado_inicial_chat)
+        print(f"--- [API /chat] Grafo ejecutado. Estado final recibido: {estado_final_chat}")
+
+        # 3. Extraemos la respuesta del diccionario de salida.
+        #    La clave 'respuesta_agente' debe existir en el estado final.
+        respuesta_generada = estado_final_chat.get("respuesta_agente", "Error: No se pudo obtener una respuesta del agente.")
+        print(f"--- [API /chat] Respuesta extraida del estado: '{respuesta_generada}'")
+
+        # 4. Devolvemos la respuesta en el formato correcto.
+        return RespuestaChat(respuesta=respuesta_generada)
+        
+    except Exception as e:
+        print(f"--- [API /chat] ERROR CRITICO: Ha ocurrido una excepcion no controlada en el endpoint: {e}")
+        # En caso de un error inesperado, devolvemos un error 500.
+        raise HTTPException(status_code=500, detail="Ocurrio un error interno en el servidor al procesar el chat.")
+# ==============================================================================
+# FIN DE LA RESTAURACION
+# ==============================================================================
+
+
+# --- ENDPOINTS DE GESTION DE CASOS (Sin cambios) ---
 @router_casos.post("", response_model=CasoLecturaConEvidencias, status_code=201)
 def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_sesion)):
     nuevo_caso_db = Caso.from_orm(caso_a_crear)
@@ -38,22 +87,12 @@ def listar_casos(sesion: Session = Depends(obtener_sesion)):
     casos = sesion.query(Caso).all()
     return casos
 
-# ==============================================================================
-# INICIO DE LA CORRECCION - ENDPOINT AÑADIDO
-# ==============================================================================
 @router_casos.get("/{id_caso}", response_model=CasoLecturaConEvidencias)
 def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion)):
-    """
-    Obtiene un caso especifico por su ID, incluyendo todas sus evidencias.
-    Este es el endpoint que la vista de progreso necesita.
-    """
     caso = sesion.get(Caso, id_caso)
     if not caso:
         raise HTTPException(status_code=404, detail="Caso no encontrado")
     return caso
-# ==============================================================================
-# FIN DE LA CORRECCION
-# ==============================================================================
 
 @router_casos.post("/{id_caso}/evidencia", response_model=Evidencia)
 def subir_evidencia(id_caso: int, archivo: UploadFile = File(...), sesion: Session = Depends(obtener_sesion)):
@@ -68,25 +107,16 @@ def subir_evidencia(id_caso: int, archivo: UploadFile = File(...), sesion: Sessi
     with open(ruta_archivo_final, "wb") as buffer:
         shutil.copyfileobj(archivo.file, buffer)
         
-    print(f"API: Creando registro de evidencia para el archivo: {archivo.filename}")
     nueva_evidencia_db = Evidencia(
         id_caso=id_caso,
         ruta_archivo=str(ruta_archivo_final),
-        estado="encolado" 
+        estado="encolado",
+        nombre_archivo=archivo.filename 
     )
     sesion.add(nueva_evidencia_db)
     sesion.commit()
     sesion.refresh(nueva_evidencia_db)
 
-    print(f"API: Encolando tarea en Celery para evidencia ID: {nueva_evidencia_db.id}")
     procesar_evidencia_tarea.delay(nueva_evidencia_db.id)
 
     return nueva_evidencia_db
-
-@router_casos.get("/evidencias/{id_evidencia}/estado", response_model=dict)
-def obtener_estado_evidencia(id_evidencia: int, sesion: Session = Depends(obtener_sesion)):
-    evidencia = sesion.get(Evidencia, id_evidencia)
-    if not evidencia:
-        raise HTTPException(status_code=404, detail="La evidencia no fue encontrada")
-    
-    return {"estado": evidencia.estado, "reporte": evidencia.reporte_analisis}

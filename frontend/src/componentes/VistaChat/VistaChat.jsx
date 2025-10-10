@@ -1,108 +1,97 @@
+
+//frontend\src\componentes\VistaChat\VistaChat.jsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import { chatearConAgente } from '../../servicios/api';
 import './VistaChat.css';
 
+const Sugerencias = ({ onSugerenciaClick }) => (
+  <div className="contenedor-sugerencias">
+    <button onClick={() => onSugerenciaClick("¿Qué servicios ofrecen?")} className="boton-sugerencia">¿Qué servicios ofrecen?</button>
+    <button onClick={() => onSugerenciaClick("¿Tiene algún costo?")} className="boton-sugerencia">¿Tiene algún costo?</button>
+    <button onClick={() => onSugerenciaClick("¿Cuál es el horario?")} className="boton-sugerencia">¿Cuál es el horario?</button>
+  </div>
+);
+
 function VistaChat({ onIniciarCaso }) {
-  // ... (Docstring y estados iniciales se mantienen) ...
   const [mensajes, setMensajes] = useState([
-    { autor: 'agente', texto: '¡Hola! Soy tu Asistente Legal virtual. Estoy aqui para responder tus preguntas sobre el Consultorio Juridico. ¿En que puedo ayudarte?' }
+    { autor: 'agente', texto: '¡Hola! Soy el Asistente Legal virtual. Estoy aquí para resolver tus dudas sobre el Consultorio Jurídico.' }
   ]);
   const [entradaUsuario, setEntradaUsuario] = useState('');
   const [estaEscribiendo, setEstaEscribiendo] = useState(false);
-  const [mostrarBotonIniciarCaso, setMostrarBotonIniciarCaso] = useState(false);
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(true);
   
   const finalDeMensajesRef = useRef(null);
-  const textareaRef = useRef(null); // Ref para el textarea
+  const textareaRef = useRef(null);
 
-  // Efecto para el scroll automatico
   useEffect(() => {
     finalDeMensajesRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [mensajes]);
 
-  // --- NUEVO EFECTO PARA EL TEXTAREA AUTO-EXPANDIBLE ---
+  // ==============================================================================
+  // LA LOGICA DEFINITIVA PARA CRECIMIENTO Y ENCOGIMIENTO DINAMICO
+  // ==============================================================================
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
-      textarea.style.height = 'auto'; // Resetea la altura
-      textarea.style.height = `${textarea.scrollHeight}px`; // Ajusta a la altura del contenido
+      // 1. Resetea la altura para permitir que se encoja
+      textarea.style.height = 'auto';
+      // 2. Establece la nueva altura segun el contenido
+      const nuevaAltura = Math.min(textarea.scrollHeight, 150); // 150px es el max-height del CSS
+      textarea.style.height = `${nuevaAltura}px`;
+
+      // 3. Activa el scroll si el contenido es mayor que la altura maxima
+      textarea.style.overflowY = textarea.scrollHeight > 150 ? 'auto' : 'hidden';
     }
-  }, [entradaUsuario]);
+  }, [entradaUsuario]); // Se ejecuta cada vez que el usuario escribe
 
-  const manejarEnvio = async (evento) => {
-    // Previene el comportamiento por defecto si viene de un 'form'
-    if (evento) evento.preventDefault(); 
-    
-    const textoPregunta = entradaUsuario.trim();
-    if (!textoPregunta) return;
+  const enviarMensaje = async (textoPregunta) => {
+    if (!textoPregunta.trim()) return;
+    if (mostrarSugerencias) setMostrarSugerencias(false);
 
-    setMensajes(mensajesAnteriores => [...mensajesAnteriores, { autor: 'usuario', texto: textoPregunta }]);
+    setMensajes(anteriores => [...anteriores, { autor: 'usuario', texto: textoPregunta }]);
     setEntradaUsuario('');
     setEstaEscribiendo(true);
-    setMostrarBotonIniciarCaso(false); // Oculta el boton al enviar nueva pregunta
 
     const textoRespuesta = await chatearConAgente(textoPregunta);
-
-    // --- LOGICA DEL BOTON MEJORADA ---
-    // El agente de IA debe incluir la señal [INICIAR_CASO] cuando el flujo
-    // deba continuar a la creacion del caso.
-    let respuestaLimpia = textoRespuesta;
-    if (textoRespuesta.includes("[INICIAR_CASO]")) {
-        setMostrarBotonIniciarCaso(true);
-        // Limpiamos la señal para no mostrarla al usuario.
-        respuestaLimpia = textoRespuesta.replace("[INICIAR_CASO]", "").trim();
-    }
     
-    setMensajes(mensajesAnteriores => [...mensajesAnteriores, { autor: 'agente', texto: respuestaLimpia }]);
+    setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: textoRespuesta }]);
     setEstaEscribiendo(false);
   };
 
-  // --- NUEVO MANEJADOR PARA ENVIO CON "ENTER" ---
-  const manejarKeyDown = (evento) => {
-    if (evento.key === 'Enter' && !evento.shiftKey) {
-      evento.preventDefault();
-      manejarEnvio();
-    }
-  };
+  const manejarEnvioFormulario = (e) => { e.preventDefault(); enviarMensaje(entradaUsuario); };
+  const manejarClickSugerencia = (texto) => { enviarMensaje(texto); };
 
   return (
     <div className="contenedor-chat">
       <div className="historial-mensajes">
-        {/* ... (mapeo de mensajes igual que antes) ... */}
         {mensajes.map((mensaje, indice) => (
           <div key={indice} className={`mensaje ${mensaje.autor}`}>
             <p>{mensaje.texto}</p>
           </div>
         ))}
-        {estaEscribiendo && (
-          <div className="mensaje agente">
-            <p className="indicador-escribiendo"><span>.</span><span>.</span><span>.</span></p>
-          </div>
-        )}
+        {mostrarSugerencias && <Sugerencias onSugerenciaClick={manejarClickSugerencia} />}
+        {estaEscribiendo && <div className="mensaje agente"><p>...</p></div>}
         <div ref={finalDeMensajesRef} />
       </div>
 
-      {mostrarBotonIniciarCaso && (
-        <div className="contenedor-acciones-chat">
-          <button onClick={onIniciarCaso} className="boton-iniciar-caso">
-            Iniciar Creacion de Caso
-          </button>
+      <div className="area-acciones-chat">
+        <form className="formulario-chat" onSubmit={manejarEnvioFormulario}>
+          <textarea
+            ref={textareaRef}
+            value={entradaUsuario}
+            onChange={(e) => setEntradaUsuario(e.target.value)}
+            placeholder="Escribe tu pregunta aqui..."
+            disabled={estaEscribiendo}
+            rows={1}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); manejarEnvioFormulario(e); } }}
+          />
+          <button type="submit" disabled={estaEscribiendo || !entradaUsuario.trim()}>Enviar</button>
+        </form>
+        <div className="contenedor-iniciar-caso">
+          <button onClick={onIniciarCaso} className="boton-principal-iniciar">Tengo un caso y quiero registrarlo</button>
         </div>
-      )}
-
-      <form className="formulario-chat" onSubmit={manejarEnvio}>
-        <textarea
-          ref={textareaRef}
-          value={entradaUsuario}
-          onChange={(e) => setEntradaUsuario(e.target.value)}
-          onKeyDown={manejarKeyDown}
-          placeholder="Escribe tu pregunta aqui..."
-          disabled={estaEscribiendo}
-          rows={1} // Empezamos con una sola fila
-        />
-        <button type="submit" disabled={estaEscribiendo || !entradaUsuario.trim()}>
-          Enviar
-        </button>
-      </form>
+      </div>
     </div>
   );
 }

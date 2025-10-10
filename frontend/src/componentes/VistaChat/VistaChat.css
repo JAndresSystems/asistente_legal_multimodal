@@ -1,173 +1,80 @@
-/* ============================================================================== */
-/* Contenedor Principal del Chat                                                  */
-/* ============================================================================== */
+/* Contenedor Principal (Centrado por App.css) */
 .contenedor-chat {
   width: 100%;
-  max-width: 700px;
-  margin: 2rem auto;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  max-width: 8000px;
   display: flex;
   flex-direction: column;
-  height: 70vh;
-  background-color: #f9f9f9;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  height: 80vh;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-/* ============================================================================== */
-/* Historial de Mensajes                                                          */
-/* ============================================================================== */
+/* Historial de Mensajes (Diseño Estable) */
 .historial-mensajes {
   flex-grow: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 30px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
 }
 
-.mensaje {
-  display: flex;
-  max-width: 80%;
-}
+.mensaje { display: flex; max-width: 85%; }
+.mensaje p { padding: 12px 18px; border-radius: 20px; margin: 0; line-height: 1.6; font-size: 15px; text-align: left; }
+.mensaje.agente { align-self: flex-start; }
+.mensaje.agente p { background-color: #f1f3f4; color: #202124; }
+.mensaje.usuario { align-self: flex-end; }
+.mensaje.usuario p { background-color: #1a73e8; color: white; }
 
-.mensaje p {
-  padding: 12px 18px;
-  border-radius: 20px;
-  margin: 0;
-  line-height: 1.5;
-  color: #333;
-}
-
-/* Estilos para los mensajes del agente */
-.mensaje.agente {
-  align-self: flex-start;
-}
-
-.mensaje.agente p {
-  background-color: #e9e9eb;
-  border-bottom-left-radius: 4px;
-}
-
-/* Estilos para los mensajes del usuario */
-.mensaje.usuario {
-  align-self: flex-end;
-}
-
-.mensaje.usuario p {
-  background-color: #007aff;
-  color: white;
-  border-bottom-right-radius: 4px;
-}
-
-/* =... (Estilos anteriores se mantienen) ... */
+.contenedor-sugerencias { display: flex; gap: 10px; flex-wrap: wrap; align-self: flex-start; padding-top: 10px; }
+.boton-sugerencia { background: none; border: 1px solid #ccc; color: #3c4043; padding: 6px 12px; border-radius: 16px; cursor: pointer; }
 
 /* ============================================================================== */
-/* Formulario de Entrada de Texto (MODIFICADO PARA TEXTAREA)                      */
+/* Area de Acciones y Textarea (LA CORRECCION DEFINITIVA)                         */
 /* ============================================================================== */
+.area-acciones-chat {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e8e8e8;
+  background-color: #fcfcfc;
+  flex-shrink: 0;
+}
+
 .formulario-chat {
   display: flex;
-  padding: 15px;
-  border-top: 1px solid #e0e0e0;
-  background-color: #fff;
-  align-items: flex-end; /* Alinea los items abajo para que el boton no se estire */
+  align-items: flex-end;
+  gap: 10px;
 }
 
-/* REEMPLAZAMOS INPUT CON TEXTAREA */
 .formulario-chat textarea {
   flex-grow: 1;
   border: 1px solid #ccc;
   border-radius: 20px;
-  padding: 10px 15px;
+  padding: 14px 18px; /* Para que sea "gordita" */
   font-size: 16px;
   font-family: inherit;
-  line-height: 1.4;
+  line-height: 1.5;
   outline: none;
-  transition: border-color 0.2s;
-  resize: none; /* Deshabilitamos el redimensionamiento manual */
-  overflow-y: hidden; /* Ocultamos la barra de scroll vertical */
-  min-height: 24px; /* Altura minima de una linea */
+  resize: none;
+  box-sizing: border-box;
+  overflow-y: hidden;  /* El scroll se gestionara con JS y max-height */
+  transition: height 0.2s ease; /* Transicion suave */
 }
 
-.formulario-chat textarea:focus {
-  border-color: #007aff;
-}
-
-.formulario-chat textarea:disabled {
-  background-color: #f0f0f0;
-}
+.formulario-chat textarea:focus { border-color: #1a73e8; }
 
 .formulario-chat button {
-/* ... (El resto de los estilos del boton y demas se mantienen igual) ... */
-  margin-left: 10px;
+  flex-shrink: 0;
   padding: 10px 20px;
   border: none;
-  background-color: #007aff;
+  background-color: #1a73e8;
   color: white;
   border-radius: 20px;
   cursor: pointer;
-  font-size: 16px;
-  transition: background-color 0.2s;
-  align-self: flex-end; /* Mantiene el boton alineado abajo */
-  margin-bottom: 2px; /* Pequeño ajuste de alineacion */
+  height: 52px;
 }
+.formulario-chat button:disabled { background-color: #a0c7e4; }
 
-.formulario-chat button:hover {
-  background-color: #0056b3;
-}
-
-.formulario-chat button:disabled {
-  background-color: #a0c7e4;
-  cursor: not-allowed;
-}
-
-
-
-/* ============================================================================== */
-/* Boton para Iniciar Caso y Animacion de "Escribiendo..."                       */
-/* ============================================================================== */
-.contenedor-acciones-chat {
-  padding: 0 20px 20px 20px;
-  background-color: #f9f9f9;
-  text-align: center;
-}
-
-.boton-iniciar-caso {
-  padding: 12px 25px;
-  border: none;
-  background-color: #28a745;
-  color: white;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
-  transition: background-color 0.2s;
-}
-
-.boton-iniciar-caso:hover {
-  background-color: #218838;
-}
-
-.indicador-escribiendo span {
-  animation-name: blink;
-  animation-duration: 1.4s;
-  animation-iteration-count: infinite;
-  animation-fill-mode: both;
-  margin: 0 1px;
-}
-
-.indicador-escribiendo span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.indicador-escribiendo span:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes blink {
-  0% { opacity: 0.2; }
-  20% { opacity: 1; }
-  100% { opacity: 0.2; }
-}
-
-
+.contenedor-iniciar-caso { margin-top: 1rem; }
+.boton-principal-iniciar { width: 100%; padding: 14px; border: none; background-color: #1a73e8; color: white; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }

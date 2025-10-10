@@ -1,74 +1,36 @@
-/* frontend/src/App.css */
-.app-contenedor {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background-color: #f4f7f6;
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: #f0f2f5;
+}
+
+.aplicacion-principal {
+  min-height: 100vh;
 }
 
 .app-header {
-  background-color: #004085;
+  background-color: #003366;
+  padding: 1rem 2rem;
   color: white;
-  padding: 1rem 2rem;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  flex-shrink: 0; /* Evita que el header se encoja */
 }
 
-.app-navegacion {
-  background-color: #fff;
-  border-bottom: 1px solid #dee2e6;
-  display: flex;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  flex-shrink: 0;
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
 }
 
-.app-navegacion button {
-  padding: 1rem 2rem;
-  font-size: 1rem;
-  font-weight: 500;
-  border: none;
-  background: none;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  color: #495057;
-}
-
-.app-navegacion button.activo {
-  color: #004085;
-  border-bottom-color: #004085;
-}
-
+/* ============================================================================== */
+/* LA ESTRATEGIA DE CENTRADO DEFINITIVA CON GRID                                  */
+/* ============================================================================== */
 .app-contenido {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 2rem;
+  display: grid;
+  /* Crea 3 columnas: [espacio flexible] [contenido principal] [espacio flexible] */
+  grid-template-columns: 1fr minmax(auto, 12000px) 1fr;
+  padding: 2rem 1rem;
 }
 
-.vista-chat-contenedor {
-  max-width: 900px;
-  margin: 0 auto;
-}
-.vista-chat-contenedor .contenedor-chat {
-  height: 75vh;
-}
-
-.vista-casos-layout {
-  display: flex;
-  gap: 2rem;
-  height: 100%;
-}
-
-.columna-izquierda {
-  flex: 1;
-  min-width: 350px;
-  max-width: 450px;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.columna-derecha {
-  flex: 2;
-  min-width: 500px;
+.app-contenido > * {
+  /* Fuerza al componente hijo (el chat, el formulario, etc.) a ocupar la columna del medio */
+  grid-column: 2;
 }
