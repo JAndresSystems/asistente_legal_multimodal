@@ -1,3 +1,4 @@
+//C:\react\asistente_legal_multimodal\frontend\src\componentes\VistaProgresoAnalisis\VistaProgresoAnalisis.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { obtenerDetallesCaso } from '../../servicios/api';
 import './VistaProgresoAnalisis.css';
@@ -75,7 +76,7 @@ function VistaProgresoAnalisis({ casoId, onAnalisisCompletado }) {
         {evidencias.length > 0 ? (
           evidencias.map(evidencia => (
             <li key={evidencia.id} className="item-evidencia">
-              <span className="nombre-evidencia">{evidencia.ruta_archivo.split('\\').pop().split('/').pop()}</span>
+              <span className="nombre-evidencia">{evidencia.nombre_archivo || 'Archivo sin nombre'}</span>
               <span className={`estado-evidencia ${evidencia.estado}`}>
                 <IconoEstado estado={evidencia.estado} />
                 {evidencia.estado}

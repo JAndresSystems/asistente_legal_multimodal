@@ -1,115 +1,133 @@
-/* ============================================================================== */
-/* Contenedor Principal del Reporte                                               */
-/* ============================================================================== */
+/* frontend/src/componentes/VistaReporteFinal/VistaReporteFinal.css */
+
 .vista-reporte-contenedor {
-  width: 100%;
-  max-width: 900px;
-  margin: 2rem auto;
-  padding: 25px 30px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    box-sizing: border-box;
+    font-family: sans-serif;
 }
 
 .vista-reporte-contenedor h3 {
-  margin-top: 0;
-  margin-bottom: 25px;
-  font-size: 22px;
-  color: #333;
-  text-align: center;
+    text-align: center;
+    color: #333;
+    margin-bottom: 10px;
 }
 
-/* ============================================================================== */
-/* Estructura del Acordeon                                                        */
-/* ============================================================================== */
+.vista-reporte-contenedor p {
+    text-align: center;
+    color: #666;
+    margin-bottom: 25px;
+}
+
 .acordeon-contenedor {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+    margin-top: 20px;
 }
 
 .item-acordeon {
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  overflow: hidden; /* Para que los bordes redondeados afecten a los hijos */
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    overflow: hidden;
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .cabecera-acordeon {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  background-color: #f7f7f7;
-  cursor: pointer;
-  border-bottom: 1px solid #ddd;
-}
-
-.cabecera-acordeon.activo {
-  background-color: #e9f5ff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f9f9f9;
+    padding: 15px 20px;
+    cursor: pointer;
+    font-weight: bold;
 }
 
 .cabecera-acordeon:hover {
-  background-color: #f0f0f0;
+    background-color: #f0f0f0;
 }
 
 .titulo-evidencia {
-  font-weight: bold;
-  color: #333;
+    font-size: 1.1em;
+    color: #333;
 }
 
 .icono-acordeon {
-  font-size: 20px;
-  transition: transform 0.3s ease;
+    transition: transform 0.3s ease-in-out;
+    font-size: 0.8em;
 }
 
 .icono-acordeon.abierto {
-  transform: rotate(90deg);
+    transform: rotate(90deg);
 }
 
 .panel-acordeon {
-  padding: 20px;
-  background-color: #fff;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease, padding 0.3s ease;
+    max-height: 0;
+    overflow-y: auto;
+    transition: max-height 0.4s ease-out, padding 0.3s ease-in-out;
+    background-color: #fff;
+    padding: 0 20px;
 }
 
 .panel-acordeon.abierto {
-  max-height: 1000px; /* Un valor grande para permitir cualquier contenido */
-  padding: 20px;
+    max-height: 600px;
+    padding: 20px;
+    border-top: 1px solid #e0e0e0;
 }
 
-/* ============================================================================== */
-/* Contenido del Reporte Estructurado                                             */
-/* ============================================================================== */
 .seccion-reporte {
-  margin-bottom: 20px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 15px;
+    margin-bottom: 20px;
 }
 
 .seccion-reporte:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-  padding-bottom: 0;
+    margin-bottom: 0;
 }
 
 .titulo-seccion {
-  font-size: 16px;
-  font-weight: bold;
-  color: #0056b3;
-  margin-top: 0;
-  margin-bottom: 10px;
-  text-transform: capitalize;
+    color: #0056b3;
+    text-transform: capitalize;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    font-size: 1.2em;
 }
 
-.detalle-reporte {
-  white-space: pre-wrap; /* Respeta los saltos de linea y espacios */
-  font-family: 'Courier New', Courier, monospace;
-  background-color: #f5f5f5;
-  padding: 10px;
-  border-radius: 4px;
-  font-size: 14px;
-  line-height: 1.6;
+.contenido-json-legible p {
+    margin: 0 0 12px 0;
+    line-height: 1.6;
+    font-size: 0.95em;
+    text-align: left;
 }
+
+.contenido-json-legible strong {
+    color: #333;
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.contenido-texto-plano {
+    line-height: 1.6;
+    white-space: pre-wrap;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 15px;
+    color: #333;
+    text-align: left;
+}
+
+/* ====================================================================== */
+/* INICIO DE LA CORRECCION: Anulacion del Bug de Impresion (PDF) */
+/* ====================================================================== */
+/* Esta regla le dice al navegador que, si entra en modo de impresion,
+   oculte este componente por completo. Esto evita que un estilo global
+   defectuoso fuerce la aparicion del dialogo de impresion. */
+@media print {
+  .vista-reporte-contenedor {
+    display: none !important;
+  }
+}
+/* ====================================================================== */
+/* FIN DE LA CORRECCION */
+/* ====================================================================== */

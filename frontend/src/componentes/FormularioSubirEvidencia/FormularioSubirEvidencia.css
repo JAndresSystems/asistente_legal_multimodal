@@ -12,12 +12,17 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-.formulario-subir-evidencia-contenedor h3 {
+.formulario-subir-evidencia-contenedor h3,
+.formulario-subir-evidencia-contenedor h4 {
   margin-top: 0;
   margin-bottom: 20px;
   font-size: 22px;
   color: #333;
   text-align: center;
+}
+
+.formulario-subir-evidencia-contenedor h4 {
+  font-size: 18px;
 }
 
 /* ============================================================================== */
@@ -49,6 +54,71 @@
 }
 
 /* ============================================================================== */
+/* INICIO DE LA MODIFICACION: Estilos para la seccion de grabacion de audio */
+/* ============================================================================== */
+.area-de-grabacion {
+  text-align: center;
+  padding: 20px 0;
+  margin-bottom: 20px;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+}
+
+.texto-grabacion {
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.boton-grabar, .boton-detener {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 15px;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.boton-grabar:active, .boton-detener:active {
+  transform: scale(0.98);
+}
+
+.boton-grabar {
+    background-color: #28a745;
+}
+
+.boton-grabar:hover {
+    background-color: #218838;
+}
+
+.boton-detener {
+    background-color: #dc3545;
+}
+
+.boton-detener:hover {
+    background-color: #c82333;
+}
+
+.reproductor-audio {
+    margin-top: 20px;
+}
+
+.reproductor-audio p {
+    font-size: 14px;
+    color: #333;
+}
+
+.reproductor-audio audio {
+    width: 100%;
+    max-width: 400px;
+    margin-top: 10px;
+}
+/* ============================================================================== */
+/* FIN DE LA MODIFICACION */
+/* ============================================================================== */
+
+/* ============================================================================== */
 /* Lista de Archivos Seleccionados                                                */
 /* ============================================================================== */
 .lista-archivos-seleccionados {
@@ -73,7 +143,6 @@
 .nombre-archivo {
   font-size: 14px;
   color: #333;
-  /* Evita que el texto largo rompa el layout */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -133,7 +202,7 @@
 
 .barra-progreso {
   height: 100%;
-  width: 0; /* Se actualizara con JS */
+  width: 0;
   background-color: #007aff;
   transition: width 0.3s ease-in-out;
 }

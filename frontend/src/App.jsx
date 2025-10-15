@@ -1,41 +1,30 @@
-//C:\react\asistente_legal_multimodal\frontend\src\App.jsx
+// frontend/src/App.jsx
+
 import React, { useState } from 'react';
 import './App.css';
 
-// ==============================================================================
-// Importacion de Todos los Componentes Reales
-// ==============================================================================
 import VistaChat from './componentes/VistaChat/VistaChat';
-import FormularioCrearCaso from './componentes/FormularioCrearCaso/FormularioCrearCaso';
 import FormularioSubirEvidencia from './componentes/FormularioSubirEvidencia/FormularioSubirEvidencia';
 import VistaProgresoAnalisis from './componentes/VistaProgresoAnalisis/VistaProgresoAnalisis';
 import VistaReporteFinal from './componentes/VistaReporteFinal/VistaReporteFinal';
 
-
-// ==============================================================================
-// Componente Principal de la Aplicacion (El Cerebro del Wizard)
-// ==============================================================================
-
 function App() {
-  /**
-   * """
-   * Docstring:
-   * El componente App es el orquestador principal de la interfaz de usuario.
-   * Gestiona la vista activa y el estado global simple (como el ID del caso),
-   * guiando al usuario a traves del flujo completo de la aplicacion.
-   * """
-   */
-
   const [vistaActual, setVistaActual] = useState('VISTA_CHAT');
   const [casoId, setCasoId] = useState(null);
+  
+  // ==============================================================================
+  // INICIO DE LA MODIFICACION: Nuevo estado para controlar el agente activo en el chat
+  // ==============================================================================
+  const [agenteActivo, setAgenteActivo] = useState('recepcionista'); // 'recepcionista' o 'triaje'
+  // ==============================================================================
+  // FIN DE LA MODIFICACION
+  // ==============================================================================
 
-  // ----------------------------------------------------------------------------
-  // Manejadores de Flujo
-  // ----------------------------------------------------------------------------
   const manejarCasoCreado = (idDelNuevoCaso) => {
     console.log("APP: Caso creado con ID:", idDelNuevoCaso);
     setCasoId(idDelNuevoCaso);
-    setVistaActual('VISTA_SUBIR_EVIDENCIA');
+    // Ahora, en lugar de cambiar de vista, le decimos al chat que pida las evidencias
+    setAgenteActivo('triaje_evidencias'); 
   };
 
   const manejarSubidaCompletada = () => {
@@ -48,19 +37,40 @@ function App() {
     setVistaActual('VISTA_REPORTE_FINAL');
   };
 
-  // ----------------------------------------------------------------------------
-  // Renderizado Condicional de Vistas
-  // ----------------------------------------------------------------------------
+  // ==============================================================================
+  // INICIO DE LA MODIFICACION: Cambiamos la logica de iniciar caso
+  // ==============================================================================
+  const manejarInicioDeTriaje = () => {
+      console.log("APP: El usuario quiere registrar un caso. Cambiando a agente de triaje.");
+      setAgenteActivo('triaje_descripcion');
+      // Importante: No cambiamos de 'vistaActual', nos mantenemos en el chat.
+  };
+  // ==============================================================================
+  // FIN DE LA MODIFICACION
+  // ==============================================================================
+
+
   const renderizarVistaActual = () => {
     switch (vistaActual) {
       case 'VISTA_CHAT':
-        return <VistaChat onIniciarCaso={() => setVistaActual('VISTA_CREAR_CASO')} />;
+        // ==================================================================
+        // INICIO DE LA MODIFICACION: Pasamos el nuevo estado y manejadores a VistaChat
+        // ==================================================================
+        return (
+          <VistaChat 
+            agenteInicial={agenteActivo}
+            casoIdActual={casoId}
+            onIniciarTriaje={manejarInicioDeTriaje}
+            onCasoCreado={manejarCasoCreado}
+            onSubidaCompletada={manejarSubidaCompletada}
+          />
+        );
+        // ==================================================================
+        // FIN DE LA MODIFICACION
+        // ==================================================================
       
-      case 'VISTA_CREAR_CASO':
-        return <FormularioCrearCaso onCasoCreado={manejarCasoCreado} />;
-      
-      case 'VISTA_SUBIR_EVIDENCIA':
-        return <FormularioSubirEvidencia casoId={casoId} onSubidaCompletada={manejarSubidaCompletada} />;
+      // La vista para crear caso y subir evidencia por separado ya no se usaran en este flujo.
+      // Las mantendremos por ahora, pero la logica se movera a VistaChat.
       
       case 'VISTA_PROGRESO_ANALISIS':
         return <VistaProgresoAnalisis casoId={casoId} onAnalisisCompletado={manejarAnalisisCompletado} />;
@@ -69,7 +79,7 @@ function App() {
         return <VistaReporteFinal casoId={casoId} />;
       
       default:
-        return <VistaChat onIniciarCaso={() => setVistaActual('VISTA_CREAR_CASO')} />;
+        return <VistaChat agenteInicial={'recepcionista'} onIniciarTriaje={manejarInicioDeTriaje} />;
     }
   };
 

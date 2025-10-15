@@ -1,41 +1,25 @@
+// frontend/src/componentes/FormularioSubirEvidencia/FormularioSubirEvidencia.jsx
+
 import React, { useState, useRef } from 'react';
 import { subirEvidencia } from '../../servicios/api';
 import './FormularioSubirEvidencia.css';
 
 function FormularioSubirEvidencia({ casoId, onSubidaCompletada }) {
-  /**
-   * """
-   * Docstring:
-   * Gestiona la seleccion y subida de multiples archivos de evidencia
-   * para un caso especifico.
-   *
-   * Args:
-   *   casoId (number): El ID del caso al que se asociaran las evidencias.
-   *   onSubidaCompletada (function): Callback que se ejecuta cuando todos
-   *                                 los archivos se han subido con exito.
-   *
-   * Returns:
-   *   (JSX.Element): La interfaz de usuario para la subida de archivos.
-   * """
-   */
-
-  // ----------------------------------------------------------------------------
-  // Referencias y Estado
-  // ----------------------------------------------------------------------------
   const inputArchivoRef = useRef(null);
   const [archivosSeleccionados, setArchivosSeleccionados] = useState([]);
   const [estaSubiendo, setEstaSubiendo] = useState(false);
   const [progreso, setProgreso] = useState({ actual: 0, total: 0 });
   const [mensaje, setMensaje] = useState('');
 
-  // ----------------------------------------------------------------------------
-  // Manejadores de Eventos
-  // ----------------------------------------------------------------------------
+  // Estados y Referencias para la grabacion de audio
+  const [grabando, setGrabando] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const mediaRecorderRef = useRef(null);
+  const chunksDeAudioRef = useRef([]);
 
   const manejarClickZona = () => inputArchivoRef.current.click();
 
   const manejarSeleccionArchivos = (evento) => {
-    // Convertimos el FileList a un Array y lo añadimos al estado
     setArchivosSeleccionados(prev => [...prev, ...Array.from(evento.target.files)]);
   };
 
@@ -59,18 +43,64 @@ function FormularioSubirEvidencia({ casoId, onSubidaCompletada }) {
         setMensaje(`Error al subir ${archivo.name}. Por favor, intentalo de nuevo.`);
         console.error("Error en subida de archivo:", error);
         setEstaSubiendo(false);
-        return; // Detenemos la subida si un archivo falla
+        return;
       }
     }
-
     setMensaje('¡Todas las evidencias se han subido correctamente!');
-    // Notificamos al padre que hemos terminado para que pueda avanzar
     onSubidaCompletada();
   };
 
-  // ----------------------------------------------------------------------------
-  // Renderizado
-  // ----------------------------------------------------------------------------
+  // Logica para la grabacion de audio
+  const iniciarGrabacion = async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorderRef.current = new MediaRecorder(stream);
+        
+        mediaRecorderRef.current.ondataavailable = (evento) => {
+            chunksDeAudioRef.current.push(evento.data);
+        };
+        
+        mediaRecorderRef.current.onstop = () => {
+            // ==================================================================
+            // INICIO DE LA CORRECCION (BACKEND ERROR)
+            // Cambiamos el tipo a 'audio/mpeg' para mejorar compatibilidad con Gemini.
+            // ==================================================================
+            const audioBlob = new Blob(chunksDeAudioRef.current, { type: 'audio/mpeg' });
+            const url = URL.createObjectURL(audioBlob);
+            setAudioUrl(url);
+            
+            const fecha = new Date();
+            // Cambiamos la extension a .mp3 para que coincida con el tipo MIME.
+            const nombreArchivo = `grabacion-${fecha.getFullYear()}-${fecha.getMonth()+1}-${fecha.getDate()}.mp3`;
+            const archivoDeAudio = new File([audioBlob], nombreArchivo, { type: 'audio/mpeg' });
+            // ==================================================================
+            // FIN DE LA CORRECCION
+            // ==================================================================
+            
+            setArchivosSeleccionados(anteriores => [...anteriores, archivoDeAudio]);
+            chunksDeAudioRef.current = [];
+        };
+        
+        chunksDeAudioRef.current = [];
+        mediaRecorderRef.current.start();
+        setGrabando(true);
+        setAudioUrl(null);
+
+    } catch (error) {
+        console.error("Error al acceder al microfono:", error);
+        alert("No se pudo acceder al microfono. Por favor, verifica los permisos en tu navegador.");
+    }
+  };
+
+  const detenerGrabacion = () => {
+    mediaRecorderRef.current.stop();
+    setGrabando(false);
+  };
+
+  // ==============================================================================
+  // INICIO DE LA CORRECCION (FRONTEND LAYOUT)
+  // Restauramos la estructura y nombres de clases CSS originales.
+  // ==============================================================================
   return (
     <div className="formulario-subir-evidencia-contenedor">
       <h3>Paso 3: Adjuntar Evidencias para el Caso #{casoId}</h3>
@@ -86,6 +116,26 @@ function FormularioSubirEvidencia({ casoId, onSubidaCompletada }) {
       <div className="zona-seleccion-archivo" onClick={manejarClickZona}>
         <p>Arrastra tus archivos aquí o haz clic para seleccionarlos</p>
         <small>(PDF, JPG, PNG, MP3, WAV, etc.)</small>
+      </div>
+
+      {/* --- NUEVA SECCION DE GRABACION --- */}
+      <div className="area-de-grabacion">
+        <p className="texto-grabacion">O si prefieres, puedes grabar tu narracion de los hechos:</p>
+        {!grabando ? (
+            <button onClick={iniciarGrabacion} className="boton-grabar">
+                Iniciar Grabacion
+            </button>
+        ) : (
+            <button onClick={detenerGrabacion} className="boton-detener">
+                Detener Grabacion
+            </button>
+        )}
+        {audioUrl && (
+            <div className="reproductor-audio">
+                <p>Grabacion completada. Escuchala y luego presiona "Subir Archivo(s)".</p>
+                <audio src={audioUrl} controls />
+            </div>
+        )}
       </div>
 
       {archivosSeleccionados.length > 0 && (
@@ -130,6 +180,9 @@ function FormularioSubirEvidencia({ casoId, onSubidaCompletada }) {
       </div>
     </div>
   );
+  // ==============================================================================
+  // FIN DE LA CORRECCION
+  // ==============================================================================
 }
 
 export default FormularioSubirEvidencia;

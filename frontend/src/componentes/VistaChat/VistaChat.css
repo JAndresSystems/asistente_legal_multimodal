@@ -78,3 +78,80 @@
 
 .contenedor-iniciar-caso { margin-top: 1rem; }
 .boton-principal-iniciar { width: 100%; padding: 14px; border: none; background-color: #1a73e8; color: white; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+
+
+
+
+
+
+.area-acciones-chat {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e8e8e8;
+  background-color: #fcfcfc;
+  flex-shrink: 0;
+}
+
+
+/* ============================================================================== */
+/* INICIO DE LA MODIFICACION: Estilos para el nuevo subidor de evidencias */
+/* ============================================================================== */
+.area-subida-evidencias {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.lista-archivos-para-subir {
+  max-height: 100px;
+  overflow-y: auto;
+  background-color: #f1f3f4;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 14px;
+}
+
+.archivo-item {
+  padding: 5px;
+  border-bottom: 1px solid #e0e0e0;
+}
+.archivo-item:last-child {
+  border-bottom: none;
+}
+
+.botones-evidencia-contenedor {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.boton-accion-evidencia {
+  flex-grow: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  text-align: center;
+  font-weight: 500;
+}
+
+.boton-accion-evidencia.detener {
+  background-color: #dc3545;
+  color: white;
+}
+
+.boton-principal-subir {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  background-color: #28a745; /* Verde para la accion final */
+  color: white;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.boton-principal-subir:disabled {
+  background-color: #a3d9b1;
+}

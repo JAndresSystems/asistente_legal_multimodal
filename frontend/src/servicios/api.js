@@ -1,4 +1,7 @@
 /**
+ * frontend\src\servicios\api.js
+ * 
+ * 
  * """
  * Docstring:
  * Este modulo centraliza todas las funciones que interactuan con la API
@@ -78,9 +81,10 @@ export const subirEvidencia = async (idCaso, archivo) => {
   const formData = new FormData();
   formData.append("archivo", archivo);
 
-  console.log(`API: Subiendo archivo '${archivo.name}' para el caso ${idCaso}`);
+  console.log(`API: Subiendo archivo '${archivo.name}' para el caso ${idCaso} (sin analisis)...`);
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/casos/${idCaso}/evidencia`, {
+    // Este endpoint ahora solo guardara el archivo y no devolvera un analisis.
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/casos/${idCaso}/subir-evidencia-simple`, {
       method: 'POST',
       body: formData,
     });
@@ -88,9 +92,30 @@ export const subirEvidencia = async (idCaso, archivo) => {
     if (!respuesta.ok) {
       throw new Error(`Error del servidor: ${respuesta.status}`);
     }
-    return await respuesta.json();
+    // Solo nos interesa saber si la subida fue exitosa.
+    return { exito: true };
   } catch (error) {
     console.error("API: Error al subir la evidencia:", error);
+    throw error;
+  }
+};
+
+
+export const analizarCaso = async (idCaso, textoAdicional = "") => {
+  console.log(`API: Solicitando analisis para el caso ID: ${idCaso} con texto adicional: "${textoAdicional}"`);
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/casos/${idCaso}/analizar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // Enviamos el texto adicional en el cuerpo de la peticion
+      body: JSON.stringify({ texto_adicional_usuario: textoAdicional }),
+    });
+    if (!respuesta.ok) {
+      throw new Error(`Error del servidor: ${respuesta.status}`);
+    }
+    return await respuesta.json();
+  } catch (error) {
+    console.error(`API: Error al solicitar el analisis del caso ${idCaso}:`, error);
     throw error;
   }
 };
@@ -109,6 +134,7 @@ export const subirEvidencia = async (idCaso, archivo) => {
  *   (object): El objeto completo del caso con sus evidencias.
  * """
  */
+
 export const obtenerDetallesCaso = async (idCaso) => {
   console.log(`API: Solicitando detalles para el caso ID: ${idCaso}`);
   try {

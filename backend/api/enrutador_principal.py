@@ -8,7 +8,7 @@ from sqlmodel import Session
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import (
     Caso, CasoCreacion, Evidencia, CasoLecturaConEvidencias,
-    PreguntaChat, RespuestaChat
+    PreguntaChat, RespuestaChat,SolicitudAnalisis 
 )
 from ..tareas import procesar_evidencia_tarea
 # ==============================================================================
@@ -82,10 +82,10 @@ def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_ses
     sesion.refresh(nuevo_caso_db)
     return nuevo_caso_db
 
-@router_casos.get("", response_model=list[CasoLecturaConEvidencias])
-def listar_casos(sesion: Session = Depends(obtener_sesion)):
-    casos = sesion.query(Caso).all()
-    return casos
+# @router_casos.get("", response_model=list[CasoLecturaConEvidencias])
+# def listar_casos(sesion: Session = Depends(obtener_sesion)):
+#     casos = sesion.query(Caso).all()
+#     return casos
 
 @router_casos.get("/{id_caso}", response_model=CasoLecturaConEvidencias)
 def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion)):
@@ -94,8 +94,13 @@ def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion))
         raise HTTPException(status_code=404, detail="Caso no encontrado")
     return caso
 
-@router_casos.post("/{id_caso}/evidencia", response_model=Evidencia)
-def subir_evidencia(id_caso: int, archivo: UploadFile = File(...), sesion: Session = Depends(obtener_sesion)):
+@router_casos.post("/{id_caso}/subir-evidencia-simple", response_model=Evidencia)
+def subir_evidencia_simple(id_caso: int, archivo: UploadFile = File(...), sesion: Session = Depends(obtener_sesion)):
+    """
+    Docstring:
+    Sube un archivo de evidencia, lo guarda en disco y crea el registro en la BD.
+    NO inicia ninguna tarea de analisis. Es una operacion rapida.
+    """
     caso_actual = sesion.get(Caso, id_caso)
     if not caso_actual:
         raise HTTPException(status_code=404, detail="El caso no fue encontrado")
@@ -110,13 +115,44 @@ def subir_evidencia(id_caso: int, archivo: UploadFile = File(...), sesion: Sessi
     nueva_evidencia_db = Evidencia(
         id_caso=id_caso,
         ruta_archivo=str(ruta_archivo_final),
-        estado="encolado",
-        nombre_archivo=archivo.filename 
+        estado="subido", # Nuevo estado para indicar que solo esta guardado
+        nombre_archivo=archivo.filename
     )
     sesion.add(nueva_evidencia_db)
     sesion.commit()
     sesion.refresh(nueva_evidencia_db)
 
-    procesar_evidencia_tarea.delay(nueva_evidencia_db.id)
-
+    print(f"API: Archivo '{archivo.filename}' guardado para el Caso ID {id_caso}.")
+    
     return nueva_evidencia_db
+
+# 2. Nuevo endpoint para iniciar el analisis consolidado
+@router_casos.post("/{id_caso}/analizar")
+def analizar_caso_completo(id_caso: int, solicitud: SolicitudAnalisis, sesion: Session = Depends(obtener_sesion)):
+    """
+    Docstring:
+    Inicia la tarea de analisis consolidado para un caso, espera el resultado
+    y lo devuelve.
+    """
+    caso_actual = sesion.get(Caso, id_caso)
+    if not caso_actual:
+        raise HTTPException(status_code=404, detail="El caso no fue encontrado")
+    if not caso_actual.evidencias:
+        raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
+
+    print(f"API: Solicitud de analisis para el Caso ID {id_caso}. Encolando tarea...")
+    
+    # Llamamos a la tarea pasandole solo el ID del caso.
+    tarea_resultado = procesar_evidencia_tarea.delay(id_caso, solicitud.texto_adicional_usuario)
+    
+    print(f"API: Tarea encolada con ID {tarea_resultado.id}. Esperando resultado...")
+    
+    try:
+        estado_final = tarea_resultado.get(timeout=120)
+    except Exception as e:
+        print(f"API: Error esperando el resultado de la tarea: {e}")
+        raise HTTPException(status_code=504, detail="El analisis del caso tardo demasiado en responder.")
+
+    print(f"API: Analisis completado. Devolviendo estado final al frontend.")
+    
+    return estado_final

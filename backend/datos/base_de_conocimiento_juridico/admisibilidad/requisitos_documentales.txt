@@ -1,0 +1,33 @@
+GUIA DE EVIDENCIAS ESENCIALES POR TIPO DE CASO
+
+Esta guia es para el agente de triaje. Usala para determinar que documentos son necesarios para analizar la viabilidad de un caso.
+
+1.  REQUISITO UNIVERSAL:
+    - Siempre se debe tener el documento de identidad (cedula de ciudadania) del solicitante para verificar la identidad. Si no esta presente, es lo primero que se debe solicitar.
+
+2.  CASOS DE DERECHO LABORAL (Despidos, liquidaciones, acoso):
+    - Contrato de trabajo (si existe).
+    - Comprobantes de pago (desprendibles de nomina).
+    - Carta de despido (si aplica).
+    - Comunicaciones relevantes (correos, cartas, memorandos).
+    - Cedula de ciudadania.
+
+3.  CASOS DE DERECHO DE FAMILIA (Alimentos, custodia):
+    - Registro civil de nacimiento de los menores.
+    - Registro civil de matrimonio (si aplica).
+    - Actas de conciliacion previas (si existen).
+    - Pruebas de ingresos y gastos del demandado (si se tienen).
+    - Cedula de ciudadania de los padres/solicitantes.
+
+4.  CASOS DE DERECHO CIVIL / RESPONSABILIDAD (Accidentes, deudas, incumplimientos):
+    - Contratos o acuerdos firmados.
+    - Titulos valor (pagares, letras de cambio).
+    - Fotografias o videos del daño (para accidentes).
+    - Informe de accidente de transito (croquis).
+    - Facturas de reparaciones o gastos medicos.
+    - Cedula de ciudadania.
+
+5.  CASOS RELACIONADOS CON SERVICIOS PUBLICOS DOMICILIARIOS (Facturas, reclamos):
+    - Ultimas facturas del servicio publico en cuestion.
+    - Reclamaciones previas presentadas a la empresa.
+    - Cedula de ciudadania del propietario/suscriptor.

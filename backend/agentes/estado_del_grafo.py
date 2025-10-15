@@ -13,6 +13,8 @@ class EstadoDelGrafo(TypedDict):
     id_caso: int
     rutas_archivos_evidencia: List[str]
 
+    texto_adicional_usuario: Optional[str]
+
     # --- RESULTADOS DE LA CADENA DE PROCESAMIENTO ---
     resultado_triaje: Optional[Dict[str, Any]]
     

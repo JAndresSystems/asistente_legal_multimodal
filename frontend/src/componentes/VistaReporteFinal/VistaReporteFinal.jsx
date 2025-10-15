@@ -1,25 +1,54 @@
+// frontend/src/componentes/VistaReporteFinal/VistaReporteFinal.jsx
+
 import React, { useState, useEffect } from 'react';
 import { obtenerDetallesCaso } from '../../servicios/api';
 import './VistaReporteFinal.css';
 
-/**
- * """
- * Docstring:
- * Parsea el texto del reporte de analisis, que viene como un string
- * unico, y lo divide en un objeto con secciones basadas en etiquetas.
- *
- * Args:
- *   textoReporte (string): El string completo del reporte_analisis.
- *
- * Returns:
- *   (Object): Un objeto donde cada clave es el nombre de una seccion
- *             (ej. 'TRIAGE') y el valor es su contenido.
- * """
- */
+const RenderizadorContenido = ({ contenido }) => {
+    /**
+     * Docstring:
+     * Este componente es inteligente. Revisa si el contenido es un string JSON
+     * y lo formatea de forma legible. Si no, lo muestra como texto normal.
+     */
+    let contenidoParseado;
+    let esJson = false;
+    
+    try {
+        contenidoParseado = JSON.parse(contenido);
+        esJson = typeof contenidoParseado === 'object' && contenidoParseado !== null;
+    } catch (e) {
+      // ==================================================================
+      // INICIO DE LA CORRECCION DEFINITIVA
+      // Se reemplaza print() por console.log() para evitar el dialogo de impresion.
+      console.log("Error: ",e);
+      // ==================================================================
+      console.log("El contenido no es JSON, se mostrara como texto:", contenido);
+      // ==================================================================
+      // FIN DE LA CORRECCION DEFINITIVA
+      // ==================================================================
+        contenidoParseado = contenido;
+        esJson = false;
+    }
+
+    if (esJson) {
+        return (
+            <div className="contenido-json-legible">
+                {Object.entries(contenidoParseado).map(([llave, valor]) => (
+                    <p key={llave}>
+                        <strong>{llave.replace(/_/g, ' ').toUpperCase()}:</strong>
+                        {typeof valor === 'boolean' ? (valor ? 'Sí' : 'No') : String(valor)}
+                    </p>
+                ))}
+            </div>
+        );
+    }
+
+    return <pre className="contenido-texto-plano">{contenidoParseado}</pre>;
+};
+
 const parsearReporte = (textoReporte) => {
   if (!textoReporte) return {};
   const secciones = {};
-  // Expresion regular para encontrar todas las etiquetas [ETIQUETA]...[/ETIQUETA]
   const regex = /\[(.*?)\]([\s\S]*?)\[\/\1\]/g;
   let match;
   while ((match = regex.exec(textoReporte)) !== null) {
@@ -30,21 +59,9 @@ const parsearReporte = (textoReporte) => {
   return secciones;
 };
 
-
 function VistaReporteFinal({ casoId }) {
-  /**
-   * """
-   * Docstring:
-   * Muestra el reporte final y estructurado del analisis de todas las
-   * evidencias de un caso.
-   *
-   * Args:
-   *   casoId (number): El ID del caso del cual se mostrara el reporte.
-   * """
-   */
   const [caso, setCaso] = useState(null);
   const [cargando, setCargando] = useState(true);
-  const [acordeonActivo, setAcordeonActivo] = useState(null); // ID de la evidencia activa
 
   useEffect(() => {
     const cargarDatosDelCaso = async () => {
@@ -61,52 +78,33 @@ function VistaReporteFinal({ casoId }) {
     cargarDatosDelCaso();
   }, [casoId]);
 
-  const manejarClickAcordeon = (idEvidencia) => {
-    setAcordeonActivo(acordeonActivo === idEvidencia ? null : idEvidencia);
-  };
-
   if (cargando) {
     return <div className="vista-reporte-contenedor"><h3>Cargando reporte final...</h3></div>;
   }
 
-  if (!caso) {
-    return <div className="vista-reporte-contenedor"><h3>No se pudieron cargar los datos del caso.</h3></div>;
+  if (!caso || !caso.reporte_consolidado) {
+    return <div className="vista-reporte-contenedor"><h3>No se pudo generar el reporte para este caso.</h3></div>;
   }
+  
+  // Ahora parseamos el reporte consolidado del objeto 'caso'
+  const reporteParseado = parsearReporte(caso.reporte_consolidado);
 
   return (
     <div className="vista-reporte-contenedor">
       <h3>Paso 5: Reporte Final del Caso #{casoId}</h3>
-      <p>A continuacion se presenta el analisis detallado de cada una de las evidencias proporcionadas.</p>
+      <p>A continuacion se presenta el analisis detallado y consolidado de su caso.</p>
       
-      <div className="acordeon-contenedor">
-        {caso.evidencias.map((evidencia) => {
-          const estaAbierto = acordeonActivo === evidencia.id;
-          const reporteParseado = parsearReporte(evidencia.reporte_analisis);
-
-          return (
-            <div key={evidencia.id} className="item-acordeon">
-              <div 
-                className={`cabecera-acordeon ${estaAbierto ? 'activo' : ''}`}
-                onClick={() => manejarClickAcordeon(evidencia.id)}
-              >
-                <span className="titulo-evidencia">{evidencia.ruta_archivo.split('\\').pop().split('/').pop()}</span>
-                <span className={`icono-acordeon ${estaAbierto ? 'abierto' : ''}`}>&#9656;</span>
-              </div>
-              <div className={`panel-acordeon ${estaAbierto ? 'abierto' : ''}`}>
-                {Object.keys(reporteParseado).length > 0 ? (
-                  Object.entries(reporteParseado).map(([titulo, contenido]) => (
-                    <div key={titulo} className="seccion-reporte">
-                      <h4 className="titulo-seccion">{titulo.replace(/_/g, ' ')}</h4>
-                      <pre className="detalle-reporte">{contenido}</pre>
-                    </div>
-                  ))
-                ) : (
-                  <p>No se encontró un reporte estructurado para esta evidencia.</p>
-                )}
-              </div>
+      <div className="reporte-consolidado-contenido">
+        {Object.keys(reporteParseado).length > 0 ? (
+          Object.entries(reporteParseado).map(([titulo, contenido]) => (
+            <div key={titulo} className="seccion-reporte">
+              <h4 className="titulo-seccion">{titulo.replace(/_/g, ' ')}</h4>
+              <RenderizadorContenido contenido={contenido} />
             </div>
-          );
-        })}
+          ))
+        ) : (
+          <p>El reporte generado no tiene un formato estructurado reconocible.</p>
+        )}
       </div>
     </div>
   );

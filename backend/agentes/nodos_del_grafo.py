@@ -1,28 +1,104 @@
+# backend/agentes/nodos_del_grafo.py
+
 from sqlmodel import Session, select, func
 from typing import Dict, Any, Optional
 
 from .estado_del_grafo import EstadoDelGrafo
 from ..herramientas.herramientas_lenguaje import analizar_evidencia_con_gemini, generar_respuesta_texto
 from ..herramientas.herramienta_rag import buscar_en_base_de_conocimiento
-from ..herramientas.herramienta_documentos import generar_documento_desde_plantilla
-from ..base_de_datos import motor
-from ..api.modelos_compartidos import Estudiante, Asesor, Asignacion, Caso, Usuario
+from ..base_de_datos import motor # Eliminamos importaciones no usadas
+from ..api.modelos_compartidos import Estudiante, Asesor, Asignacion # Eliminamos importaciones no usadas
 
-# --- (Nodos 1, 2.A y 2.B permanecen igual) ---
 def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
-    print("--- Ejecutando Nodo: Agente de Triaje ---")
-    rutas_archivos = estado["rutas_archivos_evidencia"]
-    prompt_completo = """
-    ERES un asistente legal experto en admisibilidad. Tu unica funcion es devolver un JSON.
-    JSON: {"admisible": bool, "justificacion": "string", "hechos_clave": "string"}
-    REGLAS: Admisible si no es penal y es de bajos recursos.
-    Analiza la evidencia y responde.
     """
+    Docstring:
+    Este nodo actua como el primer filtro de admisibilidad formal, solicitando
+    informacion de forma gradual si es necesario.
+    """
+    print("\n--- [AGENTE TRIAJE] Iniciando ejecucion del nodo ---")
+    rutas_archivos = estado["rutas_archivos_evidencia"]
+    print(f"--- [AGENTE TRIAJE] Analizando evidencias: {rutas_archivos}")
+    texto_adicional = estado.get("texto_adicional_usuario", "")
+    print(f"--- [AGENTE TRIAJE] Analizando {len(rutas_archivos)} archivos y texto adicional: '{texto_adicional[:50]}...'")
+
+    try:
+        # Hacemos una consulta amplia para obtener todo el contexto de una vez.
+        consulta_contexto = "Cuales son las competencias y beneficiarios de los consultorios juridicos y cuales son las evidencias esenciales por tipo de caso?"
+        lista_contexto = buscar_en_base_de_conocimiento(
+            consulta=consulta_contexto,
+            area_competencia="admisibilidad"
+        )
+        # La variable se llama 'contexto_completo'
+        contexto_completo = "\n\n---\n\n".join(lista_contexto)
+        print(f"--- [AGENTE TRIAJE] Contexto legal y documental recuperado de RAG.")
+    except Exception as e:
+        print(f"--- [AGENTE TRIAJE] ERROR: Fallo al buscar en RAG 'admisibilidad': {e}")
+        contexto_completo = "Error: No se pudo recuperar la guia de documentos."
+
+    prompt_completo = f"""
+    ERES un abogado de triaje... Tu respuesta DEBE ser unicamente un objeto JSON.
+
+    --- CONTEXTO LEGAL Y GUIA DOCUMENTAL ---
+    {contexto_completo}
+    --- FIN DEL CONTEXTO ---
+
+    --- EVIDENCIA A ANALIZAR ---
+    1.  Archivos Adjuntos: {len(rutas_archivos)} archivo(s) proporcionado(s).
+    2.  Texto Adicional del Usuario: "{texto_adicional}"
+    --- FIN DE LA EVIDENCIA ---
+
+    REGLAS DE DECISION:
+    1.  EVALUA ADMISIBILIDAD: Determina si el caso es admisible segun la Ley 2113.
+    2.  VERIFICA SUFICIENCIA: Revisa si tienes los documentos esenciales para el tipo de caso, segun la "GUIA DE EVIDENCIAS ESENCIALES".
+
+    REGLAS DE SOLICITUD (MUY IMPORTANTE):
+    1.  PRIORIDAD MAXIMA: Si el documento de identidad (cedula) no esta presente entre las evidencias, PIDE UNICAMENTE LA CEDULA. Tu pregunta debe ser solo sobre eso.
+    2.  SOLICITUD GRADUAL: Si la cedula ya esta, pero faltan otros documentos importantes para el tipo de caso (ej. informe de transito para un accidente), PIDE SOLO LOS 2 DOCUMENTOS MAS IMPORTANTES que falten. No pidas mas de dos a la vez. Formula una sola pregunta clara.
+    3.  FINALIZACION: Si la cedula y los documentos mas importantes ya estan presentes, considera que la 'informacion_suficiente' es 'true'.
+
+    TAREA:
+    Analiza TODA la evidencia proporcionada (archivos y texto) y devuelve un objeto JSON con la siguiente estructura:
+    {{
+      "admisible": boolean,
+      "justificacion": "string (Explica tu decision de admisibilidad)",
+      "hechos_clave": "string (Resumen de los hechos)",
+      "informacion_suficiente": boolean,
+      "pregunta_para_usuario": "string (Si 'informacion_suficiente' es false, formula una pregunta siguiendo las 'REGLAS DE SOLICITUD'. Si es true, deja este campo vacio '')"
+    }}
+    """
+    
+    print("--- [AGENTE TRIAJE] Invocando LLM para analisis de admisibilidad...")
     resultado_analisis = analizar_evidencia_con_gemini(
         archivos_locales=rutas_archivos,
         prompt_usuario=prompt_completo
     )
+    print(f"--- [AGENTE TRIAJE] Analisis completado. Resultado: {resultado_analisis}")
     return {"resultado_triaje": resultado_analisis}
+
+
+# ==============================================================================
+# INICIO DE LA MODIFICACION: Nuevo nodo para solicitar mas informacion
+# ==============================================================================
+def nodo_solicitar_informacion_adicional(estado: EstadoDelGrafo) -> Dict[str, Any]:
+    """
+    Docstring:
+    Este nodo se activa cuando el Agente de Triaje determina que la
+    informacion no es suficiente. Su unica funcion es tomar la pregunta
+    generada por el triaje y prepararla para ser enviada de vuelta al usuario.
+    """
+    print("\n--- [AGENTE SOLICITUD] Iniciando ejecucion del nodo ---")
+    
+    pregunta_generada = estado.get("resultado_triaje", {}).get("pregunta_para_usuario", "")
+    
+    print(f"--- [AGENTE SOLICITUD] Se enviara la siguiente pregunta al usuario: '{pregunta_generada}'")
+    
+    # En un futuro, este nodo podria añadir la pregunta a una lista de mensajes
+    # para que el frontend la muestre en la interfaz de chat.
+    # Por ahora, simplemente actualizamos el estado.
+    return {"respuesta_para_usuario": pregunta_generada}
+# ==============================================================================
+# FIN DE LA MODIFICACION
+# ==============================================================================
 
 def nodo_agente_analizador_pdf(estado: EstadoDelGrafo) -> Dict[str, Any]:
     print("--- Ejecutando Nodo: Agente Analizador de PDFs ---")
@@ -52,8 +128,6 @@ def nodo_agente_analizador_audio(estado: EstadoDelGrafo) -> Dict[str, Any]:
     )
     return {"resultado_analisis_audio": resultado_analisis}
 
-
-# --- NODO 3: AGENTE DETERMINADOR DE COMPETENCIAS (PROMPT FINAL) ---
 def nodo_agente_determinador_competencias(estado: EstadoDelGrafo) -> Dict[str, Any]:
     print("--- Ejecutando Nodo: Agente Determinador de Competencias ---")
     hechos_clave_triaje = estado.get("resultado_triaje", {}).get("hechos_clave", "")
@@ -70,10 +144,7 @@ def nodo_agente_determinador_competencias(estado: EstadoDelGrafo) -> Dict[str, A
     )
     return {"resultado_determinador_competencias": resultado_clasificacion}
 
-
-# --- NODO 4: AGENTE REPARTIDOR (CON LOGICA DE ESCRITURA EN BD) ---
 def encontrar_persona_con_menos_carga(sesion: Session, modelo: Any, area: str) -> Optional[int]:
-    # ... (esta funcion auxiliar no cambia)
     declaracion = (
         select(modelo.id, func.count(Asignacion.id_caso).label("carga_trabajo"))
         .join(Asignacion, modelo.id == getattr(Asignacion, f"id_{modelo.__name__.lower()}"), isouter=True)
@@ -96,15 +167,12 @@ def nodo_agente_repartidor(estado: EstadoDelGrafo) -> Dict[str, Any]:
         id_estudiante = encontrar_persona_con_menos_carga(sesion_db, Estudiante, area_competencia)
         id_asesor = encontrar_persona_con_menos_carga(sesion_db, Asesor, area_competencia)
         
-        # --- INICIO DE LA CORRECCION FINAL ---
         if id_estudiante is not None and id_asesor is not None:
-            # 1. Crear la instancia de la asignacion
             nueva_asignacion = Asignacion(
                 id_caso=id_caso,
                 id_estudiante=id_estudiante,
                 id_asesor=id_asesor
             )
-            # 2. Añadir y confirmar en la base de datos
             sesion_db.add(nueva_asignacion)
             sesion_db.commit()
             mensaje_db = "Asignacion creada exitosamente en la base de datos."
@@ -112,7 +180,6 @@ def nodo_agente_repartidor(estado: EstadoDelGrafo) -> Dict[str, Any]:
         else:
             mensaje_db = "No se encontraron estudiantes o asesores disponibles en el area."
             print(f"-> ALERTA (DB): No se pudo realizar la asignacion para el caso {id_caso}.")
-        # --- FIN DE LA CORRECCION FINAL ---
 
     resultado = {
         "id_estudiante_asignado": id_estudiante, 
@@ -121,12 +188,8 @@ def nodo_agente_repartidor(estado: EstadoDelGrafo) -> Dict[str, Any]:
     }
     return {"resultado_repartidor": resultado}
 
-
-# --- (Agentes Juridico y Generador de Documentos permanecen igual) ---
 def nodo_agente_juridico(estado: EstadoDelGrafo) -> Dict[str, Any]:
-    # ...
     return {"resultado_agente_juridico": "Ejecucion omitida en este flujo."}
 
 def nodo_agente_generador_documentos(estado: EstadoDelGrafo) -> Dict[str, Any]:
-    # ...
     return {"resultado_agente_generador_documentos": "Ejecucion omitida en este flujo."}
