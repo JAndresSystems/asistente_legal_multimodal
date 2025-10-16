@@ -9,7 +9,8 @@ from .estado_del_grafo import EstadoDelGrafo
 # ==============================================================================
 from .nodos_del_grafo import (
     nodo_agente_triaje,
-    nodo_solicitar_informacion_adicional, # <-- Nuevo nodo importado
+    nodo_solicitar_informacion_adicional, 
+    nodo_preparar_respuesta_rechazo,
     nodo_agente_analizador_pdf,
     nodo_agente_analizador_audio,
     nodo_agente_determinador_competencias,
@@ -25,6 +26,7 @@ workflow = StateGraph(EstadoDelGrafo)
 # Añadimos todos los nodos, incluyendo el nuevo
 workflow.add_node("agente_triaje", nodo_agente_triaje)
 workflow.add_node("solicitar_informacion_adicional", nodo_solicitar_informacion_adicional)
+workflow.add_node("preparar_respuesta_rechazo", nodo_preparar_respuesta_rechazo)
 workflow.add_node("agente_analizador_pdf", nodo_agente_analizador_pdf)
 workflow.add_node("agente_analizador_audio", nodo_agente_analizador_audio)
 workflow.add_node("agente_determinador_competencias", nodo_agente_determinador_competencias)
@@ -43,28 +45,25 @@ def decision_despues_del_triaje(estado: EstadoDelGrafo) -> str:
     decide el siguiente paso basado en el resultado.
     
     1. Si la informacion es insuficiente, pide mas.
-    2. Si el caso no es admisible, termina el flujo.
+    2. Si el caso no es admisible, lo envia al nodo de rechazo.
     3. Si es admisible y la info es suficiente, lo envia al analizador correcto.
     """
     print("\n--- [ORQUESTADOR] Tomando decision despues del triaje ---")
     resultado_triaje = estado.get("resultado_triaje")
 
-    # Caso 1: El triaje no produjo un resultado valido. Terminamos por seguridad.
     if not resultado_triaje:
         print("--- [ORQUESTADOR] Decision: No hay resultado de triaje. Terminando.")
         return END
 
-    # Caso 2: La informacion NO es suficiente. Hay que preguntar al usuario.
     if not resultado_triaje.get("informacion_suficiente"):
         print("--- [ORQUESTADOR] Decision: Informacion insuficiente. Solicitando mas datos.")
         return "solicitar_informacion_adicional"
 
-    # Caso 3: La informacion es suficiente, pero el caso NO es admisible.
+    # AQUI ESTA EL CAMBIO: Si no es admisible, va al nodo de rechazo
     if not resultado_triaje.get("admisible"):
-        print("--- [ORQUESTADOR] Decision: Caso no admisible. Terminando.")
-        return END
+        print("--- [ORQUESTADOR] Decision: Caso no admisible. Preparando respuesta de rechazo.")
+        return "preparar_respuesta_rechazo"
         
-    # Caso 4: La informacion es suficiente y el caso es admisible. Continuamos al analisis.
     print("--- [ORQUESTADOR] Decision: Caso admisible. Enrutando a analizador por tipo de archivo.")
     ruta_archivo = estado["rutas_archivos_evidencia"][0]
     tipo_mime, _ = mimetypes.guess_type(ruta_archivo)
@@ -75,17 +74,16 @@ def decision_despues_del_triaje(estado: EstadoDelGrafo) -> str:
         if "audio" in tipo_mime or "mp3" in tipo_mime or "wav" in tipo_mime or "mpeg" in tipo_mime:
             return "agente_analizador_audio"
             
-    # Si no es PDF ni audio, va directo a determinar competencias.
     return "agente_determinador_competencias"
 
-# Conectamos la salida del triaje a nuestra nueva funcion de decision
 workflow.add_conditional_edges(
     "agente_triaje",
     decision_despues_del_triaje
 )
 
-# El nodo de solicitud de informacion es un punto final para esta ejecucion del grafo.
+# Los nodos de solicitud y rechazo son puntos finales para esta ejecucion.
 workflow.add_edge("solicitar_informacion_adicional", END)
+workflow.add_edge("preparar_respuesta_rechazo", END) # <-- Nueva conexion a END
 # ==============================================================================
 # FIN DE LA MODIFICACION
 # ==============================================================================

@@ -27,10 +27,29 @@ function App() {
     setAgenteActivo('triaje_evidencias'); 
   };
 
-  const manejarSubidaCompletada = () => {
-    console.log("APP: Todas las evidencias subidas. Avanzando a vista de progreso.");
-    setVistaActual('VISTA_PROGRESO_ANALISIS');
+  const manejarTriajeTerminado = (fueAdmisible) => {
+    console.log("APP: El triaje ha terminado. ¿Fue admisible?", fueAdmisible);
+    
+    if (fueAdmisible) {
+      console.log("APP: El caso fue admitido. Avanzando a la vista de progreso.");
+      setVistaActual('VISTA_PROGRESO_ANALISIS');
+    } else {
+      // ==============================================================================
+      // INICIO DE LA MODIFICACION: Regresamos al agente recepcionista
+      // ==============================================================================
+      console.log("APP: El caso fue rechazado. Regresando al agente recepcionista.");
+      setAgenteActivo('recepcionista');
+      // ==============================================================================
+      // FIN DE LA MODIFICACION
+      // ==============================================================================
+    }
   };
+
+
+  // const manejarSubidaCompletada = () => {
+  //   console.log("APP: Todas las evidencias subidas. Avanzando a vista de progreso.");
+  //   setVistaActual('VISTA_PROGRESO_ANALISIS');
+  // };
 
   const manejarAnalisisCompletado = () => {
     console.log("APP: Todos los analisis completados. Avanzando al reporte final.");
@@ -56,13 +75,13 @@ function App() {
         // ==================================================================
         // INICIO DE LA MODIFICACION: Pasamos el nuevo estado y manejadores a VistaChat
         // ==================================================================
-        return (
+         return (
           <VistaChat 
             agenteInicial={agenteActivo}
             casoIdActual={casoId}
             onIniciarTriaje={manejarInicioDeTriaje}
             onCasoCreado={manejarCasoCreado}
-            onSubidaCompletada={manejarSubidaCompletada}
+            onTriajeTerminado={manejarTriajeTerminado}
           />
         );
         // ==================================================================

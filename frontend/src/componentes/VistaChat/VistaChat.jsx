@@ -13,9 +13,6 @@ const Sugerencias = ({ onSugerenciaClick }) => (
   </div>
 );
 
-// ==============================================================================
-// INICIO DE LA MODIFICACION: SubidorDeEvidencias ahora es un componente "tonto"
-// ==============================================================================
 const SubidorDeEvidencias = ({ 
   archivos, 
   onSeleccionArchivos, 
@@ -41,16 +38,11 @@ const SubidorDeEvidencias = ({
             <button onClick={onDetenerGrabacion} className="boton-accion-evidencia detener">Detener</button>
         )}
       </div>
-      {/* EL BOTON DE ENVIO HA SIDO ELIMINADO DE AQUI */}
     </div>
   );
 };
-// ==============================================================================
-// FIN DE LA MODIFICACION
-// ==============================================================================
 
-
-function VistaChat({ agenteInicial, casoIdActual, onIniciarTriaje, onCasoCreado, onSubidaCompletada }) {
+function VistaChat({ agenteInicial, casoIdActual, onIniciarTriaje, onCasoCreado, onTriajeTerminado }) {
   const [mensajes, setMensajes] = useState([
     { autor: 'agente', texto: '¡Hola! Soy el Asistente Legal virtual. Estoy aquí para resolver tus dudas sobre el Consultorio Jurídico.' }
   ]);
@@ -58,18 +50,12 @@ function VistaChat({ agenteInicial, casoIdActual, onIniciarTriaje, onCasoCreado,
   const [estaProcesando, setEstaProcesando] = useState(false);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(true);
   const [modoAgente, setModoAgente] = useState(agenteInicial);
-  
-  // ==================================================================
-  // INICIO DE LA MODIFICACION: El estado de los archivos se mueve aqui
-  // ==================================================================
   const [archivosParaSubir, setArchivosParaSubir] = useState([]);
   const [grabando, setGrabando] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const mediaRecorderRef = useRef(null);
   const chunksDeAudioRef = useRef([]);
-  // ==================================================================
-  // FIN DE LA MODIFICACION
-  // ==================================================================
+  const [triajeFinalizado, setTriajeFinalizado] = useState(false);
 
   const finalDeMensajesRef = useRef(null);
   const textareaRef = useRef(null);
@@ -91,34 +77,28 @@ function VistaChat({ agenteInicial, casoIdActual, onIniciarTriaje, onCasoCreado,
   useEffect(() => {
     if (agenteInicial !== modoAgente) {
       setModoAgente(agenteInicial);
+      
       if (agenteInicial === 'triaje_descripcion') {
         const nuevoMensaje = { autor: 'agente', texto: 'Entendido. Para iniciar el registro, por favor describe de la forma más detallada posible los hechos de tu caso en un solo mensaje.' };
         setMensajes(anteriores => [...anteriores, nuevoMensaje]);
-      }
-      if (agenteInicial === 'triaje_evidencias') {
+      } else if (agenteInicial === 'triaje_evidencias') {
         const nuevoMensaje = { autor: 'agente', texto: 'Perfecto, tu caso ha sido creado. Ahora, por favor, adjunta todos los archivos de evidencia que tengas (documentos, imágenes) o graba un audio con tu narración.' };
         setMensajes(anteriores => [...anteriores, nuevoMensaje]);
+      
+      } else if (agenteInicial === 'recepcionista') {
+        const nuevoMensaje = { autor: 'agente', texto: 'Si tiene alguna otra pregunta general sobre el consultorio, no dude en consultarme.' };
+        setMensajes(anteriores => [...anteriores, nuevoMensaje]);
+        setTriajeFinalizado(false);
+        setMostrarSugerencias(true);
       }
     }
   }, [agenteInicial, modoAgente]);
 
-  const manejarRespuestaDeAgenteTriaje = (nuevoMensaje) => {
-    setMensajes(anteriores => [...anteriores, nuevoMensaje]);
-  };
-
-  // ==============================================================================
-  // INICIO DE LA MODIFICACION: Logica de envio ahora es unificada
-  // ==============================================================================
    const manejarEnvioUnificado = async (textoOpcional = null) => {
-    // Si la funcion es llamada desde un click de sugerencia, usa ese texto.
-    // Si no, usa el texto del estado 'entradaUsuario'.
     const textoAEnviar = (textoOpcional !== null ? textoOpcional : entradaUsuario).trim();
-
     if (!textoAEnviar && archivosParaSubir.length === 0) return;
 
-    if (mostrarSugerencias) {
-      setMostrarSugerencias(false); // Corregimos la advertencia de variable no usada
-    }
+    if (mostrarSugerencias) setMostrarSugerencias(false);
 
     setEstaProcesando(true);
     
@@ -147,14 +127,44 @@ function VistaChat({ agenteInicial, casoIdActual, onIniciarTriaje, onCasoCreado,
           setArchivosParaSubir([]);
           setAudioUrl(null);
         }
+        
         const resultadoAnalisis = await analizarCaso(casoIdActual, textoAEnviar);
-        const preguntaDelAgente = resultadoAnalisis?.resultado_triaje?.pregunta_para_usuario;
-        if (preguntaDelAgente) {
-          manejarRespuestaDeAgenteTriaje({ autor: 'agente', texto: preguntaDelAgente });
+        
+        // ==============================================================================
+        // INICIO DE LA MODIFICACION FINAL Y DEFINITIVA
+        // ==============================================================================
+        
+        // 1. La única fuente de verdad sobre la admisibilidad.
+        const esAdmisible = resultadoAnalisis?.resultado_triaje?.admisible;
+
+        // 2. Lógica para casos NO ADMISIBLES.
+        if (esAdmisible === false) {
+            const justificacion = resultadoAnalisis.resultado_triaje.justificacion || "No se proporcionó una justificación.";
+            const mensajeRechazo = `Hemos evaluado la informacion de su caso y, lamentablemente, no cumple con los criterios de competencia definidos para nuestro consultorio juridico por la siguiente razon: '${justificacion}'. Le agradecemos su tiempo y por contactarnos.`;
+            
+            setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: mensajeRechazo }]);
+            setTriajeFinalizado(true);
+            onTriajeTerminado(false);
+
+        // 3. Lógica para casos ADMISIBLES.
         } else {
-          onSubidaCompletada();
+            const pregunta = resultadoAnalisis.resultado_triaje.pregunta_para_usuario;
+            // Si hay una pregunta, significa que se necesita más información.
+            if (pregunta) {
+                setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: pregunta }]);
+            // Si no hay pregunta, el triaje fue exitoso y se puede continuar.
+            } else {
+                onTriajeTerminado(true);
+            }
         }
-      } catch (error) { console.error("Error en el proceso de evidencia:", error);}
+        // ==============================================================================
+        // FIN DE LA MODIFICACION FINAL Y DEFINITIVA
+        // ==============================================================================
+
+      } catch (error) { 
+        console.error("Error en el proceso de evidencia:", error);
+        setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: 'Ocurrió un error al procesar tu solicitud. Por favor, intenta de nuevo.' }]);
+      }
     }
     
     setEstaProcesando(false);
@@ -163,7 +173,6 @@ function VistaChat({ agenteInicial, casoIdActual, onIniciarTriaje, onCasoCreado,
   const manejarEnvioFormulario = (e) => { e.preventDefault(); manejarEnvioUnificado(); };
   const manejarClickSugerencia = (texto) => { manejarEnvioUnificado(texto); };
 
-  // Logica de grabacion ahora vive aqui, en el componente padre
   const iniciarGrabacion = async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -195,14 +204,12 @@ function VistaChat({ agenteInicial, casoIdActual, onIniciarTriaje, onCasoCreado,
       setGrabando(false);
     }
   };
-  // ==============================================================================
-  // FIN DE LA MODIFICACION
-  // ==============================================================================
 
   const obtenerPlaceholder = () => {
     if (modoAgente === 'recepcionista') return "Escribe tu pregunta aqui...";
     if (modoAgente === 'triaje_descripcion') return "Describe los hechos de tu caso aqui...";
-    if (modoAgente === 'triaje_evidencias') return "Responde al agente o adjunta mas archivos y presiona Enviar...";
+    if (modoAgente === 'triaje_evidencias' && !triajeFinalizado) return "Responde al agente o adjunta mas archivos y presiona Enviar...";
+    if (triajeFinalizado) return "El proceso ha finalizado.";
     return "";
   };
 
@@ -220,7 +227,7 @@ function VistaChat({ agenteInicial, casoIdActual, onIniciarTriaje, onCasoCreado,
       </div>
 
       <div className="area-acciones-chat">
-        {modoAgente === 'triaje_evidencias' && (
+        {modoAgente === 'triaje_evidencias' && !triajeFinalizado && (
           <SubidorDeEvidencias 
             archivos={archivosParaSubir}
             onSeleccionArchivos={(e) => setArchivosParaSubir(prev => [...prev, ...Array.from(e.target.files)])}
@@ -231,19 +238,21 @@ function VistaChat({ agenteInicial, casoIdActual, onIniciarTriaje, onCasoCreado,
           />
         )}
 
-        <form className="formulario-chat" onSubmit={manejarEnvioFormulario}>
-          <textarea
-            ref={textareaRef}
-            value={entradaUsuario}
-            onChange={(e) => setEntradaUsuario(e.target.value)}
-            placeholder={obtenerPlaceholder()}
-            disabled={estaProcesando}
-            rows={1}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); manejarEnvioFormulario(e); } }}
-          />
-          <button type="submit" disabled={estaProcesando}>Enviar</button>
-        </form>
-
+        {(modoAgente !== 'triaje_evidencias' || !triajeFinalizado) && (
+            <form className="formulario-chat" onSubmit={manejarEnvioFormulario}>
+            <textarea
+                ref={textareaRef}
+                value={entradaUsuario}
+                onChange={(e) => setEntradaUsuario(e.target.value)}
+                placeholder={obtenerPlaceholder()}
+                disabled={estaProcesando || triajeFinalizado}
+                rows={1}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); manejarEnvioFormulario(e); } }}
+            />
+            <button type="submit" disabled={estaProcesando || triajeFinalizado}>Enviar</button>
+            </form>
+        )}
+        
         {modoAgente === 'recepcionista' && (
           <div className="contenedor-iniciar-caso">
             <button onClick={onIniciarTriaje} className="boton-principal-iniciar">Tengo un caso y quiero registrarlo</button>

@@ -36,7 +36,7 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
         contexto_completo = "Error: No se pudo recuperar la guia de documentos."
 
     prompt_completo = f"""
-    ERES un abogado de triaje... Tu respuesta DEBE ser unicamente un objeto JSON.
+    ERES un abogado de triaje para un consultorio juridico gratuito, riguroso pero razonable. Tu mision es calificar casos y pedir la documentacion justa y necesaria. Tu respuesta DEBE ser unicamente un objeto JSON.
 
     --- CONTEXTO LEGAL Y GUIA DOCUMENTAL ---
     {contexto_completo}
@@ -47,23 +47,33 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     2.  Texto Adicional del Usuario: "{texto_adicional}"
     --- FIN DE LA EVIDENCIA ---
 
-    REGLAS DE DECISION:
-    1.  EVALUA ADMISIBILIDAD: Determina si el caso es admisible segun la Ley 2113.
-    2.  VERIFICA SUFICIENCIA: Revisa si tienes los documentos esenciales para el tipo de caso, segun la "GUIA DE EVIDENCIAS ESENCIALES".
+    --- REGLA DE INTERPRETACION JURIDICA ---
+    La excepción prevalece sobre la regla general. El Artículo 9 tiene un límite de 50 SMLMV, pero exceptúa los casos de "tránsito". Un caso de accidente de tránsito con reclamación de 50 SMLMV ES ADMISIBLE.
 
-    REGLAS DE SOLICITUD (MUY IMPORTANTE):
-    1.  PRIORIDAD MAXIMA: Si el documento de identidad (cedula) no esta presente entre las evidencias, PIDE UNICAMENTE LA CEDULA. Tu pregunta debe ser solo sobre eso.
-    2.  SOLICITUD GRADUAL: Si la cedula ya esta, pero faltan otros documentos importantes para el tipo de caso (ej. informe de transito para un accidente), PIDE SOLO LOS 2 DOCUMENTOS MAS IMPORTANTES que falten. No pidas mas de dos a la vez. Formula una sola pregunta clara.
-    3.  FINALIZACION: Si la cedula y los documentos mas importantes ya estan presentes, considera que la 'informacion_suficiente' es 'true'.
+    --- ESTRATEGIA DE SALIDA ---
+    Si el usuario indica explícitamente que NO tiene más documentos (ej. "no tengo mas"), DEBES detener el ciclo de preguntas. Establece "informacion_suficiente" como "true" y añade una advertencia en tu "justificacion".
+    
+    --- REGLA DE FLEXIBILIDAD Y BUENA FE (NUEVO Y MUY IMPORTANTE) ---
+    Tu objetivo es pedir los documentos faltantes UNA SOLA VEZ. Después de que hayas hecho una pregunta pidiendo documentos (ej. pidiendo el informe de tránsito), si en la siguiente interacción el usuario sube CUALQUIER archivo (PDF, PNG, JPG), DEBES ASUMIR que ha intentado cumplir tu petición. NO vuelvas a pedir el mismo documento. Considera que con eso es suficiente para esta etapa, marca "informacion_suficiente" como "true" y permite que el caso avance.
+
+    REGLAS DE DECISION:
+    1.  EVALUA ADMISIBILIDAD: ¿El caso es admisible?
+    2.  VERIFICA SUFICIENCIA: ¿Tienes los documentos esenciales? Si no, aplica las REGLAS DE SOLICITUD. Si ya pediste y el usuario subió algo, aplica la REGLA DE FLEXIBILIDAD.
+
+    --- REGLAS DE EXCLUSION INQUEBRANTABLES ---
+    1.  CASOS COMERCIALES: RECHAZA cualquier disputa comercial.
+    
+    REGLAS DE SOLICITUD (Aplica solo la primera vez que falten documentos):
+    1.  PIDE MAXIMO 2 DOCUMENTOS: Si faltan documentos, pide solo los 2 más importantes y sé específico (ej. "informe de tránsito y epicrisis médica").
 
     TAREA:
-    Analiza TODA la evidencia proporcionada (archivos y texto) y devuelve un objeto JSON con la siguiente estructura:
+    Analiza la evidencia y el texto. Devuelve un objeto JSON con la siguiente estructura:
     {{
       "admisible": boolean,
-      "justificacion": "string (Explica tu decision de admisibilidad)",
+      "justificacion": "string (Explica tu decisión)",
       "hechos_clave": "string (Resumen de los hechos)",
       "informacion_suficiente": boolean,
-      "pregunta_para_usuario": "string (Si 'informacion_suficiente' es false, formula una pregunta siguiendo las 'REGLAS DE SOLICITUD'. Si es true, deja este campo vacio '')"
+      "pregunta_para_usuario": "string (SOLO si 'informacion_suficiente' es false. De lo contrario, déjalo vacío '')"
     }}
     """
     
@@ -193,3 +203,38 @@ def nodo_agente_juridico(estado: EstadoDelGrafo) -> Dict[str, Any]:
 
 def nodo_agente_generador_documentos(estado: EstadoDelGrafo) -> Dict[str, Any]:
     return {"resultado_agente_generador_documentos": "Ejecucion omitida en este flujo."}
+
+
+def nodo_preparar_respuesta_rechazo(estado: EstadoDelGrafo) -> Dict[str, Any]:
+    """
+    Docstring:
+    Este nodo se activa cuando el Agente de Triaje determina que un caso no es
+    admisible. Su funcion es tomar la justificacion del rechazo y construir
+    un mensaje final, claro y empatico para comunicarselo al usuario.
+
+    Args:
+        estado (EstadoDelGrafo): El estado actual del grafo, que contiene el
+                                 resultado del nodo de triaje.
+
+    Returns:
+        Dict[str, Any]: Un diccionario que actualiza el estado del grafo con
+                        la clave 'respuesta_para_usuario', conteniendo el
+                        mensaje de rechazo.
+    """
+    print("\n--- [AGENTE RECHAZO] Iniciando ejecucion del nodo ---")
+    
+    # 1. Extraer la justificacion del rechazo del estado del grafo.
+    justificacion_rechazo = estado.get("resultado_triaje", {}).get("justificacion", "No se proporciono una justificacion especifica.")
+    print(f"--- [AGENTE RECHAZO] Justificacion recibida del triaje: '{justificacion_rechazo}'")
+    
+    # 2. Construir el mensaje final para el usuario usando una plantilla.
+    mensaje_final_usuario = (
+        "Hemos evaluado la informacion de su caso y, lamentablemente, no cumple con los criterios "
+        "de competencia definidos para nuestro consultorio juridico por la siguiente razon: "
+        f"'{justificacion_rechazo}'. Le agradecemos su tiempo y por contactarnos."
+    )
+    
+    print(f"--- [AGENTE RECHAZO] Mensaje final preparado para el usuario.")
+    
+    # 3. Devolver el mensaje en la clave que el frontend espera.
+    return {"respuesta_para_usuario": mensaje_final_usuario}
