@@ -86,9 +86,7 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     return {"resultado_triaje": resultado_analisis}
 
 
-# ==============================================================================
-# INICIO DE LA MODIFICACION: Nuevo nodo para solicitar mas informacion
-# ==============================================================================
+
 def nodo_solicitar_informacion_adicional(estado: EstadoDelGrafo) -> Dict[str, Any]:
     """
     Docstring:
@@ -106,9 +104,7 @@ def nodo_solicitar_informacion_adicional(estado: EstadoDelGrafo) -> Dict[str, An
     # para que el frontend la muestre en la interfaz de chat.
     # Por ahora, simplemente actualizamos el estado.
     return {"respuesta_para_usuario": pregunta_generada}
-# ==============================================================================
-# FIN DE LA MODIFICACION
-# ==============================================================================
+
 
 def nodo_agente_analizador_pdf(estado: EstadoDelGrafo) -> Dict[str, Any]:
     print("--- Ejecutando Nodo: Agente Analizador de PDFs ---")
@@ -138,21 +134,79 @@ def nodo_agente_analizador_audio(estado: EstadoDelGrafo) -> Dict[str, Any]:
     )
     return {"resultado_analisis_audio": resultado_analisis}
 
+
+
+
 def nodo_agente_determinador_competencias(estado: EstadoDelGrafo) -> Dict[str, Any]:
-    print("--- Ejecutando Nodo: Agente Determinador de Competencias ---")
-    hechos_clave_triaje = estado.get("resultado_triaje", {}).get("hechos_clave", "")
-    contexto_para_analisis = f"Hechos del caso: {hechos_clave_triaje}"
-    
-    prompt_completo = f"""
-    Clasifica el caso. Responde solo con JSON. No incluyas texto antes o despues del JSON.
-    JSON: {{"area_competencia": "string", "justificacion_breve": "string"}}
-    AREAS VALIDAS: "Derecho Privado", "Derecho Publico", "Derecho Laboral", "Derecho de Familia", "No Clasificable".
-    CASO: {contexto_para_analisis}
     """
+    Docstring:
+    Analiza los hechos de un caso admitido y lo clasifica en una de las
+    areas de practica del consultorio (Privado, Publico, Laboral, Penal).
+    Utiliza RAG para consultar multiples bases de conocimiento especializadas.
+    """
+    print("\n--- [AGENTE COMPETENCIAS] Iniciando ejecucion del nodo ---")
+    
+    # 1. Obtener los hechos del caso, que es nuestra consulta principal.
+    hechos_clave_triaje = estado.get("resultado_triaje", {}).get("hechos_clave", "")
+    if not hechos_clave_triaje:
+        print("--- [AGENTE COMPETENCIAS] ALERTA: No se encontraron hechos clave. Terminando.")
+        return {"resultado_determinador_competencias": {"area_competencia": "No Clasificable", "justificacion_breve": "No se proporcionó un resumen de los hechos para analizar."}}
+
+    print(f"--- [AGENTE COMPETENCIAS] Hechos a clasificar: '{hechos_clave_triaje[:100]}...'")
+
+    # 2. Consultar CADA base de conocimiento de competencia.
+    areas_de_competencia = ["derecho_privado", "derecho_publico", "derecho_penal", "derecho_laboral"]
+    contexto_consolidado = ""
+    for area in areas_de_competencia:
+        try:
+            print(f"--- [AGENTE COMPETENCIAS] Buscando contexto en el area: {area}...")
+            # Usamos los hechos del caso como consulta para el RAG
+            lista_contexto_area = buscar_en_base_de_conocimiento(
+                consulta=hechos_clave_triaje,
+                area_competencia=area
+            )
+            contexto_area = "\n\n".join(lista_contexto_area)
+            contexto_consolidado += f"--- CONTEXTO DE {area.upper()} ---\n{contexto_area}\n\n"
+        except Exception as e:
+            print(f"--- [AGENTE COMPETENCIAS] ERROR: Fallo al buscar en RAG '{area}': {e}")
+            contexto_consolidado += f"--- CONTEXTO DE {area.upper()} ---\nError al recuperar informacion.\n\n"
+    
+    print("--- [AGENTE COMPETENCIAS] Contexto de todas las areas recuperado.")
+
+    # 3. Construir el prompt final para la decisión.
+    prompt_completo = f"""
+    ERES un abogado experto clasificador. Tu única función es analizar los hechos de un caso y, basándote en el contexto legal proporcionado para cada área, determinar a cuál pertenece. Responde únicamente con un objeto JSON.
+
+    --- HECHOS DEL CASO A CLASIFICAR ---
+    "{hechos_clave_triaje}"
+    --- FIN DE LOS HECHOS ---
+
+    --- CONTEXTO LEGAL DE LAS ÁREAS DE PRÁCTICA ---
+    {contexto_consolidado}
+    --- FIN DEL CONTEXTO LEGAL ---
+
+    TAREA:
+    Compara los "HECHOS DEL CASO" con el "CONTEXTO LEGAL" de cada área. Elige el área que mejor se ajuste al caso.
+
+    AREAS VALIDAS para tu respuesta: "Derecho Privado", "Derecho Publico", "Derecho Laboral", "Derecho Penal", "No Clasificable".
+
+    Devuelve un objeto JSON con la siguiente estructura:
+    {{
+      "area_competencia": "string (una de las AREAS VALIDAS)",
+      "justificacion_breve": "string (Explica brevemente por qué elegiste esa área, basándote en el contexto)"
+    }}
+    """
+
+    print("--- [AGENTE COMPETENCIAS] Invocando LLM para clasificacion final...")
     resultado_clasificacion = analizar_evidencia_con_gemini(
         archivos_locales=[], prompt_usuario=prompt_completo
     )
+    print(f"--- [AGENTE COMPETENCIAS] Clasificacion completada. Resultado: {resultado_clasificacion}")
+
     return {"resultado_determinador_competencias": resultado_clasificacion}
+
+
+
 
 def encontrar_persona_con_menos_carga(sesion: Session, modelo: Any, area: str) -> Optional[int]:
     declaracion = (

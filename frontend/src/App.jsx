@@ -12,18 +12,13 @@ function App() {
   const [vistaActual, setVistaActual] = useState('VISTA_CHAT');
   const [casoId, setCasoId] = useState(null);
   
-  // ==============================================================================
-  // INICIO DE LA MODIFICACION: Nuevo estado para controlar el agente activo en el chat
-  // ==============================================================================
   const [agenteActivo, setAgenteActivo] = useState('recepcionista'); // 'recepcionista' o 'triaje'
-  // ==============================================================================
-  // FIN DE LA MODIFICACION
-  // ==============================================================================
+ 
 
   const manejarCasoCreado = (idDelNuevoCaso) => {
     console.log("APP: Caso creado con ID:", idDelNuevoCaso);
     setCasoId(idDelNuevoCaso);
-    // Ahora, en lugar de cambiar de vista, le decimos al chat que pida las evidencias
+  
     setAgenteActivo('triaje_evidencias'); 
   };
 
@@ -34,14 +29,10 @@ function App() {
       console.log("APP: El caso fue admitido. Avanzando a la vista de progreso.");
       setVistaActual('VISTA_PROGRESO_ANALISIS');
     } else {
-      // ==============================================================================
-      // INICIO DE LA MODIFICACION: Regresamos al agente recepcionista
-      // ==============================================================================
+    
       console.log("APP: El caso fue rechazado. Regresando al agente recepcionista.");
       setAgenteActivo('recepcionista');
-      // ==============================================================================
-      // FIN DE LA MODIFICACION
-      // ==============================================================================
+      
     }
   };
 
@@ -56,25 +47,19 @@ function App() {
     setVistaActual('VISTA_REPORTE_FINAL');
   };
 
-  // ==============================================================================
-  // INICIO DE LA MODIFICACION: Cambiamos la logica de iniciar caso
-  // ==============================================================================
+  
   const manejarInicioDeTriaje = () => {
       console.log("APP: El usuario quiere registrar un caso. Cambiando a agente de triaje.");
       setAgenteActivo('triaje_descripcion');
       // Importante: No cambiamos de 'vistaActual', nos mantenemos en el chat.
   };
-  // ==============================================================================
-  // FIN DE LA MODIFICACION
-  // ==============================================================================
+  
 
 
   const renderizarVistaActual = () => {
     switch (vistaActual) {
       case 'VISTA_CHAT':
-        // ==================================================================
-        // INICIO DE LA MODIFICACION: Pasamos el nuevo estado y manejadores a VistaChat
-        // ==================================================================
+        
          return (
           <VistaChat 
             agenteInicial={agenteActivo}
@@ -84,9 +69,7 @@ function App() {
             onTriajeTerminado={manejarTriajeTerminado}
           />
         );
-        // ==================================================================
-        // FIN DE LA MODIFICACION
-        // ==================================================================
+       
       
       // La vista para crear caso y subir evidencia por separado ya no se usaran en este flujo.
       // Las mantendremos por ahora, pero la logica se movera a VistaChat.

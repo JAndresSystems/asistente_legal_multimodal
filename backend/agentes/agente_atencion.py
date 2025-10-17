@@ -65,14 +65,9 @@ def nodo_agente_atencion(estado: EstadoChat) -> Dict[str, str]:
     """
 
     try:
-        # ==============================================================================
-        # INICIO DE LA CORRECCION
-        # Se elimina el argumento 'max_tokens' que causaba el TypeError.
-        # ==============================================================================
+        
         respuesta_final = generar_respuesta_texto(prompt=prompt_final_para_llm)
-        # ==============================================================================
-        # FIN DE LA CORRECCION
-        # ==============================================================================
+        
         print(f"--- [AGENTE ATENCION] Respuesta generada por LLM: '{respuesta_final}'")
     except Exception as e:
         print(f"--- [AGENTE ATENCION] ERROR: Fallo al generar texto con LLM: {e}")

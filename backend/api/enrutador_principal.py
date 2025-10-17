@@ -11,14 +11,9 @@ from .modelos_compartidos import (
     PreguntaChat, RespuestaChat,SolicitudAnalisis 
 )
 from ..tareas import procesar_evidencia_tarea
-# ==============================================================================
-# INICIO DE LA RESTAURACION
-# Volvemos a importar el grafo compilado, que es lo que este enrutador espera.
-# ==============================================================================
+
 from ..agentes.agente_atencion import grafo_atencion_compilado
-# ==============================================================================
-# FIN DE LA RESTAURACION
-# ==============================================================================
+
 
 
 # --- CONFIGURACION DE ENRUTADORES ---
@@ -26,11 +21,7 @@ router_casos = APIRouter(prefix="/casos", tags=["Gestion de Casos"])
 router_chat = APIRouter(prefix="/chat", tags=["Chat de Atencion"])
 
 
-# ==============================================================================
-# INICIO DE LA RESTAURACION
-# Volvemos al cuerpo original de la funcion que invoca el grafo.
-# Se han añadido prints para depuracion y claridad.
-# ==============================================================================
+
 @router_chat.post("", response_model=RespuestaChat)
 def conversar_con_agente_atencion(pregunta: PreguntaChat):
     """
@@ -68,12 +59,10 @@ def conversar_con_agente_atencion(pregunta: PreguntaChat):
         print(f"--- [API /chat] ERROR CRITICO: Ha ocurrido una excepcion no controlada en el endpoint: {e}")
         # En caso de un error inesperado, devolvemos un error 500.
         raise HTTPException(status_code=500, detail="Ocurrio un error interno en el servidor al procesar el chat.")
-# ==============================================================================
-# FIN DE LA RESTAURACION
-# ==============================================================================
 
 
-# --- ENDPOINTS DE GESTION DE CASOS (Sin cambios) ---
+
+# --- ENDPOINTS DE GESTION DE CASOS  ---
 @router_casos.post("", response_model=CasoLecturaConEvidencias, status_code=201)
 def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_sesion)):
     nuevo_caso_db = Caso.from_orm(caso_a_crear)

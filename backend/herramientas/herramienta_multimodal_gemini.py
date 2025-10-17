@@ -22,7 +22,7 @@ def preparar_entrada_multimodal(prompt_texto: str, rutas_archivos: List[str]) ->
 
             datos_codificados = base64.b64encode(datos_archivo).decode('utf-8')
 
-            # --- LA SOLUCIÓN BASADA EN LA EVIDENCIA DE SUS IMÁGENES ---
+            
             # La librería LangChain espera un diccionario con el tipo "media"
             # para archivos genéricos como PDF, audio, video, etc.
             parte_archivo = {
