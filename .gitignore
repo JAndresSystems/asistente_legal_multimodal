@@ -59,3 +59,6 @@ Thumbs.db
 
 # Configuración de otros editores de la familia JetBrains (PyCharm, WebStorm).
 .idea/
+
+# Archivos de configuración de seguridad
+backend\seguridad\jwt_manager.py

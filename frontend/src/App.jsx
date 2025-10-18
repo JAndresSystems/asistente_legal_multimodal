@@ -1,65 +1,88 @@
 // frontend/src/App.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; 
 import './App.css';
 
+import { useAuth } from './contextos/ContextoAutenticacion';
+import VistaLogin from './componentes/VistaAutenticacion/VistaLogin';
+import VistaRegistro from './componentes/VistaAutenticacion/VistaRegistro';
+
 import VistaChat from './componentes/VistaChat/VistaChat';
-import FormularioSubirEvidencia from './componentes/FormularioSubirEvidencia/FormularioSubirEvidencia';
 import VistaProgresoAnalisis from './componentes/VistaProgresoAnalisis/VistaProgresoAnalisis';
 import VistaReporteFinal from './componentes/VistaReporteFinal/VistaReporteFinal';
 
 function App() {
-  const [vistaActual, setVistaActual] = useState('VISTA_CHAT');
-  const [casoId, setCasoId] = useState(null);
-  
-  const [agenteActivo, setAgenteActivo] = useState('recepcionista'); // 'recepcionista' o 'triaje'
- 
+  // CORRECCION: Obtenemos login y registro del contexto
+  const { estaAutenticado, cargando, login, registro } = useAuth();
 
+  
+    const [vistaActual, setVistaActual] = useState(() => localStorage.getItem('app_vistaActual') || 'VISTA_LOGIN');
+  const [casoId, setCasoId] = useState(() => JSON.parse(localStorage.getItem('app_casoId')) || null);
+  const [agenteActivo, setAgenteActivo] = useState(() => localStorage.getItem('app_agenteActivo') || 'recepcionista');
+
+// Hook para guardar el estado en localStorage cada vez que cambia
+  useEffect(() => {
+    localStorage.setItem('app_vistaActual', vistaActual);
+    localStorage.setItem('app_casoId', JSON.stringify(casoId));
+    localStorage.setItem('app_agenteActivo', agenteActivo);
+  }, [vistaActual, casoId, agenteActivo]);
+
+
+
+  // ... (manejarCasoCreado, manejarTriajeTerminado, etc. se quedan igual)
   const manejarCasoCreado = (idDelNuevoCaso) => {
     console.log("APP: Caso creado con ID:", idDelNuevoCaso);
     setCasoId(idDelNuevoCaso);
-  
     setAgenteActivo('triaje_evidencias'); 
   };
-
   const manejarTriajeTerminado = (fueAdmisible) => {
-    console.log("APP: El triaje ha terminado. ¿Fue admisible?", fueAdmisible);
-    
     if (fueAdmisible) {
-      console.log("APP: El caso fue admitido. Avanzando a la vista de progreso.");
       setVistaActual('VISTA_PROGRESO_ANALISIS');
     } else {
-    
-      console.log("APP: El caso fue rechazado. Regresando al agente recepcionista.");
       setAgenteActivo('recepcionista');
-      
     }
   };
-
-
-  // const manejarSubidaCompletada = () => {
-  //   console.log("APP: Todas las evidencias subidas. Avanzando a vista de progreso.");
-  //   setVistaActual('VISTA_PROGRESO_ANALISIS');
-  // };
-
   const manejarAnalisisCompletado = () => {
-    console.log("APP: Todos los analisis completados. Avanzando al reporte final.");
     setVistaActual('VISTA_REPORTE_FINAL');
   };
-
-  
   const manejarInicioDeTriaje = () => {
-      console.log("APP: El usuario quiere registrar un caso. Cambiando a agente de triaje.");
       setAgenteActivo('triaje_descripcion');
-      // Importante: No cambiamos de 'vistaActual', nos mantenemos en el chat.
   };
-  
 
+ const renderizarContenido = () => {
+    if (cargando) {
+      return <div>Cargando...</div>;
+    }
 
-  const renderizarVistaActual = () => {
+    if (!estaAutenticado) {
+      // Si no esta autenticado, limpiamos cualquier estado de sesion anterior
+      if (vistaActual !== 'VISTA_LOGIN' && vistaActual !== 'VISTA_REGISTRO') {
+        setVistaActual('VISTA_LOGIN');
+      }
+
+      if (vistaActual === 'VISTA_REGISTRO') {
+        return (
+          <VistaRegistro 
+            onRegistroSubmit={registro}
+            onCambiarAVistaLogin={() => setVistaActual('VISTA_LOGIN')} 
+          />
+        );
+      }
+      return (
+        <VistaLogin 
+          onLoginSubmit={login}
+          onCambiarAVistaRegistro={() => setVistaActual('VISTA_REGISTRO')} 
+        />
+      );
+    }
+
+    // Si esta autenticado y la vista es de login/registro, lo forzamos a ir al chat
+    if (vistaActual === 'VISTA_LOGIN' || vistaActual === 'VISTA_REGISTRO') {
+        setVistaActual('VISTA_CHAT');
+    }
+
     switch (vistaActual) {
       case 'VISTA_CHAT':
-        
          return (
           <VistaChat 
             agenteInicial={agenteActivo}
@@ -69,19 +92,13 @@ function App() {
             onTriajeTerminado={manejarTriajeTerminado}
           />
         );
-       
-      
-      // La vista para crear caso y subir evidencia por separado ya no se usaran en este flujo.
-      // Las mantendremos por ahora, pero la logica se movera a VistaChat.
-      
       case 'VISTA_PROGRESO_ANALISIS':
         return <VistaProgresoAnalisis casoId={casoId} onAnalisisCompletado={manejarAnalisisCompletado} />;
-      
       case 'VISTA_REPORTE_FINAL':
         return <VistaReporteFinal casoId={casoId} />;
-      
       default:
-        return <VistaChat agenteInicial={'recepcionista'} onIniciarTriaje={manejarInicioDeTriaje} />;
+        setVistaActual('VISTA_CHAT');
+        return null;
     }
   };
 
@@ -91,7 +108,7 @@ function App() {
         <h1>Asistente Legal Multimodal</h1>
       </header>
       <main className="app-contenido">
-        {renderizarVistaActual()}
+        {renderizarContenido()}
       </main>
     </div>
   );

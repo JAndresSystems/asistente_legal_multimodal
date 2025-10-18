@@ -3,18 +3,38 @@
 from sqlmodel import Field, SQLModel, Relationship, Column, Text
 from typing import Optional, List
 
-# Se eliminan importaciones no utilizadas como datetime, uuid, json, TypeDecorator, Dict, Any
-# para mantener el codigo limpio. La logica de JSON no es necesaria aqui.
-
 # =================================================================================
 # MODELOS DE TABLAS DE BASE DE DATOS
 # =================================================================================
+
+# --- INICIO DE LA MODIFICACION: Nuevo modelo para Cuentas ---
+class Cuenta(SQLModel, table=True):
+    """
+    Docstring:
+    Representa la cuenta de autenticacion de cualquier actor en el sistema.
+    Almacena las credenciales de acceso y el rol que determina sus permisos.
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    email: str = Field(unique=True, index=True)
+    contrasena_hash: str
+    rol: str = Field(default="usuario") # Roles: "usuario", "estudiante", "asesor", "administrador"
+    esta_activo: bool = Field(default=True)
+
+    # Relacion uno a uno con el perfil de Usuario
+    usuario: Optional["Usuario"] = Relationship(back_populates="cuenta")
+# --- FIN DE LA MODIFICACION ---
+
 
 class Usuario(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nombre: str
     cedula: str = Field(unique=True)
-    email: str = Field(unique=True)
+    
+    # --- INICIO DE LA MODIFICACION: Vinculo con la tabla Cuenta ---
+    id_cuenta: int = Field(foreign_key="cuenta.id", unique=True)
+    cuenta: Cuenta = Relationship(back_populates="usuario")
+    # --- FIN DE LA MODIFICACION ---
+    
     casos: List["Caso"] = Relationship(back_populates="usuario")
 
 class Estudiante(SQLModel, table=True):
@@ -34,7 +54,6 @@ class Caso(SQLModel, table=True):
     descripcion_hechos: str
     id_usuario: int = Field(foreign_key="usuario.id")
     
-    # Este es el campo clave que acabamos de añadir a la BD.
     reporte_consolidado: Optional[str] = Field(default=None, sa_column=Column(Text))
     
     usuario: "Usuario" = Relationship(back_populates="casos")
@@ -44,13 +63,10 @@ class Caso(SQLModel, table=True):
 class Evidencia(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     id_caso: int = Field(foreign_key="caso.id")
-    nombre_archivo: str # <-- Se añade esta columna que faltaba
+    nombre_archivo: str
     ruta_archivo: str
     estado: str = Field(default="subido")
     
-    
-    # Este campo ya no es el principal para el reporte, pero lo mantenemos
-    # para no causar errores si alguna parte del codigo aun lo referencia.
     reporte_analisis: Optional[str] = Field(default=None, sa_column=Column(Text))
     
     caso: "Caso" = Relationship(back_populates="evidencias")
@@ -68,8 +84,23 @@ class Asignacion(SQLModel, table=True):
 # =================================================================================
 # MODELOS DE LA API (Para validacion de datos)
 # =================================================================================
+
+# --- INICIO DE LA MODIFICACION: Nuevos modelos para autenticacion ---
+class CuentaCreacion(SQLModel):
+    email: str
+    contrasena: str
+    nombre: str
+    cedula: str
+
+class Token(SQLModel):
+    access_token: str
+    token_type: str
+# --- FIN DE LA MODIFICACION ---
+
 class CasoCreacion(SQLModel):
     descripcion_hechos: str
+    # Este campo se eliminará en un paso futuro, ya que el id_usuario
+    # se obtendrá del token de autenticación. Por ahora, lo mantenemos.
     id_usuario: int
 
 class EvidenciaLectura(SQLModel):
@@ -94,4 +125,4 @@ class RespuestaChat(SQLModel):
     respuesta: str
 
 class SolicitudAnalisis(SQLModel):
-    texto_adicional_usuario: str = ""    
+    texto_adicional_usuario: str = ""

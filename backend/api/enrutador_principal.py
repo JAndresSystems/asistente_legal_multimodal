@@ -8,16 +8,23 @@ from sqlmodel import Session
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import (
     Caso, CasoCreacion, Evidencia, CasoLecturaConEvidencias,
-    PreguntaChat, RespuestaChat,SolicitudAnalisis 
+    PreguntaChat, RespuestaChat,SolicitudAnalisis,Cuenta  
 )
 from ..tareas import procesar_evidencia_tarea
 
 from ..agentes.agente_atencion import grafo_atencion_compilado
 
+from ..seguridad.jwt_manager import obtener_cuenta_actual
 
+# --- CONFIGURACION DE LOS ENRUTADORES ---
 
-# --- CONFIGURACION DE ENRUTADORES ---
-router_casos = APIRouter(prefix="/casos", tags=["Gestion de Casos"])
+# Hacemos que TODOS los endpoints en router_casos requieran autenticacion
+router_casos = APIRouter(
+    prefix="/casos", 
+    tags=["Gestion de Casos"],
+    dependencies=[Depends(obtener_cuenta_actual)] # <-- ¡Guardian asignado!
+)
+# El router de chat permanece publico
 router_chat = APIRouter(prefix="/chat", tags=["Chat de Atencion"])
 
 
@@ -64,8 +71,25 @@ def conversar_con_agente_atencion(pregunta: PreguntaChat):
 
 # --- ENDPOINTS DE GESTION DE CASOS  ---
 @router_casos.post("", response_model=CasoLecturaConEvidencias, status_code=201)
-def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_sesion)):
-    nuevo_caso_db = Caso.from_orm(caso_a_crear)
+def crear_caso(
+    caso_a_crear: CasoCreacion, 
+    sesion: Session = Depends(obtener_sesion),
+    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual) # <-- Obtenemos la cuenta del token
+):
+    """
+    Docstring:
+    Crea un nuevo caso asociado al usuario autenticado.
+    El 'id_usuario' se obtiene del token, no del cuerpo de la peticion.
+    """
+    # El modelo 'CasoCreacion' ya no necesita el id_usuario, pero lo ignoramos
+    # por ahora para no romper el frontend. La fuente de verdad es el token.
+    if not cuenta_actual.usuario:
+        raise HTTPException(status_code=403, detail="La cuenta no tiene un perfil de usuario asociado.")
+        
+    nuevo_caso_db = Caso(
+        descripcion_hechos=caso_a_crear.descripcion_hechos,
+        id_usuario=cuenta_actual.usuario.id
+    )
     sesion.add(nuevo_caso_db)
     sesion.commit()
     sesion.refresh(nuevo_caso_db)
@@ -77,10 +101,20 @@ def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_ses
 #     return casos
 
 @router_casos.get("/{id_caso}", response_model=CasoLecturaConEvidencias)
-def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion)):
+def obtener_caso_por_id(
+    id_caso: int, 
+    sesion: Session = Depends(obtener_sesion),
+    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
+):
     caso = sesion.get(Caso, id_caso)
     if not caso:
         raise HTTPException(status_code=404, detail="Caso no encontrado")
+    
+    # --- REGLA DE AUTORIZACION ---
+    # Un usuario solo puede ver sus propios casos.
+    if caso.id_usuario != cuenta_actual.usuario.id:
+        raise HTTPException(status_code=403, detail="No tiene permiso para acceder a este caso.")
+        
     return caso
 
 @router_casos.post("/{id_caso}/subir-evidencia-simple", response_model=Evidencia)
