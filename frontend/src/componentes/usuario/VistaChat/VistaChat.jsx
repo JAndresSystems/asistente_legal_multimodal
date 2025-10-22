@@ -49,10 +49,15 @@ const SubidorDeEvidencias = ({
   );
 };
 
+
+
+
 // El componente principal ahora es mucho mas simple
 function VistaChat(props) {
+  // Simplemente pasamos TODAS las props al hook que contiene la logica
+  const logic = useChatLogic(props);// Extraemos la nueva prop
   // Usamos el Hook para obtener toda la logica y el estado.
-  const {
+   const {
     mensajes,
     entradaUsuario,
     setEntradaUsuario,
@@ -72,7 +77,7 @@ function VistaChat(props) {
     detenerGrabacion,
     obtenerPlaceholder
   } = useChatLogic(props);
-
+  
   const manejarEnvioFormulario = (e) => { e.preventDefault(); manejarEnvioUnificado(); };
 
   return (
@@ -114,12 +119,23 @@ function VistaChat(props) {
             <button type="submit" disabled={estaProcesando}>Enviar</button>
             </form>
         )}
+
+        <div className="contenedor-acciones-secundarias">
+          {logic.modoAgente === 'recepcionista' && (
+            <button onClick={props.onIniciarTriaje} className="boton-principal-iniciar">
+              Tengo un caso y quiero registrarlo
+            </button>
+          )}
+          
+          {/* El botón de volver ahora es visible en todo momento en el chat */}
+          <button onClick={props.onVolverAlDashboard} className="boton-secundario-volver">
+            Volver al Panel
+          </button>
+        </div>
+
+
         
-        {modoAgente === 'recepcionista' && (
-          <div className="contenedor-iniciar-caso">
-            <button onClick={props.onIniciarTriaje} className="boton-principal-iniciar">Tengo un caso y quiero registrarlo</button>
-          </div>
-        )}
+        
       </div>
     </div>
   );

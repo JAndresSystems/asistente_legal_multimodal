@@ -1,24 +1,22 @@
 # backend/main.py
 
 from fastapi import FastAPI
+# ==============================================================================
+# INICIO DE LA MODIFICACION: Importamos la herramienta para servir archivos
+# ==============================================================================
+from fastapi.staticfiles import StaticFiles
+# ==============================================================================
+# FIN DE LA MODIFICACION
+# ==============================================================================
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from . import base_de_datos
-# Importamos los routers de casos y chat
-from .api.enrutador_principal import router_casos, router_chat
-
-
 from .api.enrutador_autenticacion import router_auth
-
-
-from .herramientas import herramienta_rag, herramienta_multimodal_gemini
+from .api.enrutador_principal import router_casos, router_chat, router_evidencias
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Gestiona los eventos de inicio y apagado de la aplicacion.
-    """
     print("INFO:     Iniciando la aplicación...")
     base_de_datos.inicializar_base_de_datos()
     yield
@@ -30,6 +28,16 @@ aplicacion = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# ==============================================================================
+# INICIO DE LA MODIFICACION: Montamos la carpeta de archivos estáticos
+# ==============================================================================
+# Esta linea le dice a FastAPI que cualquier peticion que empiece con '/archivos_subidos'
+# debe buscar el archivo correspondiente en la carpeta 'backend/archivos_subidos' del disco.
+aplicacion.mount("/archivos_subidos", StaticFiles(directory="backend/archivos_subidos"), name="archivos")
+# ==============================================================================
+# FIN DE LA MODIFICACION
+# ==============================================================================
 
 aplicacion.add_middleware(
     CORSMiddleware,
@@ -43,16 +51,12 @@ aplicacion.add_middleware(
 )
 
 print("INFO: Registrando enrutadores de la API...")
-
 aplicacion.include_router(router_auth)
-
 aplicacion.include_router(router_casos)
 aplicacion.include_router(router_chat)
-print("-> Enrutadores de Autenticacion, Casos y Chat registrados exitosamente.")
+aplicacion.include_router(router_evidencias)
+print("-> Enrutadores registrados exitosamente.")
 
 @aplicacion.get("/", tags=["Root"])
 def leer_raiz():
-    """
-    Endpoint principal de bienvenida para verificar que la API esta en linea.
-    """
     return {"mensaje": "Bienvenido a la API del Asistente Legal Multimodal."}

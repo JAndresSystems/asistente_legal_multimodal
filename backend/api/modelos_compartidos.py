@@ -1,11 +1,31 @@
-# backend/api/modelos_compartidos.py
-
+#C:\react\asistente_legal_multimodal\backend\api\modelos_compartidos.py
 from sqlmodel import Field, SQLModel, Relationship, Column, Text
 from typing import Optional, List
 
 # =================================================================================
 # MODELOS DE TABLAS DE BASE DE DATOS
 # =================================================================================
+
+from enum import Enum
+
+from datetime import datetime
+
+# MODELOS DE TABLAS DE BASE DE DATOS
+
+
+
+#  Definimos los estados posibles para un caso
+
+class EstadoCaso(str, Enum):
+    """
+    Define los unicos valores permitidos para el estado de un caso,
+    evitando errores de tipeo en la base de datos y el codigo.
+    """
+    EN_REVISION = "en_revision"
+    ASIGNADO = "asignado"
+    RECHAZADO = "rechazado"
+    CERRADO = "cerrado"
+
 
 # --- INICIO DE LA MODIFICACION: Nuevo modelo para Cuentas ---
 class Cuenta(SQLModel, table=True):
@@ -20,9 +40,7 @@ class Cuenta(SQLModel, table=True):
     rol: str = Field(default="usuario") # Roles: "usuario", "estudiante", "asesor", "administrador"
     esta_activo: bool = Field(default=True)
 
-    # Relacion uno a uno con el perfil de Usuario
     usuario: Optional["Usuario"] = Relationship(back_populates="cuenta")
-# --- FIN DE LA MODIFICACION ---
 
 
 class Usuario(SQLModel, table=True):
@@ -52,7 +70,10 @@ class Asesor(SQLModel, table=True):
 class Caso(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     descripcion_hechos: str
+    fecha_creacion: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     id_usuario: int = Field(foreign_key="usuario.id")
+    
+    estado: str = Field(default=EstadoCaso.EN_REVISION.value, index=True)
     
     reporte_consolidado: Optional[str] = Field(default=None, sa_column=Column(Text))
     
@@ -117,6 +138,52 @@ class CasoLectura(SQLModel):
 
 class CasoLecturaConEvidencias(CasoLectura):
     evidencias: List[EvidenciaLectura] = []
+
+
+
+class CasoLecturaUsuario(SQLModel):
+    """
+    Docstring:
+    Modelo de API especifico para devolver la lista de casos
+    al panel de control de un usuario. Contiene solo la informacion
+    necesaria y segura para esa vista.
+    """
+    id: int
+    fecha_creacion: datetime
+    estado: str
+
+
+class EvidenciaLecturaSimple(SQLModel):
+    """
+    Docstring:
+    Modelo para mostrar solo la informacion basica de una evidencia
+    en la vista de detalle del caso.
+    """
+    id: int
+    nombre_archivo: str
+    ruta_archivo: str  # Añadido para el frontend
+
+class CasoDetalleUsuario(SQLModel):
+    """
+    Docstring:
+    Modelo de API para devolver todos los detalles de un caso que un
+    usuario ciudadano tiene permiso para ver.
+    """
+    id: int
+    estado: str
+    descripcion_hechos: str
+    fecha_creacion: datetime  # Añadido para el resumen
+    reporte_consolidado: Optional[str] = None
+    
+    # Campos que se llenaran desde las relaciones de la base de datos
+    area_asignada: Optional[str] = None
+    estudiante_asignado: Optional[str] = None
+    asesor_asignado: Optional[str] = None
+    
+    evidencias: List[EvidenciaLecturaSimple] = []
+
+
+
 
 class PreguntaChat(SQLModel):
     pregunta: str

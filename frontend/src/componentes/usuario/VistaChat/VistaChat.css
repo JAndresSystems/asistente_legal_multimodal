@@ -155,3 +155,43 @@
 .boton-principal-subir:disabled {
   background-color: #a3d9b1;
 }
+
+
+/* Estilos para el contenedor de botones de acción */
+.contenedor-acciones-secundarias {
+  display: flex;
+  gap: 10px; /* Espacio entre los botones */
+  margin-top: 1rem;
+}
+
+/* Estilo para el botón principal de iniciar caso */
+.boton-principal-iniciar {
+  flex-grow: 1; /* Hace que el botón ocupe el espacio disponible */
+  padding: 14px;
+  border: none;
+  background-color: #1a73e8;
+  color: white;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  text-align: center;
+}
+
+/* Estilo para el nuevo botón de volver/cancelar */
+.boton-secundario-volver {
+  flex-grow: 1;
+  padding: 14px;
+  border: 1px solid #ccc;
+  background-color: #f8f9fa;
+  color: #333;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+}
+
+.boton-secundario-volver:hover {
+  background-color: #e9ecef;
+}

@@ -1,7 +1,7 @@
 // frontend/src/componentes/FormularioSubirEvidencia/FormularioSubirEvidencia.jsx
 
 import React, { useState, useRef } from 'react';
-import { subirEvidencia } from '../../servicios/api';
+import { subirEvidencia } from '../../../servicios/api';
 import './FormularioSubirEvidencia.css';
 
 function FormularioSubirEvidencia({ casoId, onSubidaCompletada }) {
@@ -46,8 +46,27 @@ function FormularioSubirEvidencia({ casoId, onSubidaCompletada }) {
         return;
       }
     }
+    
+   
+    // Reseteo del estado del formulario
+    
     setMensaje('¡Todas las evidencias se han subido correctamente!');
+    
+    // 1. Limpiamos la lista de archivos.
+    setArchivosSeleccionados([]);
+    
+    // 2. Le decimos al componente padre que se actualice.
     onSubidaCompletada();
+    
+    // 3. Dejamos que el mensaje de exito se vea por 5 segundos.
+    setTimeout(() => {
+        setMensaje('');
+    }, 5000);
+
+    // 4. Finalmente, reactivamos el formulario.
+    setEstaSubiendo(false);
+    setProgreso({ actual: 0, total: 0 });
+ 
   };
 
   // Logica para la grabacion de audio

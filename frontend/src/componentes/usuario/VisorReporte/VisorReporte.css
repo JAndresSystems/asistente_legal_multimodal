@@ -1,0 +1,40 @@
+/* frontend/src/componentes/VisorReporte/VisorReporte.css */
+
+.visor-reporte-contenedor {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.5rem;
+  overflow-x: auto;
+}
+
+.tabla-reporte {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-reporte th,
+.tabla-reporte td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.tabla-reporte th {
+  font-weight: 600;
+  color: #495057;
+  width: 30%; /* La columna de etiquetas ocupa menos espacio */
+}
+
+.tabla-reporte td {
+  white-space: pre-wrap; /* Respeta los saltos de linea del texto */
+  word-break: break-word;
+  line-height: 1.6;
+}
+
+.reporte-error {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #dc3545;
+}

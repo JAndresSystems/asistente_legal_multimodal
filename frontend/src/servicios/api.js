@@ -118,6 +118,7 @@ export const apiLogin = async (email, contrasena) => {
 
 
 
+
 export const chatearConAgente = async (textoPregunta) => {
   console.log(`API: Enviando pregunta al chat: "${textoPregunta}"`);
   try {
@@ -167,6 +168,33 @@ export const crearNuevoCaso = async (datosCaso) => {
     throw error;
   }
 };
+
+/**
+ * Docstring:
+ * Llama al endpoint protegido para obtener la lista de casos
+ * del usuario actualmente autenticado.
+ */
+export const apiObtenerMisCasos = async () => {
+  console.log("API: Solicitando la lista de casos para el usuario logueado.");
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/casos/mis-casos`, {
+      method: 'GET',
+      headers: obtenerCabeceras(), // <-- Clave: Usa el token para la autenticacion
+    });
+
+    if (!respuesta.ok) {
+      // Si el token es invalido o expiro, el backend devolvera un error 401
+      throw new Error(`Error del servidor: ${respuesta.status}`);
+    }
+
+    return await respuesta.json(); // Devuelve la lista de casos
+  } catch (error) {
+    console.error("API: Error al obtener los casos del usuario:", error);
+    throw error; // Propagamos el error para que el componente que llama pueda manejarlo
+  }
+};
+
+
 
 export const subirEvidencia = async (idCaso, archivo) => {
   const formData = new FormData();
@@ -219,4 +247,27 @@ export const obtenerDetallesCaso = async (idCaso) => {
     console.error(`API: Error al obtener los detalles del caso ${idCaso}:`, error);
     throw error;
   } 
+
+ 
+};
+
+
+/**
+ * Docstring:
+ * Llama al endpoint para consultar el estado de una evidencia especifica.
+ * Utilizado para el sondeo (polling) del progreso del analisis.
+ */
+export const obtenerEstadoEvidencia = async (idEvidencia) => {
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/evidencias/${idEvidencia}/estado`, {
+      headers: obtenerCabeceras(),
+    });
+    if (!respuesta.ok) {
+      throw new Error(`Error del servidor: ${respuesta.status}`);
+    }
+    return await respuesta.json();
+  } catch (error) {
+    console.error(`API: Error al obtener el estado de la evidencia ${idEvidencia}:`, error);
+    throw error;
+  }
 };

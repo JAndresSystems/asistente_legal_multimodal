@@ -1,0 +1,107 @@
+/* frontend/src/componentes/DashboardUsuario/DashboardUsuario.css */
+
+.dashboard-contenedor {
+  width: 100%;
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.dashboard-contenedor.error {
+  color: #d9534f;
+  background-color: #f2dede;
+  border: 1px solid #d9534f;
+  text-align: center;
+}
+
+/* ================================================================== */
+/* INICIO DE LA MODIFICACION: Estilos para la cabecera y el boton     */
+/* ================================================================== */
+.dashboard-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-cabecera h1 {
+  color: #333;
+  margin: 0; /* Quitamos el margen por defecto del h1 */
+}
+
+.boton-nuevo-caso {
+  background-color: #28a745; /* Verde para accion positiva */
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 16px;
+  transition: background-color 0.2s;
+}
+
+.boton-nuevo-caso:hover {
+  background-color: #218838; /* Un verde un poco mas oscuro */
+}
+/* ================================================================== */
+/* FIN DE LA MODIFICACION                                             */
+/* ================================================================== */
+
+.tabla-casos {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 16px;
+}
+
+.tabla-casos th, .tabla-casos td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: left;
+}
+
+.tabla-casos th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+.tabla-casos tbody tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.tabla-casos tbody tr:hover {
+  background-color: #e9ecef;
+}
+
+.estado-caso {
+  padding: 5px 10px;
+  border-radius: 15px;
+  color: white;
+  font-weight: 500;
+  text-transform: capitalize;
+  font-size: 14px;
+}
+
+.estado-caso.en_revision { background-color: #007bff; }
+.estado-caso.asignado { background-color: #28a745; }
+.estado-caso.rechazado { background-color: #dc3545; }
+.estado-caso.cerrado { background-color: #6c757d; }
+
+.boton-accion {
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.boton-accion:hover {
+  background-color: #0d65d6;
+}

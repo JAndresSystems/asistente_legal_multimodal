@@ -15,7 +15,7 @@
  *             para renderizarse y funcionar.
  */
 import { useState, useEffect, useRef } from 'react';
-import { chatearConAgente, crearNuevoCaso, subirEvidencia, analizarCaso } from '../../servicios/api';
+import { chatearConAgente, crearNuevoCaso, subirEvidencia, analizarCaso } from '../../../servicios/api';
 
 
 export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTriajeTerminado }) => {

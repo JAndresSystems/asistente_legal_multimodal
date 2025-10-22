@@ -60,18 +60,79 @@ def resetear_y_poblar_la_base_de_datos():
             Asesor(nombre_completo="Dra. Monica Cifuentes", area_especialidad="Derecho Publico"),
             Asesor(nombre_completo="Dr. Alberto Fernandez", area_especialidad="Derecho Laboral"),
         ]
+
+        # Crear casos de prueba asociados al usuario (ID 1)
+        casos = [
+            Caso(
+                descripcion_hechos="Caso de prueba 1: Contrato de arrendamiento con problemas de pago",
+                id_usuario=1,
+                estado="asignado",
+                fecha_creacion="2025-10-01 10:00:00"
+            ),
+            Caso(
+                descripcion_hechos="Caso de prueba 2: Reclamación por accidente de trabajo",
+                id_usuario=1,
+                estado="en_revision",
+                fecha_creacion="2025-10-05 14:30:00"
+            ),
+            Caso(
+                descripcion_hechos="Caso de prueba 3: Divorcio con bienes compartidos",
+                id_usuario=1,
+                estado="asignado",
+                fecha_creacion="2025-10-10 09:15:00"
+            ),
+        ]
+
+        # Crear evidencias de prueba
+        evidencias = [
+            Evidencia(
+                id_caso=1,
+                nombre_archivo="contrato_arrendamiento.pdf",
+                ruta_archivo="1/contrato_arrendamiento.pdf",
+                estado="completado"
+            ),
+            Evidencia(
+                id_caso=2,
+                nombre_archivo="certificado_medico_accidente.png",
+                ruta_archivo="2/certificado_medico_accidente.png",
+                estado="subido"
+            ),
+            Evidencia(
+                id_caso=3,
+                nombre_archivo="escrituras_bienes.pdf",
+                ruta_archivo="3/escrituras_bienes.pdf",
+                estado="completado"
+            ),
+        ]
+
+        # Crear asignaciones de prueba
+        asignaciones = [
+            Asignacion(
+                id_caso=1,
+                id_estudiante=1,
+                id_asesor=1
+            ),
+            Asignacion(
+                id_caso=3,
+                id_estudiante=3,
+                id_asesor=2
+            ),
+        ]
         
-        # Al añadir el usuario, SQLModel tambien añadirá la cuenta vinculada.
+        # Al añadir el usuario, SQLModel también añadirá la cuenta vinculada.
         sesion.add(usuario_de_prueba)
         sesion.add_all(estudiantes)
         sesion.add_all(asesores)
+        sesion.add_all(casos)
+        sesion.add_all(evidencias)
+        sesion.add_all(asignaciones)
         
         sesion.commit()
 
         print("-> Se ha añadido 1 cuenta y 1 perfil de usuario.")
         print("-> Se han añadido 4 estudiantes y 3 asesores.")
+        print("-> Se han añadido 3 casos de prueba con evidencias y asignaciones.")
         print("EXITO: La base de datos ha sido reseteada y poblada.")
-
 
 if __name__ == "__main__":
     resetear_y_poblar_la_base_de_datos()
