@@ -135,21 +135,34 @@ export const chatearConAgente = async (textoPregunta) => {
     const datosRespuesta = await respuesta.json();
     let respuestaDelAgente = datosRespuesta.respuesta;
     console.log(`API: Respuesta original recibida: "${respuestaDelAgente}"`);
-
-    const palabrasClaveDeViabilidad = ["califica", "cumple", "atendemos", "requisitos", "elegibilidad", "procedente", "admisible"];
+    
+    // ==============================================================================
+    // INICIO DE LA CORRECCION: Restauramos la lógica de señalización
+    // ==============================================================================
+    const palabrasClaveDeViabilidad = ["califica", "cumple", "atendemos", "requisitos", "elegibilidad", "procedente", "admisible", "iniciar el registro"];
     const respuestaEnMinusculas = respuestaDelAgente.toLowerCase();
     const esViable = palabrasClaveDeViabilidad.some(palabra => respuestaEnMinusculas.includes(palabra));
 
+    let iniciarTriaje = false;
     if (esViable) {
       console.log("API (Simulacion): Se detecto un caso viable. Añadiendo señal.");
-      respuestaDelAgente += " [INICIAR_CASO]";
+      iniciarTriaje = true;
     }
     
-    return respuestaDelAgente;
+    return {
+      texto: respuestaDelAgente,
+      iniciarTriaje: iniciarTriaje
+    };
+    // ==============================================================================
+    // FIN DE LA CORRECCION
+    // ==============================================================================
 
   } catch (error) {
     console.error("API: Error al chatear con el agente:", error);
-    return "Lo siento, no pude conectarme con el asistente en este momento.";
+    return {
+      texto: "Lo siento, no pude conectarme con el asistente en este momento.",
+      iniciarTriaje: false
+    };
   }
 };
 
@@ -268,6 +281,39 @@ export const obtenerEstadoEvidencia = async (idEvidencia) => {
     return await respuesta.json();
   } catch (error) {
     console.error(`API: Error al obtener el estado de la evidencia ${idEvidencia}:`, error);
+    throw error;
+  }
+};
+
+
+/**
+ * Docstring:
+ * Llama al endpoint protegido para obtener la lista de casos
+ * asignados al estudiante actualmente autenticado.
+ */
+export const apiObtenerMisAsignaciones = async () => {
+  console.log("API: Solicitando la lista de casos asignados para el estudiante.");
+  try {
+    
+    //  Usamos el prefijo correcto '/expedientes'
+    
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/mis-asignaciones`, {
+      method: 'GET',
+      headers: obtenerCabeceras(),
+    });
+    
+   
+    
+
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      console.error("API: Falla al obtener asignaciones. Detalle del backend:", errorData.detail);
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+
+    return await respuesta.json();
+  } catch (error) {
+    console.error("API: Error al obtener las asignaciones del estudiante:", error);
     throw error;
   }
 };

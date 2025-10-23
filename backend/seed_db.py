@@ -3,17 +3,10 @@
 from sqlmodel import Session, SQLModel
 from .base_de_datos import motor
 
-# ¡IMPORTANTE! Importamos el nuevo modelo 'Cuenta'
 from .api.modelos_compartidos import Cuenta, Usuario, Estudiante, Asesor, Caso, Evidencia, Asignacion
-
-# Importamos nuestra nueva utilidad para hashear contraseñas
 from .seguridad.contrasenas import obtener_hash_de_contrasena
 
 def resetear_y_poblar_la_base_de_datos():
-    """
-    Script para resetear y poblar la base de datos con datos de muestra.
-    ¡ADVERTENCIA! Este script es destructivo.
-    """
     print("INICIO: Script de reseteo y poblacion de la base de datos.")
     
     print("PASO 1: Borrando todas las tablas existentes...")
@@ -27,29 +20,45 @@ def resetear_y_poblar_la_base_de_datos():
     with Session(motor) as sesion:
         print("PASO 3: Poblando las tablas con datos de muestra...")
 
-        # --- INICIO DE LA MODIFICACION ---
-        # Ahora, primero creamos la CUENTA y luego el USUARIO
-        
-        # 3.1. Hasheamos una contraseña de prueba
-        contrasena_hasheada = obtener_hash_de_contrasena("secreto123")
+        contrasena_hasheada_comun = obtener_hash_de_contrasena("secreto123")
 
-        # 3.2. Creamos la instancia de la Cuenta
-        cuenta_de_prueba = Cuenta(
+        # --- Creacion de la Cuenta y Perfil del USUARIO (CIUDADANO) ---
+        cuenta_usuario = Cuenta(
             email="juan.consulta@email.com",
-            contrasena_hash=contrasena_hasheada,
+            contrasena_hash=contrasena_hasheada_comun,
             rol="usuario"
         )
-        
-        # 3.3. Creamos la instancia del Usuario y la VINCULAMOS a su cuenta
         usuario_de_prueba = Usuario(
             nombre="Juan Consultante",
             cedula="123456789",
-            cuenta=cuenta_de_prueba  # SQLModel se encarga de la magia de la relación
+            cuenta=cuenta_usuario
         )
-        # --- FIN DE LA MODIFICACION ---
+        sesion.add(usuario_de_prueba)
+        print("-> Se ha añadido 1 cuenta y 1 perfil de usuario.")
 
-        estudiantes = [
-            Estudiante(nombre_completo="Ana Sofia Rojas", area_especialidad="Derecho Privado"),
+        # ==============================================================================
+        # INICIO DE LA MODIFICACION: Creacion de Cuenta y Perfil para ESTUDIANTE
+        # ==============================================================================
+        cuenta_estudiante = Cuenta(
+            email="ana.rojas@email.com",
+            contrasena_hash=contrasena_hasheada_comun,
+            rol="estudiante" # <-- El rol es la clave
+        )
+        
+        # Vinculamos la cuenta a un nuevo perfil de estudiante
+        estudiante_ana = Estudiante(
+            nombre_completo="Ana Sofia Rojas", 
+            area_especialidad="Derecho Privado",
+            cuenta=cuenta_estudiante # <-- Vinculo directo
+        )
+        sesion.add(estudiante_ana)
+        print("-> Se ha añadido 1 cuenta y 1 perfil de estudiante.")
+        # ==============================================================================
+        # FIN DE LA MODIFICACION
+        # ==============================================================================
+
+        # Creamos el resto de estudiantes SIN cuenta, ya que no necesitan login por ahora
+        otros_estudiantes = [
             Estudiante(nombre_completo="Carlos David Perez", area_especialidad="Derecho Privado"),
             Estudiante(nombre_completo="Laura Valentina Gomez", area_especialidad="Derecho Publico"),
             Estudiante(nombre_completo="Juan Felipe Moreno", area_especialidad="Derecho Laboral"),
@@ -60,77 +69,38 @@ def resetear_y_poblar_la_base_de_datos():
             Asesor(nombre_completo="Dra. Monica Cifuentes", area_especialidad="Derecho Publico"),
             Asesor(nombre_completo="Dr. Alberto Fernandez", area_especialidad="Derecho Laboral"),
         ]
-
-        # Crear casos de prueba asociados al usuario (ID 1)
+        
         casos = [
-            Caso(
-                descripcion_hechos="Caso de prueba 1: Contrato de arrendamiento con problemas de pago",
-                id_usuario=1,
-                estado="asignado",
-                fecha_creacion="2025-10-01 10:00:00"
-            ),
-            Caso(
-                descripcion_hechos="Caso de prueba 2: Reclamación por accidente de trabajo",
-                id_usuario=1,
-                estado="en_revision",
-                fecha_creacion="2025-10-05 14:30:00"
-            ),
-            Caso(
-                descripcion_hechos="Caso de prueba 3: Divorcio con bienes compartidos",
-                id_usuario=1,
-                estado="asignado",
-                fecha_creacion="2025-10-10 09:15:00"
-            ),
-        ]
-
-        # Crear evidencias de prueba
-        evidencias = [
-            Evidencia(
-                id_caso=1,
-                nombre_archivo="contrato_arrendamiento.pdf",
-                ruta_archivo="1/contrato_arrendamiento.pdf",
-                estado="completado"
-            ),
-            Evidencia(
-                id_caso=2,
-                nombre_archivo="certificado_medico_accidente.png",
-                ruta_archivo="2/certificado_medico_accidente.png",
-                estado="subido"
-            ),
-            Evidencia(
-                id_caso=3,
-                nombre_archivo="escrituras_bienes.pdf",
-                ruta_archivo="3/escrituras_bienes.pdf",
-                estado="completado"
-            ),
-        ]
-
-        # Crear asignaciones de prueba
-        asignaciones = [
-            Asignacion(
-                id_caso=1,
-                id_estudiante=1,
-                id_asesor=1
-            ),
-            Asignacion(
-                id_caso=3,
-                id_estudiante=3,
-                id_asesor=2
-            ),
+            Caso(descripcion_hechos="Contrato de arrendamiento", id_usuario=1, estado="asignado"),
+            Caso(descripcion_hechos="Accidente de trabajo", id_usuario=1, estado="en_revision"),
+            Caso(descripcion_hechos="Divorcio con bienes", id_usuario=1, estado="asignado"),
         ]
         
-        # Al añadir el usuario, SQLModel también añadirá la cuenta vinculada.
-        sesion.add(usuario_de_prueba)
-        sesion.add_all(estudiantes)
+        sesion.add_all(otros_estudiantes)
         sesion.add_all(asesores)
+        sesion.commit() # Hacemos un commit para que los IDs se generen antes de las asignaciones
+
+        # Ahora que los IDs existen, creamos las evidencias y asignaciones
+        evidencias = [
+            Evidencia(id_caso=1, nombre_archivo="contrato.pdf", ruta_archivo="1/contrato.pdf"),
+            Evidencia(id_caso=2, nombre_archivo="certificado.png", ruta_archivo="2/certificado.png"),
+            Evidencia(id_caso=3, nombre_archivo="escrituras.pdf", ruta_archivo="3/escrituras.pdf"),
+        ]
+        
+        # Asignamos el caso 1 a Ana (ID de estudiante 1)
+        # Asignamos el caso 3 a Laura (ID de estudiante 3)
+        asignaciones = [
+            Asignacion(id_caso=1, id_estudiante=1, id_asesor=1),
+            Asignacion(id_caso=3, id_estudiante=3, id_asesor=2),
+        ]
+        
         sesion.add_all(casos)
         sesion.add_all(evidencias)
         sesion.add_all(asignaciones)
         
         sesion.commit()
 
-        print("-> Se ha añadido 1 cuenta y 1 perfil de usuario.")
-        print("-> Se han añadido 4 estudiantes y 3 asesores.")
+        print("-> Se han añadido 3 estudiantes y 3 asesores.")
         print("-> Se han añadido 3 casos de prueba con evidencias y asignaciones.")
         print("EXITO: La base de datos ha sido reseteada y poblada.")
 

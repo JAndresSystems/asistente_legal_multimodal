@@ -1,36 +1,49 @@
-// frontend/src/componentes/VistaDetalleCaso/VistaDetalleCaso.jsx
+// C:\react\asistente_legal_multimodal\frontend\src\componentes\usuario\VistaDetalleCaso\VistaDetalleCaso.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { obtenerDetallesCaso } from '../../../servicios/api';
 import FormularioSubirEvidencia from '../FormularioSubirEvidencia/FormularioSubirEvidencia';
 import VisorReporte from '../VisorReporte/VisorReporte';
 import './VistaDetalleCaso.css';
 
-function VistaDetalleCaso({ casoId, onVolverAlDashboard, onEvidenciaSubida }) {
+function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
   const [caso, setCaso] = useState(null);
   const [estaCargando, setEstaCargando] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const cargarDatosDelCaso = async () => {
-      if (!casoId) {
-        setError("No se ha proporcionado un ID de caso.");
-        setEstaCargando(false);
-        return;
-      }
-      try {
-        setEstaCargando(true);
-        const detallesDelCaso = await obtenerDetallesCaso(casoId);
-        setCaso(detallesDelCaso);
-      } catch (err) {
-        setError("No se pudieron cargar los detalles del caso. " + err.message);
-      } finally {
-        setEstaCargando(false);
-      }
-    };
-    cargarDatosDelCaso();
+  // Se envuelve la función de carga en useCallback.
+  // Esto asegura que la función no se recree en cada renderizado,
+  // a menos que su dependencia (casoId) cambie.
+  const cargarDatosDelCaso = useCallback(async () => {
+    if (!casoId) {
+      setError("No se ha proporcionado un ID de caso.");
+      setEstaCargando(false);
+      return;
+    }
+    try {
+      setEstaCargando(true);
+      const detallesDelCaso = await obtenerDetallesCaso(casoId);
+      setCaso(detallesDelCaso);
+      setError(null);
+    } catch (err) {
+      setError("No se pudieron cargar los detalles del caso. " + err.message);
+    } finally {
+      setEstaCargando(false);
+    }
   }, [casoId]);
 
+  // El useEffect ahora puede incluir 'cargarDatosDelCaso' en sus dependencias
+  // de forma segura, eliminando la advertencia de eslint.
+  useEffect(() => {
+    cargarDatosDelCaso();
+  }, [cargarDatosDelCaso]);
+
+  // Este manejador simplemente vuelve a llamar a la función de carga de datos.
+  const manejarSubidaCompletada = () => {
+    console.log("Evidencia subida. Refrescando datos del caso...");
+    cargarDatosDelCaso();
+  };
+  
   if (estaCargando) {
     return <div className="detalle-contenedor"><p>Cargando información del caso...</p></div>;
   }
@@ -91,7 +104,7 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard, onEvidenciaSubida }) {
         <h2>Añadir Nueva Evidencia</h2>
         <FormularioSubirEvidencia
           casoId={caso.id}
-          onSubidaCompletada={onEvidenciaSubida}
+          onSubidaCompletada={manejarSubidaCompletada}
         />
       </div>
       <hr className="separador-seccion" />
@@ -102,14 +115,12 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard, onEvidenciaSubida }) {
             {caso.evidencias.map((evidencia) => (
               <li key={evidencia.id} className="item-evidencia">
                 {evidencia.ruta_archivo && typeof evidencia.ruta_archivo === 'string' ? (
-                  
                   <a
                     href={`${URL_BASE_BACKEND}/archivos_subidos/${evidencia.ruta_archivo.replace(/\\/g, '/')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="enlace-evidencia"
                   >
-                
                     {evidencia.nombre_archivo}
                   </a>
                 ) : (

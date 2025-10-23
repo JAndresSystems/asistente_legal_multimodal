@@ -1,35 +1,33 @@
-// frontend/src/componentes/VisorReporte/VisorReporte.jsx
+// frontend/src/componentes/usuario/VisorReporte/VisorReporte.jsx
 
 import React from 'react';
 import './VisorReporte.css';
 
-// ==============================================================================
-// INICIO DE LA CORRECCION: Logica de renderizado mejorada
-// ==============================================================================
-
-// Componente auxiliar para renderizar los detalles de cada seccion del reporte
 const SeccionReporte = ({ titulo, datosSeccion }) => {
-  // Intentamos parsear los datos si son un string, si no, los usamos directamente
   let datosObjeto;
-  try {
-    datosObjeto = typeof datosSeccion === 'string' ? JSON.parse(datosSeccion) : datosSeccion;
-  } catch (error) {
-    console.log("Error al parsear datos de sección:", error);
-    // Si falla el parseo de una sub-seccion, mostramos el texto original
-    return (
-      <>
-        <tr className="fila-seccion-titulo">
-          <td colSpan="2">{titulo.replace(/_/g, ' ')}</td>
-        </tr>
-        <tr>
-          <th>Error</th>
-          <td><pre className="reporte-error">{String(datosSeccion)}</pre></td>
-        </tr>
-      </>
-    );
+  // ==============================================================================
+  // INICIO DE LA CORRECCION: Hacemos el parseo a prueba de fallos
+  // ==============================================================================
+  // Solo intentamos parsear si es un string que parece un objeto o array
+  if (typeof datosSeccion === 'string' && (datosSeccion.startsWith('{') || datosSeccion.startsWith('['))) {
+    try {
+      datosObjeto = JSON.parse(datosSeccion);
+    } catch (error) {
+      console.log("Error al parsear datos de la sección:", error);
+      // Si el parseo falla, lo tratamos como un string simple
+      datosObjeto = { "valor": datosSeccion };
+    }
+  } else if (typeof datosSeccion === 'object' && datosSeccion !== null) {
+    // Si ya es un objeto, lo usamos directamente
+    datosObjeto = datosSeccion;
+  } else {
+    // Para strings simples, números, etc., lo envolvemos en un objeto para mostrarlo
+    datosObjeto = { "resultado": String(datosSeccion) };
   }
+  // ==============================================================================
+  // FIN DE LA CORRECCION
+  // ==============================================================================
 
-  // Mapeamos claves tecnicas a etiquetas amigables para el usuario
   const etiquetas = {
     admisible: '¿Es Admisible?',
     justificacion: 'Justificación',
@@ -42,7 +40,9 @@ const SeccionReporte = ({ titulo, datosSeccion }) => {
     id_asesor_asignado: 'ID Asesor Asignado',
     operacion_db: 'Resultado de la Asignación',
     transcripcion_completa: 'Transcripción del Audio',
-    resumen_puntos_clave: 'Resumen del Audio'
+    resumen_puntos_clave: 'Resumen del Audio',
+    resultado: 'Resultado',
+    valor: 'Valor'
   };
 
   return (
@@ -53,12 +53,7 @@ const SeccionReporte = ({ titulo, datosSeccion }) => {
       {Object.entries(datosObjeto).map(([clave, valor]) => {
         if (valor === '' || valor === null) return null;
         
-        let contenidoCelda;
-        if (typeof valor === 'boolean') {
-          contenidoCelda = valor ? 'Sí' : 'No';
-        } else {
-          contenidoCelda = String(valor);
-        }
+        let contenidoCelda = typeof valor === 'boolean' ? (valor ? 'Sí' : 'No') : String(valor);
 
         return (
           <tr key={clave}>
@@ -80,13 +75,12 @@ function VisorReporte({ jsonString }) {
     return <pre className="reporte-error">{jsonString}</pre>;
   }
 
-  // Mapeamos las claves principales del reporte a titulos de seccion
   const titulosSeccion = {
-    resultado_triaje: 'TRIaje',
-    resultado_determinador_competencias: 'COMPETENCIA',
-    resultado_repartidor: 'ASIGNACION',
-    resultado_analisis_audio: 'ANALISIS AUDIO',
-    resultado_agente_juridico: 'ANALISIS JURIDICO'
+    TRIEJE: 'Resultado del Triaje',
+    COMPETENCIA: 'Determinación de Competencia',
+    ASIGNACION: 'Resultado de la Asignación',
+    ANALISIS_AUDIO: 'Análisis de Audio',
+    ANALISIS_JURIDICO: 'Análisis Jurídico'
   };
 
   return (
@@ -105,9 +99,5 @@ function VisorReporte({ jsonString }) {
     </div>
   );
 }
-
-// ==============================================================================
-// FIN DE LA CORRECCION
-// ==============================================================================
 
 export default VisorReporte;

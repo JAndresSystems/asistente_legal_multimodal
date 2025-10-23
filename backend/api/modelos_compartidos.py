@@ -41,6 +41,7 @@ class Cuenta(SQLModel, table=True):
     esta_activo: bool = Field(default=True)
 
     usuario: Optional["Usuario"] = Relationship(back_populates="cuenta")
+    estudiante: Optional["Estudiante"] = Relationship(back_populates="cuenta")
 
 
 class Usuario(SQLModel, table=True):
@@ -57,6 +58,8 @@ class Usuario(SQLModel, table=True):
 
 class Estudiante(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    id_cuenta: Optional[int] = Field(default=None, foreign_key="cuenta.id", unique=True)
+    cuenta: Optional["Cuenta"] = Relationship(back_populates="estudiante")
     nombre_completo: str
     area_especialidad: str
     asignaciones: List["Asignacion"] = Relationship(back_populates="estudiante")

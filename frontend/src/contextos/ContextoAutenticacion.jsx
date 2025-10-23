@@ -17,7 +17,6 @@ import { jwtDecode } from 'jwt-decode'; // Necesitaremos una nueva libreria
 const ContextoAuth = createContext(null);
 
 export const ProveedorAuth = ({ children }) => {
-  const [token, setToken] = useState(null);
   const [usuario, setUsuario] = useState(null);
   const [estaAutenticado, setEstaAutenticado] = useState(false);
   const [cargando, setCargando] = useState(true);
@@ -29,9 +28,15 @@ export const ProveedorAuth = ({ children }) => {
         // Decodificamos el token para verificar si ha expirado
         const decodedToken = jwtDecode(tokenGuardado);
         if (decodedToken.exp * 1000 > Date.now()) {
-          setToken(tokenGuardado);
+          
           setAuthToken(tokenGuardado);
-          setUsuario({ email: decodedToken.sub }); // 'sub' es el email del usuario
+          // ==============================================================================
+          // INICIO DE LA CORRECCION: Leemos el ROL al cargar la página
+          // ==============================================================================
+          setUsuario({ email: decodedToken.sub, rol: decodedToken.rol });
+          // ==============================================================================
+          // FIN DE LA CORRECCION
+          // ==============================================================================
           setEstaAutenticado(true);
         } else {
           // Si el token ha expirado, lo limpiamos
@@ -51,10 +56,15 @@ export const ProveedorAuth = ({ children }) => {
     try {
       const data = await apiLogin(email, contrasena);
       localStorage.setItem('authToken', data.access_token);
-      setToken(data.access_token);
       setAuthToken(data.access_token);
       const decodedToken = jwtDecode(data.access_token);
-      setUsuario({ email: decodedToken.sub });
+      // ==============================================================================
+      // INICIO DE LA CORRECCION: Leemos el ROL al iniciar sesión
+      // ==============================================================================
+      setUsuario({ email: decodedToken.sub, rol: decodedToken.rol });
+      // ==============================================================================
+      // FIN DE LA CORRECCION
+      // ==============================================================================
       setEstaAutenticado(true);
     } catch (error) {
       console.error("Error en el login:", error);
@@ -71,17 +81,19 @@ export const ProveedorAuth = ({ children }) => {
     }
   };
   
-  const logout = () => {
+   const logout = () => {
     localStorage.removeItem('authToken');
-    setToken(null);
     setUsuario(null);
     setEstaAutenticado(false);
     setAuthToken(null);
+    // Adicionalmente, limpiamos el estado guardado de la app para evitar fugas de datos
+    localStorage.removeItem('app_vistaActual');
+    localStorage.removeItem('app_casoId');
+    localStorage.removeItem('app_agenteActivo');
   };
 
   // El valor que sera accesible por todos los componentes hijos
   const valor = {
-    token,
     usuario,
     estaAutenticado,
     cargando,

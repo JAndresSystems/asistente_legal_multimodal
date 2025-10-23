@@ -10,16 +10,17 @@ from .modelos_compartidos import (
     Caso, CasoCreacion, Evidencia, CasoLecturaConEvidencias,
     PreguntaChat, RespuestaChat, SolicitudAnalisis, Cuenta,
     Usuario, CasoLecturaUsuario, EstadoCaso, CasoDetalleUsuario,
-    EvidenciaLecturaSimple
+    EvidenciaLecturaSimple,Asignacion 
 )
 from ..tareas import procesar_evidencia_tarea
 from ..agentes.agente_atencion import grafo_atencion_compilado
 from ..seguridad.jwt_manager import obtener_cuenta_actual
 
 # --- CONFIGURACION DE ENRUTADORES ---
-router_casos = APIRouter(prefix="/casos", tags=["Gestion de Casos"], dependencies=[Depends(obtener_cuenta_actual)])
+router_casos = APIRouter(prefix="/casos", tags=["Gestión de Casos (Ciudadano)"], dependencies=[Depends(obtener_cuenta_actual)])
+router_expedientes = APIRouter(prefix="/expedientes", tags=["Gestión de Expedientes (Estudiante)"], dependencies=[Depends(obtener_cuenta_actual)])
 router_chat = APIRouter(prefix="/chat", tags=["Chat de Atencion"])
-router_evidencias = APIRouter(prefix="/evidencias", tags=["Gestion de Evidencias"], dependencies=[Depends(obtener_cuenta_actual)])
+router_evidencias = APIRouter(prefix="/evidencias", tags=["Gestión de Evidencias"], dependencies=[Depends(obtener_cuenta_actual)])
 
 # --- ENDPOINT DEL CHAT DE ATENCION ---
 @router_chat.post("/", response_model=RespuestaChat)
@@ -43,24 +44,26 @@ def conversar_con_agente_atencion(pregunta: PreguntaChat):
 
 # --- ENDPOINTS DE GESTION DE CASOS ---
 @router_casos.get("/mis-casos", response_model=List[CasoLecturaUsuario])
-def obtener_mis_casos(
-    sesion: Session = Depends(obtener_sesion),
-    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
-):
-    """
-    Endpoint para que un usuario obtenga la lista de sus casos ACTIVOS.
-    (Ahora filtra los casos rechazados).
-    """
+def obtener_mis_casos(sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
     if not cuenta_actual.usuario:
         raise HTTPException(status_code=404, detail="Perfil de usuario no encontrado.")
-    
-    casos_del_usuario = sesion.exec(
-        select(Caso).where(
-            Caso.id_usuario == cuenta_actual.usuario.id,
-            Caso.estado != EstadoCaso.RECHAZADO
-        ).order_by(Caso.fecha_creacion.desc())
-    ).all()
-    return casos_del_usuario
+    casos = sesion.exec(select(Caso).where(Caso.id_usuario == cuenta_actual.usuario.id, Caso.estado != EstadoCaso.RECHAZADO).order_by(Caso.fecha_creacion.desc())).all()
+    return casos
+
+
+@router_expedientes.get("/mis-asignaciones", response_model=List[CasoLecturaUsuario])
+def obtener_mis_asignaciones(sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
+    if not hasattr(cuenta_actual, 'estudiante') or not cuenta_actual.estudiante:
+        raise HTTPException(status_code=403, detail="Esta cuenta no tiene un perfil de estudiante asociado.")
+    id_estudiante = cuenta_actual.estudiante.id
+    asignaciones = sesion.exec(select(Asignacion).where(Asignacion.id_estudiante == id_estudiante)).all()
+    if not asignaciones:
+        return []
+    ids_casos = [asig.id_caso for asig in asignaciones]
+    casos = sesion.exec(select(Caso).where(Caso.id.in_(ids_casos)).order_by(Caso.fecha_creacion.desc())).all()
+    return casos
+
+
 
 @router_casos.post("", response_model=CasoLecturaConEvidencias, status_code=201)
 def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):

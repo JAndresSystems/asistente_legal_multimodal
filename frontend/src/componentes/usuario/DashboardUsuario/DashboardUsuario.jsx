@@ -1,4 +1,4 @@
-// frontend/src/componentes/DashboardUsuario/DashboardUsuario.jsx
+// frontend\src\componentes\usuario\DashboardUsuario\DashboardUsuario.jsx
 
 import React, { useState, useEffect } from 'react';
 import { apiObtenerMisCasos } from '../../../servicios/api';

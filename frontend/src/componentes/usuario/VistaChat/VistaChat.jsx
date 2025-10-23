@@ -1,6 +1,8 @@
 // frontend/src/componentes/VistaChat/VistaChat.jsx
 
 /**
+ * 
+ * C:\react\asistente_legal_multimodal\frontend\src\componentes\usuario\VistaChat\VistaChat.jsx
  * Docstring:
  * Este componente es responsable UNICAMENTE de la presentacion (UI)
  * de la interfaz de chat. No contiene logica de negocio.

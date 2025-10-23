@@ -1,0 +1,90 @@
+/* frontend/src/componentes/estudiante/DashboardEstudiante/DashboardEstudiante.css */
+
+.dashboard-estudiante-contenedor {
+  width: 100%;
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.dashboard-estudiante-contenedor.error {
+  background-color: #fff0f0;
+  border-left: 5px solid #d9534f;
+  padding: 1.5rem;
+}
+
+.dashboard-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.dashboard-cabecera h1 {
+  font-size: 1.8rem;
+  color: #333;
+  margin: 0;
+}
+
+.tabla-casos-estudiante {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.tabla-casos-estudiante th,
+.tabla-casos-estudiante td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.tabla-casos-estudiante th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+.tabla-casos-estudiante tbody tr:hover {
+  background-color: #f1f3f5;
+}
+
+.tabla-casos-estudiante .boton-accion {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.tabla-casos-estudiante .boton-accion:hover {
+  background-color: #0056b3;
+}
+
+/* Estilos de estado (reutilizados de la vista de usuario para consistencia) */
+.estado-caso {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+.estado-caso.en_revision { background-color: #ffc107; color: #333; }
+.estado-caso.asignado { background-color: #28a745; color: white; }
+.estado-caso.rechazado { background-color: #dc3545; color: white; }
+.estado-caso.cerrado { background-color: #6c757d; color: white; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
