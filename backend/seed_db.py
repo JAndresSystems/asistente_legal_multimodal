@@ -34,75 +34,52 @@ def resetear_y_poblar_la_base_de_datos():
             cuenta=cuenta_usuario
         )
         sesion.add(usuario_de_prueba)
-        print("-> Se ha añadido 1 cuenta y 1 perfil de usuario.")
+        print("-> Se ha añadido 1 cuenta de usuario (ciudadano).")
 
-        # ==============================================================================
-        # INICIO DE LA MODIFICACION: Creacion de Cuenta y Perfil para ESTUDIANTE
-        # ==============================================================================
+        # --- Creacion de la Cuenta y Perfil para la ESTUDIANTE de prueba ---
         cuenta_estudiante = Cuenta(
             email="ana.rojas@email.com",
             contrasena_hash=contrasena_hasheada_comun,
-            rol="estudiante" # <-- El rol es la clave
+            rol="estudiante"
         )
-        
-        # Vinculamos la cuenta a un nuevo perfil de estudiante
         estudiante_ana = Estudiante(
             nombre_completo="Ana Sofia Rojas", 
             area_especialidad="Derecho Privado",
-            cuenta=cuenta_estudiante # <-- Vinculo directo
+            cuenta=cuenta_estudiante
         )
         sesion.add(estudiante_ana)
-        print("-> Se ha añadido 1 cuenta y 1 perfil de estudiante.")
-        # ==============================================================================
-        # FIN DE LA MODIFICACION
-        # ==============================================================================
+        print("-> Se ha añadido 1 cuenta de estudiante (ana.rojas@email.com).")
 
-        # Creamos el resto de estudiantes SIN cuenta, ya que no necesitan login por ahora
-        otros_estudiantes = [
+        # --- INICIO DE LA MODIFICACION: Cobertura completa de areas ---
+        # Creamos estudiantes y asesores para TODAS las areas de competencia.
+        
+        estudiantes = [
+            # Se añade uno extra para Derecho Privado para probar el balanceo de carga.
             Estudiante(nombre_completo="Carlos David Perez", area_especialidad="Derecho Privado"),
             Estudiante(nombre_completo="Laura Valentina Gomez", area_especialidad="Derecho Publico"),
             Estudiante(nombre_completo="Juan Felipe Moreno", area_especialidad="Derecho Laboral"),
+            Estudiante(nombre_completo="Miguel Angel Torres", area_especialidad="Derecho Penal"),
+            Estudiante(nombre_completo="Isabella Cruz", area_especialidad="Derecho Familia"),
         ]
 
         asesores = [
             Asesor(nombre_completo="Dr. Ricardo Mendoza", area_especialidad="Derecho Privado"),
             Asesor(nombre_completo="Dra. Monica Cifuentes", area_especialidad="Derecho Publico"),
             Asesor(nombre_completo="Dr. Alberto Fernandez", area_especialidad="Derecho Laboral"),
+            Asesor(nombre_completo="Dra. Sofia Vergara", area_especialidad="Derecho Penal"),
+            Asesor(nombre_completo="Dr. Andres Ramirez", area_especialidad="Derecho Familia"),
         ]
         
-        casos = [
-            Caso(descripcion_hechos="Contrato de arrendamiento", id_usuario=1, estado="asignado"),
-            Caso(descripcion_hechos="Accidente de trabajo", id_usuario=1, estado="en_revision"),
-            Caso(descripcion_hechos="Divorcio con bienes", id_usuario=1, estado="asignado"),
-        ]
-        
-        sesion.add_all(otros_estudiantes)
+        sesion.add_all(estudiantes)
         sesion.add_all(asesores)
-        sesion.commit() # Hacemos un commit para que los IDs se generen antes de las asignaciones
-
-        # Ahora que los IDs existen, creamos las evidencias y asignaciones
-        evidencias = [
-            Evidencia(id_caso=1, nombre_archivo="contrato.pdf", ruta_archivo="1/contrato.pdf", tipo="application/pdf"),
-            Evidencia(id_caso=2, nombre_archivo="certificado.png", ruta_archivo="2/certificado.png", tipo="image/png"),
-            Evidencia(id_caso=3, nombre_archivo="escrituras.pdf", ruta_archivo="3/escrituras.pdf", tipo="application/pdf"),
-        ]
         
-        # Asignamos el caso 1 a Ana (ID de estudiante 1)
-        # Asignamos el caso 3 a Laura (ID de estudiante 3)
-        asignaciones = [
-            Asignacion(id_caso=1, id_estudiante=1, id_asesor=1),
-            Asignacion(id_caso=3, id_estudiante=3, id_asesor=2),
-        ]
-        
-        sesion.add_all(casos)
-        sesion.add_all(evidencias)
-        sesion.add_all(asignaciones)
+        # --- FIN DE LA MODIFICACION: Se eliminan casos y asignaciones predefinidas ---
         
         sesion.commit()
 
-        print("-> Se han añadido 3 estudiantes y 3 asesores.")
-        print("-> Se han añadido 3 casos de prueba con evidencias y asignaciones.")
-        print("EXITO: La base de datos ha sido reseteada y poblada.")
+        print("-> Se han añadido 5 estudiantes adicionales y 5 asesores, cubriendo todas las areas.")
+        print("-> No se han creado casos ni asignaciones para asegurar una prueba limpia.")
+        print("EXITO: La base de datos ha sido reseteada y poblada con personal completo.")
 
 if __name__ == "__main__":
     resetear_y_poblar_la_base_de_datos()

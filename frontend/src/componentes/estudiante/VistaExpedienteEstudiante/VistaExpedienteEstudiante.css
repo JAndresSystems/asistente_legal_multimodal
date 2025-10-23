@@ -138,3 +138,129 @@
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.9rem;
 }
+
+
+
+/* --- Estilos para la seccion del Agente Juridico --- */
+
+.agente-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.agente-textarea {
+  min-height: 100px;
+  padding: 0.75rem;
+  border-radius: 5px;
+  border: 1px solid #ced4da;
+  font-family: inherit;
+  font-size: 1rem;
+  resize: vertical;
+}
+
+.agente-textarea:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.agente-boton-enviar {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  transition: background-color 0.2s;
+  align-self: flex-end; /* Alinea el boton a la derecha */
+}
+
+.agente-boton-enviar:hover {
+  background-color: #0056b3;
+}
+
+.agente-boton-enviar:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.agente-area-respuesta {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 5px;
+  min-height: 50px;
+}
+
+.agente-error {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.agente-respuesta-formateada h4 {
+  margin-top: 0;
+  color: #343a40;
+}
+
+.agente-respuesta-formateada h5 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: #495057;
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 0.25rem;
+}
+
+.agente-respuesta-formateada ul {
+  padding-left: 20px;
+  margin: 0;
+  list-style-type: square;
+}
+
+.agente-respuesta-formateada li {
+  margin-bottom: 0.5rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
+
+/* --- Estilos para el Visor de Reporte Estructurado --- */
+
+.visor-reporte-estructurado {
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  padding: 1.5rem;
+  border: 1px solid #e9ecef;
+}
+
+.visor-reporte-estructurado h3 {
+  margin-top: 0;
+  border-bottom: 2px solid #6c757d;
+  padding-bottom: 0.5rem;
+}
+
+.reporte-seccion {
+  margin-bottom: 1.5rem;
+  padding-left: 1rem;
+  border-left: 3px solid #007bff;
+}
+
+.reporte-seccion h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #343a40;
+}
+
+.reporte-seccion p {
+  margin: 0.25rem 0;
+  font-size: 0.95rem;
+}
+
+.reporte-seccion p strong {
+  text-transform: capitalize;
+  color: #495057;
+}

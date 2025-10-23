@@ -253,7 +253,92 @@ def nodo_agente_repartidor(estado: EstadoDelGrafo) -> Dict[str, Any]:
     return {"resultado_repartidor": resultado}
 
 def nodo_agente_juridico(estado: EstadoDelGrafo) -> Dict[str, Any]:
-    return {"resultado_agente_juridico": "Ejecucion omitida en este flujo."}
+    """
+    Docstring:
+    Este nodo actua como un asesor juridico experto que formatea su salida de
+    manera estructurada y pedagogica usando Markdown.
+    """
+    print("\n--- [AGENTE JURIDICO] Iniciando ejecucion del nodo ---")
+
+    pregunta_interactiva = estado.get("pregunta_para_agente_juridico")
+    hechos_del_caso = estado.get("hechos_del_caso_para_contexto") or estado.get("resultado_triaje", {}).get("hechos_clave", "")
+
+    if not hechos_del_caso:
+        msg = "Ejecucion omitida: No se encontraron hechos del caso para analizar."
+        return {"resultado_agente_juridico": {"contenido": msg, "fuentes": []}}
+
+    if pregunta_interactiva:
+        print(f"--- [AGENTE JURIDICO] Modo: Interactivo. Pregunta: '{pregunta_interactiva[:50]}...'")
+        tarea = f"Resolver la siguiente pregunta específica del estudiante: '{pregunta_interactiva}'"
+        instrucciones_adicionales = "Completa todos los puntos de la plantilla de manera detallada pero organizada."
+    else:
+        print("--- [AGENTE JURIDICO] Modo: Automatico (dentro del grafo).")
+        tarea = "Realizar un análisis jurídico inicial y sugerir los posibles caminos a seguir."
+        instrucciones_adicionales = "Enfócate en ser muy conciso en la sección 'Estrategia Procesal'."
+
+    consulta_rag = f"Hechos del caso: {hechos_del_caso}\n\nPregunta: {pregunta_interactiva or 'Análisis inicial'}"
+    contexto_encontrado = buscar_en_base_de_conocimiento(
+        consulta=consulta_rag,
+        area_competencia="derecho_privado"
+    )
+    contexto_para_prompt = "\n\n---\n\n".join(contexto_encontrado)
+
+    # --- INICIO DE LA MODIFICACION FINAL: EL PROMPT DE TUTOR ESTRUCTURADO ---
+    prompt_final = f"""
+    Eres un Tutor Jurídico de IA, especializado en Derecho Privado colombiano. Tu propósito es proporcionar respuestas claras, estructuradas y concisas para guiar a estudiantes de derecho.
+
+    --- REGLAS DE ORO (APLICAN A TODAS LAS RESPUESTAS) ---
+    1.  **Claridad y Estructura SIEMPRE:** Toda respuesta, sin importar la pregunta, debe estar formateada en Markdown. Utiliza encabezados (`###`), listas (`*` o `1.`) y negritas (`**`) para organizar la información.
+    2.  **Concisión Profesional:** Tus respuestas NO DEBEN superar las 200 palabras, a menos que la tarea sea explícitamente un "análisis inicial". Ve directo al grano. Eres un abogado senior, tu tiempo es valioso.
+    3.  **Fundamentación Obligatoria:** Siempre que sea posible, cita la base legal de tu respuesta (ej. "según el Art. 2341 C.C.", "conforme a la Ley 1564 de 2012").
+
+    --- CONTEXTO DEL CASO (Tu Memoria) ---
+    **Hechos del Caso:**
+    {hechos_del_caso}
+
+    **Contexto Jurídico de Apoyo (RAG):**
+    {contexto_para_prompt}
+
+    --- TAREA A REALIZAR ---
+    **Tarea Específica:** {tarea}
+
+    --- LÓGICA DE RESPUESTA (MUY IMPORTANTE) ---
+    *   **Si la "Tarea Específica" es un "análisis jurídico inicial"**, DEBES usar la "PLANTILLA DE ANÁLISIS COMPLETO" que se detalla más abajo.
+    *   **Para CUALQUIER OTRA PREGUNTA específica del estudiante**, DEBES usar una estructura simple y directa:
+        1.  Un encabezado `### Respuesta a tu Consulta`.
+        2.  Una lista de puntos (`*` o `1.`) que respondan directamente a la pregunta, de forma concisa.
+        3.  Un encabezado `### Fundamento Legal` donde cites las normas clave.
+
+    --- PLANTILLA A: ANÁLISIS COMPLETO (SOLO PARA ANÁLISIS INICIAL) ---
+    ### ANÁLISIS DEL CASO
+    **1. Hechos Clave:**
+    *   (Resume los hechos en 2-3 puntos).
+    **2. Análisis de Competencia:**
+    *   **Cuantía:** (Cálculo y conclusión, citando Art. CGP).
+    *   **Territorio:** (Juez competente, citando Art. CGP).
+    *   **Área de Derecho:** (Confirma el área específica).
+    **3. Fundamentos Jurídicos:**
+    *   (Lista de 3-4 normas principales).
+    **4. Estrategia Procesal:**
+    1.  (Primer paso obligatorio).
+    2.  (Segundo paso: Pruebas).
+    3.  (Tercer paso: Demanda).
+    ### ESQUELETO DE LA DEMANDA
+    *   **Encabezado:** Juez Civil Municipal de [Ciudad].
+    *   **Partes:** Demandante y Demandados.
+    *   **Pretensiones:** (Lista concisa de 1 a 4).
+    *   **Pruebas Clave:** (Lista de 3-5 pruebas esenciales).
+    --- FIN DE LA PLANTILLA A ---
+    """
+    # --- FIN DE LA MODIFICACION FINAL ---
+
+    contenido_respuesta = generar_respuesta_texto(prompt_final)
+    resultado = {"contenido": contenido_respuesta, "fuentes": contexto_encontrado}
+    
+    print("--- [AGENTE JURIDICO] Respuesta estructurada generada exitosamente.")
+    return {"resultado_agente_juridico": resultado}
+
+
 
 def nodo_agente_generador_documentos(estado: EstadoDelGrafo) -> Dict[str, Any]:
     return {"resultado_agente_generador_documentos": "Ejecucion omitida en este flujo."}

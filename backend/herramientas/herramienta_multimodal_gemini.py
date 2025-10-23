@@ -1,3 +1,4 @@
+#C:\react\asistente_legal_multimodal\backend\herramientas\herramienta_multimodal_gemini.py
 import base64
 import mimetypes
 from typing import List, Dict, Any

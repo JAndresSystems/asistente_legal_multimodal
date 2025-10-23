@@ -344,3 +344,37 @@ export const apiObtenerDetalleExpediente = async (idCaso) => {
     throw error;
   }
 };
+
+
+/**
+ * Docstring:
+ * Llama al endpoint del Agente Juridico para realizar una consulta.
+ * Args:
+ *   idCaso (number): El ID del caso en contexto.
+ *   pregunta (string): La pregunta del estudiante para el agente.
+ */
+export const apiConsultarAgenteJuridico = async (idCaso, pregunta) => {
+  console.log(`API: Enviando pregunta al Agente Juridico para el caso ${idCaso}: "${pregunta}"`);
+  try {
+    const cuerpoDeLaPeticion = {
+      id_caso: idCaso,
+      pregunta: pregunta,
+    };
+
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/agentes/consulta-juridica`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+      body: JSON.stringify(cuerpoDeLaPeticion),
+    });
+
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+
+    return await respuesta.json(); // Devuelve { contenido, fuentes }
+  } catch (error) {
+    console.error("API: Error al consultar al Agente Juridico:", error);
+    throw error;
+  }
+};

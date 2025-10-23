@@ -8,15 +8,11 @@ from contextlib import asynccontextmanager
 from . import base_de_datos
 from .api.enrutador_autenticacion import router_auth
 
-# ==============================================================================
-# INICIO DE LA CORRECCION: Eliminamos la importación duplicada
-# ==============================================================================
-# Mantenemos únicamente la línea que importa TODOS los routers necesarios.
+
+
 from .api.enrutador_principal import router_casos, router_chat, router_evidencias, router_expedientes
-# La línea duplicada ha sido eliminada.
-# ==============================================================================
-# FIN DE LA CORRECCION
-# ==============================================================================
+
+from .api.enrutador_agentes import router_agentes
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,6 +47,8 @@ aplicacion.include_router(router_casos)
 aplicacion.include_router(router_chat)
 aplicacion.include_router(router_evidencias)
 aplicacion.include_router(router_expedientes)
+# 2. Registramos el nuevo enrutador en la aplicación.
+aplicacion.include_router(router_agentes)
 print("-> Enrutadores registrados exitosamente.")
 
 @aplicacion.get("/", tags=["Root"])
