@@ -317,3 +317,30 @@ export const apiObtenerMisAsignaciones = async () => {
     throw error;
   }
 };
+
+
+/**
+ * Docstring:
+ * Llama al endpoint protegido para obtener los detalles de un
+ * expediente especifico al que el estudiante esta asignado.
+ */
+export const apiObtenerDetalleExpediente = async (idCaso) => {
+  console.log(`API: Solicitando detalles para el expediente ID: ${idCaso}`);
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}`, {
+      method: 'GET',
+      headers: obtenerCabeceras(),
+    });
+
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      console.error(`API: Falla al obtener el expediente ${idCaso}. Detalle:`, errorData.detail);
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+
+    return await respuesta.json();
+  } catch (error) {
+    console.error(`API: Error al obtener el detalle del expediente ${idCaso}:`, error);
+    throw error;
+  }
+};

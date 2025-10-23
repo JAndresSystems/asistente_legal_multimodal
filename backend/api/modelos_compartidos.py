@@ -90,7 +90,7 @@ class Evidencia(SQLModel, table=True):
     nombre_archivo: str
     ruta_archivo: str
     estado: str = Field(default="subido")
-    
+    tipo: str = Field(default="desconocido") # e.g., "documento", "imagen", "video", etc.
     reporte_analisis: Optional[str] = Field(default=None, sa_column=Column(Text))
     
     caso: "Caso" = Relationship(back_populates="evidencias")

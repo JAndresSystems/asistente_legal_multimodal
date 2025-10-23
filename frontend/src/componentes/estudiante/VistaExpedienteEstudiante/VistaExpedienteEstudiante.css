@@ -1,0 +1,140 @@
+/* frontend/src/componentes/estudiante/VistaExpedienteEstudiante/VistaExpedienteEstudiante.css */
+
+.vista-expediente-contenedor {
+  padding: 2rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  max-width: 900px;
+  margin: 2rem auto;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.boton-volver {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.boton-volver:hover {
+  background-color: #5a6268;
+}
+
+.vista-expediente-cargando, .vista-expediente-error {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.2rem;
+  color: #555;
+}
+
+.vista-expediente-error {
+  color: #dc3545;
+}
+
+.expediente-metadata {
+  background-color: #e9ecef;
+  padding: 1rem;
+  border-radius: 5px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.expediente-metadata p {
+  margin: 0;
+}
+
+.estado-caso {
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  color: white;
+  font-weight: bold;
+  text-transform: capitalize;
+  font-size: 0.9em;
+}
+
+/* Colores para cada estado del caso */
+.estado-en_revision { background-color: #ffc107; color: #333; }
+.estado-asignado { background-color: #17a2b8; }
+.estado-rechazado { background-color: #dc3545; }
+.estado-en_progreso { background-color: #007bff; }
+.estado-finalizado { background-color: #28a745; }
+
+
+.expediente-seccion {
+  margin-bottom: 2rem;
+  background-color: #fff;
+  padding: 1.5rem;
+  border: 1px solid #dee2e6;
+  border-radius: 5px;
+}
+
+.expediente-seccion h3 {
+  margin-top: 0;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+  color: #343a40;
+}
+
+.lista-evidencias {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.lista-evidencias li {
+  background-color: #f8f9fa;
+  padding: 0.75rem;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lista-evidencias a {
+  text-decoration: none;
+  color: #007bff;
+  font-weight: 500;
+}
+
+.lista-evidencias a:hover {
+  text-decoration: underline;
+}
+
+.tipo-evidencia {
+  font-style: italic;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.visor-reporte-ia {
+  background-color: #282c34; /* Fondo oscuro */
+  color: #abb2bf; /* Texto gris claro */
+  padding: 1rem;
+  border-radius: 5px;
+  overflow-x: auto;
+}
+
+.visor-reporte-ia h4 {
+  color: #61afef; /* Azul claro para el título */
+  margin-top: 0;
+  border-bottom: 1px solid #444;
+  padding-bottom: 0.5rem;
+}
+
+.visor-reporte-ia pre {
+  white-space: pre-wrap; /* Permite que el texto largo se ajuste */
+  word-wrap: break-word;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+}

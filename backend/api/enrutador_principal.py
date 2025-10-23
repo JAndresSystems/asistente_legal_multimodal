@@ -17,6 +17,20 @@ from ..agentes.agente_atencion import grafo_atencion_compilado
 from ..seguridad.jwt_manager import obtener_cuenta_actual
 
 # --- CONFIGURACION DE ENRUTADORES ---
+router_casos = APIRouter(
+    prefix="/casos",
+    tags=["Casos (Ciudadano)"],
+    dependencies=[Depends(obtener_cuenta_actual)]
+)
+
+router_expedientes = APIRouter(
+    prefix="/expedientes",
+    tags=["Expedientes (Estudiante)"],
+    dependencies=[Depends(obtener_cuenta_actual)]
+)
+
+
+
 router_casos = APIRouter(prefix="/casos", tags=["Gestión de Casos (Ciudadano)"], dependencies=[Depends(obtener_cuenta_actual)])
 router_expedientes = APIRouter(prefix="/expedientes", tags=["Gestión de Expedientes (Estudiante)"], dependencies=[Depends(obtener_cuenta_actual)])
 router_chat = APIRouter(prefix="/chat", tags=["Chat de Atencion"])
@@ -62,6 +76,79 @@ def obtener_mis_asignaciones(sesion: Session = Depends(obtener_sesion), cuenta_a
     ids_casos = [asig.id_caso for asig in asignaciones]
     casos = sesion.exec(select(Caso).where(Caso.id.in_(ids_casos)).order_by(Caso.fecha_creacion.desc())).all()
     return casos
+
+
+
+@router_expedientes.get("/{id_caso}", response_model=CasoDetalleUsuario)
+def obtener_detalle_expediente(
+    id_caso: int,
+    sesion: Session = Depends(obtener_sesion),
+    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual),
+):
+    """
+    Obtiene los detalles completos de un expediente para la vista del estudiante.
+    Valida que el estudiante este asignado al caso antes de devolver datos.
+    """
+    if not hasattr(cuenta_actual, 'estudiante') or not cuenta_actual.estudiante:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado. Se requiere rol de estudiante.",
+        )
+
+    asignacion = sesion.exec(
+        select(Asignacion).where(
+            Asignacion.id_caso == id_caso,
+            Asignacion.id_estudiante == cuenta_actual.estudiante.id
+        )
+    ).first()
+
+    if not asignacion:
+        raise HTTPException(
+            status_code=404,
+            detail="Expediente no encontrado o no tiene permiso para acceder a el.",
+        )
+
+    caso = sesion.get(Caso, id_caso)
+    if not caso:
+        raise HTTPException(
+            status_code=404,
+            detail="Expediente no encontrado.",
+        )
+    
+    respuesta = CasoDetalleUsuario.model_validate(caso)
+
+    if caso.evidencias:
+      respuesta.evidencias = []
+      for evidencia in caso.evidencias:
+          ruta_normalizada = str(evidencia.ruta_archivo).replace("\\", "/")
+          prefijo = "backend/archivos_subidos/"
+          ruta_relativa = ruta_normalizada[len(prefijo):] if ruta_normalizada.startswith(prefijo) else ruta_normalizada
+          
+          url_final_archivo = f"/archivos_subidos/{ruta_relativa}"
+
+          # --- INICIO DE LA CORRECCION ---
+          # Ahora creamos el objeto EvidenciaLecturaSimple con los campos EXACTOS
+          # que el modelo espera: 'id', 'nombre_archivo', y 'ruta_archivo'.
+          respuesta.evidencias.append(
+              EvidenciaLecturaSimple(
+                  id=evidencia.id,
+                  nombre_archivo=evidencia.nombre_archivo, # <-- CAMBIO CLAVE: Campo añadido
+                  ruta_archivo=url_final_archivo           # <-- CAMBIO CLAVE: Campo corregido
+              )
+          )
+          # --- FIN DE LA CORRECCION ---
+
+    if not caso.reporte_consolidado:
+        respuesta.reporte_consolidado = None
+
+    if caso.asignaciones:
+        asignacion_info = caso.asignaciones[0]
+        if asignacion_info.estudiante:
+            respuesta.estudiante_asignado = asignacion_info.estudiante.nombre_completo
+        if asignacion_info.asesor:
+            respuesta.asesor_asignado = asignacion_info.asesor.nombre_completo
+            
+    return respuesta
 
 
 
@@ -141,20 +228,44 @@ def obtener_estado_de_evidencia(id_evidencia: int, sesion: Session = Depends(obt
         raise HTTPException(status_code=404, detail="Evidencia no encontrada")
     return evidencia
 
+
+
 @router_casos.post("/{id_caso}/subir-evidencia-simple", response_model=Evidencia)
-def subir_evidencia_simple(id_caso: int, archivo: UploadFile = File(...), sesion: Session = Depends(obtener_sesion)):
+def subir_evidencia_simple(
+    id_caso: int, 
+    archivo: UploadFile = File(...), 
+    sesion: Session = Depends(obtener_sesion)
+):
     caso_actual = sesion.get(Caso, id_caso)
-    if not caso_actual: raise HTTPException(status_code=404, detail="El caso no fue encontrado")
+    if not caso_actual: 
+        raise HTTPException(status_code=404, detail="El caso no fue encontrado")
+
     ruta_guardado_caso = Path("backend/archivos_subidos") / str(id_caso)
     ruta_guardado_caso.mkdir(parents=True, exist_ok=True)
+    
     ruta_archivo_final = ruta_guardado_caso / archivo.filename
+    
     with open(ruta_archivo_final, "wb") as buffer:
         shutil.copyfileobj(archivo.file, buffer)
-    nueva_evidencia_db = Evidencia(id_caso=id_caso, ruta_archivo=str(ruta_archivo_final), estado="subido", nombre_archivo=archivo.filename)
+        
+    
+    # crear la evidencia, tambien guardamos su tipo de contenido (MIME type).
+    nueva_evidencia_db = Evidencia(
+        id_caso=id_caso, 
+        ruta_archivo=str(ruta_archivo_final), 
+        estado="subido", 
+        nombre_archivo=archivo.filename,
+        tipo=archivo.content_type  
+    )
+  
+    
     sesion.add(nueva_evidencia_db)
     sesion.commit()
     sesion.refresh(nueva_evidencia_db)
+    
     return nueva_evidencia_db
+
+
 
 @router_casos.post("/{id_caso}/analizar")
 def analizar_caso_completo(id_caso: int, solicitud: SolicitudAnalisis, sesion: Session = Depends(obtener_sesion)):

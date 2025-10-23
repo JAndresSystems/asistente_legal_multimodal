@@ -82,9 +82,9 @@ def resetear_y_poblar_la_base_de_datos():
 
         # Ahora que los IDs existen, creamos las evidencias y asignaciones
         evidencias = [
-            Evidencia(id_caso=1, nombre_archivo="contrato.pdf", ruta_archivo="1/contrato.pdf"),
-            Evidencia(id_caso=2, nombre_archivo="certificado.png", ruta_archivo="2/certificado.png"),
-            Evidencia(id_caso=3, nombre_archivo="escrituras.pdf", ruta_archivo="3/escrituras.pdf"),
+            Evidencia(id_caso=1, nombre_archivo="contrato.pdf", ruta_archivo="1/contrato.pdf", tipo="application/pdf"),
+            Evidencia(id_caso=2, nombre_archivo="certificado.png", ruta_archivo="2/certificado.png", tipo="image/png"),
+            Evidencia(id_caso=3, nombre_archivo="escrituras.pdf", ruta_archivo="3/escrituras.pdf", tipo="application/pdf"),
         ]
         
         # Asignamos el caso 1 a Ana (ID de estudiante 1)
