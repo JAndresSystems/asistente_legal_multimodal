@@ -14,6 +14,8 @@ from datetime import datetime
 
 
 
+
+
 #  Definimos los estados posibles para un caso
 
 class EstadoCaso(str, Enum):
@@ -22,6 +24,7 @@ class EstadoCaso(str, Enum):
     evitando errores de tipeo en la base de datos y el codigo.
     """
     EN_REVISION = "en_revision"
+    PENDIENTE_ACEPTACION = "pendiente_aceptacion"
     ASIGNADO = "asignado"
     RECHAZADO = "rechazado"
     CERRADO = "cerrado"
@@ -70,6 +73,18 @@ class Asesor(SQLModel, table=True):
     area_especialidad: str
     asignaciones: List["Asignacion"] = Relationship(back_populates="asesor")
 
+
+class Nota(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    contenido: str = Field(sa_column=Column(Text))
+    fecha_creacion: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    
+    id_caso: int = Field(foreign_key="caso.id")
+    id_cuenta_autor: int = Field(foreign_key="cuenta.id")
+
+    caso: "Caso" = Relationship(back_populates="notas")
+    autor: "Cuenta" = Relationship()    
+
 class Caso(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     descripcion_hechos: str
@@ -83,6 +98,7 @@ class Caso(SQLModel, table=True):
     usuario: "Usuario" = Relationship(back_populates="casos")
     evidencias: List["Evidencia"] = Relationship(back_populates="caso")
     asignaciones: List["Asignacion"] = Relationship(back_populates="caso")
+    notas: List["Nota"] = Relationship(back_populates="caso")
 
 class Evidencia(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -91,16 +107,19 @@ class Evidencia(SQLModel, table=True):
     ruta_archivo: str
     estado: str = Field(default="subido")
     tipo: str = Field(default="desconocido") # e.g., "documento", "imagen", "video", etc.
-    reporte_analisis: Optional[str] = Field(default=None, sa_column=Column(Text))
-    
+    reporte_analisis: Optional[str] = Field(default=None, sa_column=Column(Text))    
+    # Nuevo campo para saber quién subió el archivo
+    subido_por_id_cuenta: Optional[int] = Field(default=None, foreign_key="cuenta.id")
     caso: "Caso" = Relationship(back_populates="evidencias")
+    # Nueva relación para acceder a la info de la cuenta que subió el archivo
+    subido_por: Optional["Cuenta"] = Relationship()
 
 class Asignacion(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     id_caso: int = Field(foreign_key="caso.id")
     id_estudiante: int = Field(foreign_key="estudiante.id")
     id_asesor: int = Field(foreign_key="asesor.id")
-    
+    estado: str = Field(default="pendiente", index=True)
     caso: "Caso" = Relationship(back_populates="asignaciones")
     estudiante: "Estudiante" = Relationship(back_populates="asignaciones")
     asesor: "Asesor" = Relationship(back_populates="asignaciones")
@@ -126,6 +145,12 @@ class CasoCreacion(SQLModel):
     # Este campo se eliminará en un paso futuro, ya que el id_usuario
     # se obtendrá del token de autenticación. Por ahora, lo mantenemos.
     id_usuario: int
+
+class NotaCreacion(SQLModel):
+    """
+    Modelo para validar los datos que llegan al crear una nueva nota.
+    """
+    contenido: str    
 
 class EvidenciaLectura(SQLModel):
     id: int
@@ -166,6 +191,17 @@ class EvidenciaLecturaSimple(SQLModel):
     nombre_archivo: str
     ruta_archivo: str  # Añadido para el frontend
 
+
+
+class NotaLectura(SQLModel):
+    id: int
+    contenido: str
+    fecha_creacion: datetime
+    # En el futuro podríamos añadir: autor_nombre: str
+
+
+
+
 class CasoDetalleUsuario(SQLModel):
     """
     Docstring:
@@ -184,6 +220,7 @@ class CasoDetalleUsuario(SQLModel):
     asesor_asignado: Optional[str] = None
     
     evidencias: List[EvidenciaLecturaSimple] = []
+    notas: List[NotaLectura] = []
 
 
 

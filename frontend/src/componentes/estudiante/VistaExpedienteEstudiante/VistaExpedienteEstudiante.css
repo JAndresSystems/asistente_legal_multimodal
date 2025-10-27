@@ -264,3 +264,217 @@
   text-transform: capitalize;
   color: #495057;
 }
+
+
+
+/* --- Estilos para la seccion del Generador de Documentos --- */
+
+.documento-formulario {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap; /* Permite que se ajuste en pantallas pequeñas */
+}
+
+.documento-selector {
+  flex-grow: 1; /* Ocupa el espacio disponible */
+  padding: 0.75rem;
+  border-radius: 5px;
+  border: 1px solid #ced4da;
+  font-size: 1rem;
+  background-color: white;
+}
+
+.documento-selector:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.documento-boton-generar {
+  background-color: #28a745; /* Verde para accion de generar */
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.documento-boton-generar:hover {
+  background-color: #218838;
+}
+
+.documento-boton-generar:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.documento-area-resultado {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: #e9f7ef; /* Fondo verde claro para exito */
+  border: 1px solid #c3e6cb;
+  border-radius: 5px;
+}
+
+.documento-error {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+  padding: 1rem;
+  border-radius: 5px;
+}
+
+.documento-enlace-descarga p {
+  margin-top: 0;
+  font-weight: bold;
+  color: #155724;
+}
+
+.documento-enlace-descarga a {
+  font-weight: bold;
+  color: #007bff;
+  text-decoration: none;
+  font-size: 1.1rem;
+}
+
+.documento-enlace-descarga a:hover {
+  text-decoration: underline;
+}
+
+
+
+/* --- Estilos para la seccion de Subida de Documentos --- */
+
+.subir-documento-formulario {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.subir-documento-formulario h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.subir-documento-input {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.subir-documento-boton {
+  background-color: #17a2b8; /* Cian */
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.subir-documento-boton:hover {
+  background-color: #138496;
+}
+
+.subir-documento-boton:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.subir-documento-resultado {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.subir-documento-error {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+
+
+
+
+/* --- Estilos para la Línea de Tiempo y Formularios de Acción --- */
+
+.linea-de-tiempo-contenedor {
+  margin-top: 1.5rem;
+}
+
+.linea-de-tiempo-item {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.linea-de-tiempo-item:last-child {
+  border-bottom: none;
+}
+
+.linea-de-tiempo-item .icono {
+  font-size: 1.5rem;
+}
+
+.linea-de-tiempo-item .contenido p {
+  margin: 0 0 0.25rem 0;
+}
+
+.linea-de-tiempo-item .contenido small {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.formularios-accion-contenedor {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #e9ecef;
+}
+
+.formulario-accion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.formulario-accion h4 {
+  margin: 0;
+}
+
+.formulario-accion textarea {
+  min-height: 80px;
+  resize: vertical;
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+}
+
+.formulario-accion button {
+  align-self: flex-start;
+  background-color: #17a2b8;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.formulario-accion button:disabled {
+  background-color: #6c757d;
+}
+
+.error-texto {
+  color: #dc3545;
+  font-size: 0.9rem;
+  margin: 0;
+}

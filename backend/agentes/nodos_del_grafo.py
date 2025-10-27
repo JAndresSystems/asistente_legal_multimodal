@@ -7,7 +7,7 @@ from .estado_del_grafo import EstadoDelGrafo
 from ..herramientas.herramientas_lenguaje import analizar_evidencia_con_gemini, generar_respuesta_texto
 from ..herramientas.herramienta_rag import buscar_en_base_de_conocimiento
 from ..base_de_datos import motor # Eliminamos importaciones no usadas
-from ..api.modelos_compartidos import Estudiante, Asesor, Asignacion # Eliminamos importaciones no usadas
+from ..api.modelos_compartidos import Estudiante, Asesor, Asignacion, Caso, EstadoCaso # Eliminamos importaciones no usadas
 
 def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     """
@@ -219,7 +219,7 @@ def encontrar_persona_con_menos_carga(sesion: Session, modelo: Any, area: str) -
     return resultado.id if resultado else None
 
 def nodo_agente_repartidor(estado: EstadoDelGrafo) -> Dict[str, Any]:
-    print("--- Ejecutando Nodo: Agente Repartidor ---")
+    print("\n--- [AGENTE REPARTIDOR] Iniciando ejecucion del nodo ---")
     id_caso = estado["id_caso"]
     resultado_competencias = estado.get("resultado_determinador_competencias", {})
     area_competencia = resultado_competencias.get("area_competencia")
@@ -232,15 +232,28 @@ def nodo_agente_repartidor(estado: EstadoDelGrafo) -> Dict[str, Any]:
         id_asesor = encontrar_persona_con_menos_carga(sesion_db, Asesor, area_competencia)
         
         if id_estudiante is not None and id_asesor is not None:
+            # 1. Crear la nueva asignacion (con estado 'pendiente' por defecto)
             nueva_asignacion = Asignacion(
                 id_caso=id_caso,
                 id_estudiante=id_estudiante,
                 id_asesor=id_asesor
             )
             sesion_db.add(nueva_asignacion)
+            
+            # 2. Obtener el caso para actualizar su estado a 'pendiente_aceptacion'
+            caso_a_actualizar = sesion_db.get(Caso, id_caso)
+            if caso_a_actualizar:
+                caso_a_actualizar.estado = EstadoCaso.PENDIENTE_ACEPTACION
+                sesion_db.add(caso_a_actualizar)
+                print(f"-> EXITO (DB): Caso {id_caso} actualizado a estado '{EstadoCaso.PENDIENTE_ACEPTACION.value}'.")
+            else:
+                print(f"-> ERROR (DB): No se pudo encontrar el Caso {id_caso} para actualizar su estado.")
+
+            # 3. Guardar todos los cambios en la base de datos
             sesion_db.commit()
-            mensaje_db = "Asignacion creada exitosamente en la base de datos."
-            print(f"-> EXITO (DB): Caso {id_caso} asignado a Estudiante {id_estudiante} y Asesor {id_asesor}.")
+            
+            mensaje_db = f"Asignacion creada en estado 'pendiente' para estudiante {id_estudiante}."
+            print(f"-> EXITO (DB): Caso {id_caso} ofrecido a Estudiante {id_estudiante} y Asesor {id_asesor}.")
         else:
             mensaje_db = "No se encontraron estudiantes o asesores disponibles en el area."
             print(f"-> ALERTA (DB): No se pudo realizar la asignacion para el caso {id_caso}.")

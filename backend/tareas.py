@@ -63,7 +63,9 @@ def procesar_evidencia_tarea(id_caso: int, texto_adicional_usuario: str = ""):
             if resultado_triaje.get('admisible') is False:
                 caso.estado = EstadoCaso.RECHAZADO
             elif estado_final.get('resultado_repartidor'):
-                caso.estado = EstadoCaso.ASIGNADO
+                # Si el repartidor corrió, el estado correcto es 'pendiente_aceptacion',
+                # que ya fue establecido por el nodo. Aquí lo confirmamos.
+                caso.estado = EstadoCaso.PENDIENTE_ACEPTACION
             
             sesion.add(caso)
             sesion.commit()

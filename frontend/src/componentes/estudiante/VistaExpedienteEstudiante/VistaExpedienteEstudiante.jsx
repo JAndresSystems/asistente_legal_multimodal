@@ -1,8 +1,10 @@
 // frontend/src/componentes/estudiante/VistaExpedienteEstudiante/VistaExpedienteEstudiante.jsx
 
-import React, { useState, useEffect } from 'react';
+
 // --- INICIO DE LA MODIFICACION ---
-import { apiObtenerDetalleExpediente, apiConsultarAgenteJuridico } from '../../../servicios/api';
+// MODIFICACION: Añadimos useCallback y la nueva funcion de API
+import React, { useState, useEffect, useCallback } from 'react';
+import { apiObtenerDetalleExpediente, apiConsultarAgenteJuridico, apiGenerarDocumento, apiSubirDocumentoEstudiante, apiCrearNotaEstudiante } from '../../../servicios/api';
 // --- FIN DE LA MODIFICACION ---
 import './VistaExpedienteEstudiante.css';
 
@@ -72,35 +74,65 @@ const VisorReporteEstructurado = ({ reporteJson }) => {
 };
 
 
+// --- Lista de plantillas disponibles ---
+const PLANTILLAS_DISPONIBLES = [
+  { nombre: "Derecho de Petición", archivo: "derecho_de_peticion.docx" },
+  { nombre: "Acción de Tutela", archivo: "accion_de_tutela.docx" },
+];
+
+
 
 const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
   const [expediente, setExpediente] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
 
-  // --- INICIO DE LA MODIFICACION: Estados para el Agente Juridico ---
+  // Estados para el Agente Juridico ---
   const [preguntaAgente, setPreguntaAgente] = useState('');
   const [respuestaAgente, setRespuestaAgente] = useState(null);
   const [cargandoAgente, setCargandoAgente] = useState(false);
   const [errorAgente, setErrorAgente] = useState('');
-  // --- FIN DE LA MODIFICACION ---
+  
+  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState(PLANTILLAS_DISPONIBLES[0].archivo);
+  const [cargandoDocumento, setCargandoDocumento] = useState(false);
+  const [errorDocumento, setErrorDocumento] = useState('');
+  const [documentoGenerado, setDocumentoGenerado] = useState(null); // { url_descarga, nombre_archivo }
 
+// MODIFICACION: Estados para la subida de archivos del estudiante
+  const [archivoASubir, setArchivoASubir] = useState(null);
+  const [cargandoSubida, setCargandoSubida] = useState(false);
+  const [errorSubida, setErrorSubida] = useState('');
+
+
+
+  const [nuevaNota, setNuevaNota] = useState('');
+  const [cargandoNota, setCargandoNota] = useState(false);
+  const [errorNota, setErrorNota] = useState('');
+
+ // Esto asegura que la función no se recree en cada render, a menos que sus dependencias cambien.
+  // No necesita saber el valor anterior de 'expediente' para funcionar.
+  const cargarExpediente = useCallback(async () => {
+    if (!expedienteId) return;
+    try {
+      // No necesitamos la condición 'if (!expediente)' aquí, 
+      // la lógica de 'cargando' se maneja por separado.
+      setCargando(true); 
+      setError('');
+      const datosExpediente = await apiObtenerDetalleExpediente(expedienteId);
+      setExpediente(datosExpediente);
+    } catch (err) {
+      setError(err.message || 'Ocurrió un error al cargar el expediente.');
+    } finally {
+      setCargando(false);
+    }
+  }, [expedienteId]); // La única dependencia correcta es expedienteId
+
+  // PASO B: Este useEffect ahora se comporta como se espera.
+  // Solo se ejecutará si la función 'cargarExpediente' cambia,
+  // lo cual ahora solo sucederá si 'expedienteId' cambia.
   useEffect(() => {
-    const cargarExpediente = async () => {
-      if (!expedienteId) return;
-      try {
-        setCargando(true);
-        setError('');
-        const datosExpediente = await apiObtenerDetalleExpediente(expedienteId);
-        setExpediente(datosExpediente);
-      } catch (err) {
-        setError(err.message || 'Ocurrió un error al cargar el expediente.');
-      } finally {
-        setCargando(false);
-      }
-    };
     cargarExpediente();
-  }, [expedienteId]);
+  }, [cargarExpediente]);
 
   // --- INICIO DE LA MODIFICACION: Funcion para manejar la consulta al agente ---
   const handleConsultarAgente = async (e) => {
@@ -122,6 +154,67 @@ const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
   };
   // --- FIN DE LA MODIFICACION ---
 
+
+const handleGenerarDocumento = async (e) => {
+    e.preventDefault();
+    setCargandoDocumento(true);
+    setErrorDocumento('');
+    setDocumentoGenerado(null);
+    try {
+      const resultado = await apiGenerarDocumento(expedienteId, plantillaSeleccionada);
+      setDocumentoGenerado(resultado);
+    } catch (err) {
+      setErrorDocumento(err.message || 'Ocurrió un error al generar el documento.');
+    } finally {
+      setCargandoDocumento(false);
+    }
+  };
+
+
+   const handleSubirDocumento = async (e) => {
+    e.preventDefault();
+    if (!archivoASubir) {
+      setErrorSubida("Por favor, seleccione un archivo para subir.");
+      return;
+    }
+    setCargandoSubida(true);
+    setErrorSubida('');
+    try {
+      await apiSubirDocumentoEstudiante(expedienteId, archivoASubir);
+      // Éxito! Limpiamos el input y recargamos los datos del expediente
+      setArchivoASubir(null);
+      e.target.reset(); // Limpia el formulario
+      await cargarExpediente(); // Refresca la lista de evidencias
+    } catch (err) {
+      setErrorSubida(err.message || 'Ocurrió un error al subir el archivo.');
+    } finally {
+      setCargandoSubida(false);
+    }
+  };
+
+
+
+  const handleCrearNota = async (e) => {
+    e.preventDefault();
+    if (!nuevaNota.trim()) {
+      setErrorNota("La nota no puede estar vacía.");
+      return;
+    }
+    setCargandoNota(true);
+    setErrorNota('');
+    try {
+      await apiCrearNotaEstudiante(expedienteId, nuevaNota);
+      setNuevaNota(''); // Limpiar el textarea
+      await cargarExpediente(); // Refrescar la línea de tiempo
+    } catch (err) {
+      setErrorNota(err.message || 'Ocurrió un error al guardar la nota.');
+    } finally {
+      setCargandoNota(false);
+    }
+  };
+
+
+
   if (cargando) {
     return <div className="vista-expediente-cargando">Cargando expediente...</div>;
   }
@@ -136,6 +229,27 @@ const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
 
   const baseURL = 'http://127.0.0.1:8000';
 
+
+
+// --- INICIO DE LA MODIFICACION: Lógica para la Línea de Tiempo ---
+  const eventosDocumento = (expediente.evidencias || []).map(ev => ({
+    tipo: 'documento',
+    ...ev
+  }));
+  const eventosNota = (expediente.notas || []).map(nota => ({
+    tipo: 'nota',
+    ...nota
+  }));
+
+  // Combinamos y ordenamos por fecha. Los documentos sin fecha van al final.
+  const lineaDeTiempo = [...eventosDocumento, ...eventosNota].sort((a, b) => {
+    const fechaA = a.fecha_creacion ? new Date(a.fecha_creacion) : new Date(0);
+    const fechaB = b.fecha_creacion ? new Date(b.fecha_creacion) : new Date(0);
+    return fechaB - fechaA; // Orden descendente (más nuevo primero)
+  });
+
+
+
   return (
     <div className="vista-expediente-contenedor">
       <button onClick={onVolver} className="boton-volver">&larr; Volver al Dashboard</button>
@@ -144,7 +258,7 @@ const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
       
       <div className="expediente-metadata">
         <p><strong>Fecha de Creación:</strong> {new Date(expediente.fecha_creacion).toLocaleString('es-CO')}</p>
-        <p><strong>Estado:</strong> <span className={`estado-caso estado-${expediente.estado}`}>{expediente.estado.replace('_', ' ')}</span></p>
+        <p><strong>Estado:</strong> <span className={`estado-caso estado-${expediente.estado.replace('_', '-')}`}>{expediente.estado.replace('_', ' ')}</span></p>
       </div>
 
       <div className="expediente-seccion">
@@ -152,39 +266,83 @@ const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
         <p>{expediente.descripcion_hechos}</p>
       </div>
 
+      {/* --- INICIO DE LA MODIFICACION: Nueva sección de Línea de Tiempo y Formularios --- */}
       <div className="expediente-seccion">
-        <h3>Evidencias Aportadas por el Usuario</h3>
-        {expediente.evidencias && expediente.evidencias.length > 0 ? (
-          <ul className="lista-evidencias">
-            {expediente.evidencias.map((evidencia) => (
-              <li key={evidencia.id}>
-                <a 
-                  href={`${baseURL}${evidencia.ruta_archivo}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                >
-                  {evidencia.nombre_archivo}
-                </a>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No se han aportado evidencias para este caso.</p>
-        )}
-      </div>
+        <h3>Línea de Tiempo del Expediente</h3>
+        <div className="linea-de-tiempo-contenedor">
+          {lineaDeTiempo.length > 0 ? (
+            lineaDeTiempo.map((item, index) => (
+              <div key={`${item.tipo}-${item.id || index}`} className="linea-de-tiempo-item">
+                {/* Renderizado para un DOCUMENTO */}
+                {item.tipo === 'documento' && (
+                  <>
+                    <span className="icono">📄</span>
+                    <div className="contenido">
+                      <p><strong>Documento añadido:</strong> <a href={`${baseURL}${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer">{item.nombre_archivo}</a></p>
+                      {/* Aquí podríamos mostrar la fecha si la tuviéramos disponible en el objeto 'evidencia' */}
+                      {/* <small>Subido por: [Nombre del autor]</small> */}
+                    </div>
+                  </>
+                )}
+                {/* Renderizado para una NOTA */}
+                {item.tipo === 'nota' && (
+                  <>
+                    <span className="icono">📝</span>
+                    <div className="contenido">
+                      <p>{item.contenido}</p>
+                      <small>Nota añadida el {new Date(item.fecha_creacion).toLocaleString('es-CO')}</small>
+                      {/* <small> por [Nombre del autor]</small> */}
+                    </div>
+                  </>
+                )}
+              </div>
+            ))
+          ) : <p>No hay documentos ni notas en este expediente.</p>}
+        </div>
 
-      {/* --- INICIO DE LA MODIFICACION: Usamos el nuevo visor de reporte estructurado --- */}
+        {/* Contenedor para los formularios de acción */}
+        <div className="formularios-accion-contenedor">
+          {/* Formulario para subir documentos */}
+          <form onSubmit={handleSubirDocumento} className="formulario-accion">
+            <h4>Añadir Documento</h4>
+            <input 
+              type="file" 
+              onChange={(e) => setArchivoASubir(e.target.files[0])}
+              disabled={cargandoSubida}
+            />
+            <button type="submit" disabled={cargandoSubida}>
+              {cargandoSubida ? 'Subiendo...' : 'Subir Archivo'}
+            </button>
+            {errorSubida && <p className="error-texto">{errorSubida}</p>}
+          </form>
+
+          {/* Formulario para crear notas */}
+          <form onSubmit={handleCrearNota} className="formulario-accion">
+            <h4>Añadir Nota</h4>
+            <textarea 
+              value={nuevaNota} 
+              onChange={(e) => setNuevaNota(e.target.value)} 
+              placeholder="Escriba su nota de seguimiento aquí..." 
+              disabled={cargandoNota} 
+            />
+            <button type="submit" disabled={cargandoNota}>
+              {cargandoNota ? 'Guardando...' : 'Guardar Nota'}
+            </button>
+            {errorNota && <p className="error-texto">{errorNota}</p>}
+          </form>
+        </div>
+      </div>
+      {/* --- FIN DE LA MODIFICACION --- */}
+
       {expediente.reporte_consolidado && (
         <div className="expediente-seccion">
           <VisorReporteEstructurado reporteJson={expediente.reporte_consolidado} />
         </div>
       )}
-      {/* --- FIN DE LA MODIFICACION --- */}
 
       <div className="expediente-seccion">
         <h3>Asistente Jurídico (IA)</h3>
-        <p>Realice una consulta sobre este caso al agente especializado en Derecho Privado.</p>
-        
+        <p>Realice una consulta sobre este caso al agente especializado.</p>
         <form onSubmit={handleConsultarAgente} className="agente-formulario">
           <textarea
             value={preguntaAgente}
@@ -197,20 +355,52 @@ const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
             {cargandoAgente ? 'Consultando...' : 'Consultar'}
           </button>
         </form>
-
         <div className="agente-area-respuesta">
-          {cargandoAgente && <p>Procesando su consulta...</p>}
+          {cargandoAgente && <p>Procesando...</p>}
           {errorAgente && <p className="agente-error">Error: {errorAgente}</p>}
           {respuestaAgente && (
             <div className="agente-respuesta-formateada">
-              <h4>Respuesta del Agente:</h4>
+              <h4>Respuesta:</h4>
               <p>{respuestaAgente.contenido}</p>
-              <h5>Fuentes Citadas:</h5>
-              <ul>
-                {respuestaAgente.fuentes.map((fuente, index) => (
-                  <li key={index}>{fuente}</li>
-                ))}
-              </ul>
+              <h5>Fuentes:</h5>
+              <ul>{respuestaAgente.fuentes.map((f, i) => (<li key={i}>{f}</li>))}</ul>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="expediente-seccion">
+        <h3>Generador de Documentos (IA)</h3>
+        <p>Seleccione una plantilla para generar un borrador automático con los datos del caso.</p>
+        <form onSubmit={handleGenerarDocumento} className="documento-formulario">
+          <select 
+            value={plantillaSeleccionada} 
+            onChange={(e) => setPlantillaSeleccionada(e.target.value)}
+            className="documento-selector"
+            disabled={cargandoDocumento}
+          >
+            {PLANTILLAS_DISPONIBLES.map((plantilla) => (
+              <option key={plantilla.archivo} value={plantilla.archivo}>
+                {plantilla.nombre}
+              </option>
+            ))}
+          </select>
+          <button type="submit" className="documento-boton-generar" disabled={cargandoDocumento}>
+            {cargandoDocumento ? 'Generando...' : 'Generar Documento'}
+          </button>
+        </form>
+        <div className="documento-area-resultado">
+          {cargandoDocumento && <p>Generando borrador, por favor espere...</p>}
+          {errorDocumento && <p className="documento-error">Error: {errorDocumento}</p>}
+          {documentoGenerado && (
+            <div className="documento-enlace-descarga">
+              <p>¡Documento generado con éxito!</p>
+              <a 
+                href={`${baseURL}${documentoGenerado.url_descarga}`} 
+                download={documentoGenerado.nombre_archivo}
+              >
+                Descargar: {documentoGenerado.nombre_archivo}
+              </a>
             </div>
           )}
         </div>

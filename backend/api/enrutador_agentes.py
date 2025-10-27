@@ -1,4 +1,7 @@
 # backend/api/enrutador_agentes.py
+
+import os
+
 from ..api.modelos_compartidos import Cuenta, Caso 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
@@ -11,6 +14,7 @@ from ..base_de_datos import obtener_sesion
 #  nodo del agente y la definicion de su estado.
 from ..agentes.nodos_del_grafo import nodo_agente_juridico
 from ..agentes.estado_del_grafo import EstadoDelGrafo
+from ..herramientas.herramienta_documentos import generar_documento_desde_plantilla
 
 # --- MODELOS DE DATOS PARA ESTE ENRUTADOR ---
 # Definen la estructura de las peticiones y respuestas para los agentes.
@@ -24,6 +28,15 @@ class RespuestaAgente(BaseModel):
     # La respuesta del agente sera estructurada.
     contenido: str
     fuentes: list[str]
+
+class SolicitudGeneracionDocumento(BaseModel):
+    id_caso: int
+    nombre_plantilla: str # ej. "derecho_de_peticion.docx"
+
+class RespuestaGeneracionDocumento(BaseModel):
+    url_descarga: str
+    nombre_archivo: str
+
 
 # --- CONFIGURACION DEL ENRUTADOR ---
 
@@ -72,3 +85,48 @@ def consultar_agente_juridico(
         return RespuestaAgente(contenido=contenido, fuentes=fuentes)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error en Agente Juridico: {e}")
+    
+
+
+# --- endpoint para el Agente de Documentos ---
+@router_agentes.post("/generar-documento", response_model=RespuestaGeneracionDocumento)
+def generar_documento_agente(
+    solicitud: SolicitudGeneracionDocumento,
+    sesion: Session = Depends(obtener_sesion),
+    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
+):
+    """
+    Endpoint para que un estudiante solicite la generacion de un documento
+    a partir de una plantilla y los datos de un caso.
+    """
+    if cuenta_actual.rol != "estudiante":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo los estudiantes pueden generar documentos.")
+
+    print(f"--- [AGENTE DOCS] Recibida solicitud para generar '{solicitud.nombre_plantilla}' para el caso {solicitud.id_caso}")
+    
+    caso = sesion.get(Caso, solicitud.id_caso)
+    if not caso or not caso.usuario:
+        raise HTTPException(status_code=404, detail="Caso o usuario asociado no encontrado.")
+
+    datos_para_plantilla = {
+        "{{NOMBRE_COMPLETO_USUARIO}}": caso.usuario.nombre,
+        "{{CEDULA_USUARIO}}": caso.usuario.cedula,
+        "{{HECHOS_DEL_CASO}}": caso.descripcion_hechos,
+    }
+
+    ruta_archivo_generado = generar_documento_desde_plantilla(
+        nombre_plantilla=solicitud.nombre_plantilla,
+        datos_reemplazo=datos_para_plantilla,
+        id_caso=str(solicitud.id_caso)
+    )
+
+    # --- INICIO DE LA CORRECCION: Manejo de errores robusto ---
+    # Convertimos a minusculas para detectar cualquier tipo de error ("Error:", "error", "ERROR")
+    if "error" in ruta_archivo_generado.lower():
+        raise HTTPException(status_code=500, detail=ruta_archivo_generado)
+    # --- FIN DE LA CORRECCION ---
+
+    nombre_archivo = os.path.basename(ruta_archivo_generado) # Forma más segura de obtener el nombre del archivo
+    url_descarga = f"/archivos_subidos/{solicitud.id_caso}/{nombre_archivo}"
+    
+    return RespuestaGeneracionDocumento(url_descarga=url_descarga, nombre_archivo=nombre_archivo)

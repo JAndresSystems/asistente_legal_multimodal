@@ -88,3 +88,43 @@
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+
+/* --- Estilos para la seccion de Acciones --- */
+
+.acciones-contenedor {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.boton-accion.aceptar {
+  background-color: #28a745; /* Verde */
+  color: white;
+}
+.boton-accion.aceptar:hover {
+  background-color: #218838;
+}
+
+.boton-accion.rechazar {
+  background-color: #dc3545; /* Rojo */
+  color: white;
+}
+.boton-accion.rechazar:hover {
+  background-color: #c82333;
+}
+
+.boton-accion.ver {
+  background-color: #007bff; /* Azul */
+  color: white;
+}
+.boton-accion.ver:hover {
+  background-color: #0056b3;
+}
+
+/* Nuevo estilo para el estado pendiente */
+.estado-pendiente-aceptacion {
+  background-color: #07ffcd; /* Amarillo */
+  color: #212529;     
+}
+

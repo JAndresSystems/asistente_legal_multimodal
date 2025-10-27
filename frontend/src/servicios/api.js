@@ -378,3 +378,174 @@ export const apiConsultarAgenteJuridico = async (idCaso, pregunta) => {
     throw error;
   }
 };
+
+
+
+/**
+ * Docstring:
+ * Llama al endpoint del Agente Generador de Documentos.
+ * Args:
+ *   idCaso (number): El ID del caso actual.
+ *   nombrePlantilla (string): El nombre del archivo de la plantilla (ej. "derecho_de_peticion.docx").
+ */
+export const apiGenerarDocumento = async (idCaso, nombrePlantilla) => {
+  console.log(`API: Solicitando generar documento '${nombrePlantilla}' para el caso ${idCaso}`);
+  try {
+    const cuerpoDeLaPeticion = {
+      id_caso: idCaso,
+      nombre_plantilla: nombrePlantilla,
+    };
+
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/agentes/generar-documento`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+      body: JSON.stringify(cuerpoDeLaPeticion),
+    });
+
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+
+    return await respuesta.json(); // Devuelve { url_descarga, nombre_archivo }
+  } catch (error) {
+    console.error("API: Error al generar el documento:", error);
+    throw error;
+  }
+};
+
+
+
+
+/**
+ * Docstring:
+ * Llama al endpoint para que un estudiante acepte una asignacion de caso.
+ * Args:
+ *   idCaso (number): El ID del caso a aceptar.
+ */
+export const apiAceptarAsignacion = async (idCaso) => {
+  console.log(`API: Aceptando asignacion para el caso ${idCaso}`);
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}/aceptar`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+      // No se necesita cuerpo (body) para esta peticion
+    });
+
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+
+    return await respuesta.json(); // Devuelve { mensaje: "..." }
+  } catch (error) {
+    console.error(`API: Error al aceptar el caso ${idCaso}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Docstring:
+ * Llama al endpoint para que un estudiante rechace una asignacion de caso.
+ * Args:
+ *   idCaso (number): El ID del caso a rechazar.
+ */
+export const apiRechazarAsignacion = async (idCaso) => {
+  console.log(`API: Rechazando asignacion para el caso ${idCaso}`);
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}/rechazar`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+      // No se necesita cuerpo (body) para esta peticion
+    });
+
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+
+    return await respuesta.json(); // Devuelve { mensaje: "..." }
+  } catch (error) {
+    console.error(`API: Error al rechazar el caso ${idCaso}:`, error);
+    throw error;
+  }
+};
+
+
+
+
+
+/**
+ * Docstring:
+ * Llama al endpoint para que un estudiante suba un documento a un caso.
+ * Utiliza FormData para el envío de archivos.
+ * Args:
+ *   idCaso (number): El ID del caso al que se adjunta el documento.
+ *   archivo (File): El objeto de archivo del input.
+ */
+export const apiSubirDocumentoEstudiante = async (idCaso, archivo) => {
+  console.log(`API: Estudiante subiendo el archivo '${archivo.name}' al caso ${idCaso}`);
+  
+  const formData = new FormData();
+  formData.append("archivo", archivo);
+
+  // Para FormData, no se especifica 'Content-Type'. El navegador lo hace.
+  // Solo necesitamos la cabecera de autenticación.
+  const cabeceras = {};
+  if (authToken) {
+    cabeceras['Authorization'] = `Bearer ${authToken}`;
+  }
+
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}/subir-documento`, {
+      method: 'POST',
+      headers: cabeceras,
+      body: formData,
+    });
+
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+
+    return await respuesta.json(); // Devuelve el objeto de la nueva evidencia creada
+  } catch (error) {
+    console.error(`API: Error al subir el documento para el caso ${idCaso}:`, error);
+    throw error;
+  }
+};
+
+
+
+/**
+ * Docstring:
+ * Llama al endpoint para que un estudiante cree una nota de texto en un caso.
+ * Args:
+ *   idCaso (number): El ID del caso al que se adjunta la nota.
+ *   contenido (string): El texto de la nota.
+ */
+export const apiCrearNotaEstudiante = async (idCaso, contenido) => {
+  console.log(`API: Estudiante creando nota en el caso ${idCaso}`);
+  
+  const cuerpoDeLaPeticion = {
+    contenido: contenido,
+  };
+
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}/crear-nota`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+      body: JSON.stringify(cuerpoDeLaPeticion),
+    });
+
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+
+    return await respuesta.json(); // Devuelve el objeto de la nueva nota creada
+  } catch (error) {
+    console.error(`API: Error al crear la nota para el caso ${idCaso}:`, error);
+    throw error;
+  }
+};
