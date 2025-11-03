@@ -115,14 +115,14 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
             {caso.evidencias.map((evidencia) => (
               <li key={evidencia.id} className="item-evidencia">
                 {evidencia.ruta_archivo && typeof evidencia.ruta_archivo === 'string' ? (
-                  <a
-                    href={`${URL_BASE_BACKEND}/archivos_subidos/${evidencia.ruta_archivo.replace(/\\/g, '/')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="enlace-evidencia"
-                  >
-                    {evidencia.nombre_archivo}
-                  </a>
+                   <a
+                  href={`${URL_BASE_BACKEND}${evidencia.ruta_archivo}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="enlace-evidencia"
+                >
+                  {evidencia.nombre_archivo}
+                </a>
                 ) : (
                   <span className="enlace-evidencia-invalido">
                     {evidencia.nombre_archivo} (Archivo no disponible)

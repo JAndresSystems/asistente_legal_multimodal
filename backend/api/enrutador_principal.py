@@ -11,7 +11,7 @@ from .modelos_compartidos import (
     Caso, CasoCreacion, Evidencia,CasoLecturaConEvidencias, Nota, NotaCreacion, NotaLectura, 
     PreguntaChat, RespuestaChat, SolicitudAnalisis, Cuenta,
     Usuario, CasoLecturaUsuario, EstadoCaso, CasoDetalleUsuario,
-    EvidenciaLecturaSimple,Asignacion 
+    EvidenciaLecturaSimple,Asignacion, EstadoEvidencia
 )
 from ..tareas import procesar_evidencia_tarea
 from ..agentes.agente_atencion import grafo_atencion_compilado
@@ -227,69 +227,36 @@ def crear_nota_estudiante(
 
 
 @router_expedientes.get("/{id_caso}", response_model=CasoDetalleUsuario)
-def obtener_detalle_expediente(
-    id_caso: int, 
-    sesion: Session = Depends(obtener_sesion), 
-    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
-):
-    """
-    Obtiene los detalles completos de un expediente para la vista del estudiante,
-    incluyendo evidencias Y ahora también las notas.
-    Valida que el estudiante este asignado al caso antes de devolver datos.
-    """
-    # 1. Validar que el usuario es un estudiante
+def obtener_detalle_expediente(id_caso: int, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
     if not hasattr(cuenta_actual, 'estudiante') or not cuenta_actual.estudiante:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acceso denegado. Se requiere rol de estudiante.",
-        )
-
-    # 2. Validar que el estudiante está asignado a este caso específico
-    asignacion = sesion.exec(
-        select(Asignacion).where(
-            Asignacion.id_caso == id_caso,
-            Asignacion.id_estudiante == cuenta_actual.estudiante.id
-        )
-    ).first()
-
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    
+    asignacion = sesion.exec(select(Asignacion).where(Asignacion.id_caso == id_caso, Asignacion.id_estudiante == cuenta_actual.estudiante.id)).first()
     if not asignacion:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expediente no encontrado o no tiene permiso para acceder a el.",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    # 3. Obtener el objeto Caso completo de la base de datos.
-    #    SQLModel/SQLAlchemy cargará automáticamente las relaciones (evidencias, notas, etc.)
     caso = sesion.get(Caso, id_caso)
     if not caso:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expediente no encontrado.",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     
-    # 4. Convertir el objeto de base de datos al modelo de respuesta de la API.
-    #    Pydantic se encarga de mapear `caso.evidencias` a `respuesta.evidencias`
-    #    y `caso.notas` a `respuesta.notas` automáticamente.
     respuesta = CasoDetalleUsuario.model_validate(caso)
 
-    # 5. Procesamiento adicional (si es necesario)
-    #    Este bucle sigue siendo necesario para formatear las URLs de las evidencias.
     if caso.evidencias:
-      respuesta.evidencias = []
-      for evidencia in caso.evidencias:
-          ruta_normalizada = str(evidencia.ruta_archivo).replace("\\", "/")
-          prefijo = "backend/archivos_subidos/"
-          ruta_relativa = ruta_normalizada[len(prefijo):] if ruta_normalizada.startswith(prefijo) else ruta_normalizada
-          url_final_archivo = f"/archivos_subidos/{ruta_relativa}"
-          respuesta.evidencias.append(
-              EvidenciaLecturaSimple(
-                  id=evidencia.id,
-                  nombre_archivo=evidencia.nombre_archivo,
-                  ruta_archivo=url_final_archivo
-              )
-          )
-
-    # Este bloque sigue siendo necesario para obtener los nombres
+        respuesta.evidencias = []
+        for evidencia in caso.evidencias:
+            ruta_normalizada = str(evidencia.ruta_archivo).replace("\\", "/")
+            prefijo = "backend/archivos_subidos/"
+            ruta_relativa = ruta_normalizada[len(prefijo):] if ruta_normalizada.startswith(prefijo) else ruta_normalizada
+            url_final_archivo = f"/archivos_subidos/{ruta_relativa}"
+            respuesta.evidencias.append(
+                EvidenciaLecturaSimple(
+                    id=evidencia.id,
+                    nombre_archivo=evidencia.nombre_archivo,
+                    ruta_archivo=url_final_archivo,
+                    estado=evidencia.estado  # <-- LÍNEA AÑADIDA
+                )
+            )
+    
     if caso.asignaciones:
         asignacion_info = caso.asignaciones[0]
         if asignacion_info.estudiante:
@@ -297,7 +264,6 @@ def obtener_detalle_expediente(
         if asignacion_info.asesor:
             respuesta.asesor_asignado = asignacion_info.asesor.nombre_completo
             
-    # 6. Devolver la respuesta completa
     return respuesta
 
 
@@ -313,15 +279,7 @@ def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_ses
     return nuevo_caso_db
 
 @router_casos.get("/{id_caso}", response_model=CasoDetalleUsuario)
-def obtener_caso_por_id(
-    id_caso: int,
-    sesion: Session = Depends(obtener_sesion),
-    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
-):
-    """
-    Obtiene los detalles completos y enriquecidos de un caso para la vista
-    del usuario ciudadano, incluyendo la informacion de la asignacion.
-    """
+def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
     caso = sesion.get(Caso, id_caso)
     if not caso:
         raise HTTPException(status_code=404, detail="Caso no encontrado")
@@ -330,37 +288,22 @@ def obtener_caso_por_id(
 
     respuesta = CasoDetalleUsuario.model_validate(caso)
 
-    # ==============================================================================
-    # INICIO DE LA CORRECCION: Reemplazamos la logica de rutas por una mas robusta
-    # ==============================================================================
     if caso.evidencias:
-      respuesta.evidencias = []
-      for evidencia in caso.evidencias:
-          # Convertimos la ruta a un string y reemplazamos las barras invertidas
-          # para asegurar consistencia entre sistemas operativos.
-          ruta_normalizada = str(evidencia.ruta_archivo).replace("\\", "/")
-          
-          # Eliminamos el prefijo si existe, de lo contrario usamos la ruta tal cual.
-          prefijo = "backend/archivos_subidos/"
-          if ruta_normalizada.startswith(prefijo):
-              ruta_relativa = ruta_normalizada[len(prefijo):]
-          else:
-              ruta_relativa = ruta_normalizada
-
-          respuesta.evidencias.append(
-              EvidenciaLecturaSimple(
-                  id=evidencia.id,
-                  nombre_archivo=evidencia.nombre_archivo,
-                  ruta_archivo=ruta_relativa
-              )
-          )
-    # ==============================================================================
-    # FIN DE LA CORRECCION
-    # ==============================================================================
-
-    if not caso.reporte_consolidado:
-        respuesta.reporte_consolidado = None
-
+        respuesta.evidencias = []
+        for evidencia in caso.evidencias:
+            ruta_normalizada = str(evidencia.ruta_archivo).replace("\\", "/")
+            prefijo = "backend/archivos_subidos/"
+            ruta_relativa = ruta_normalizada[len(prefijo):] if ruta_normalizada.startswith(prefijo) else ruta_normalizada
+            url_final_archivo = f"/archivos_subidos/{ruta_relativa}"
+            respuesta.evidencias.append(
+                EvidenciaLecturaSimple(
+                    id=evidencia.id,
+                    nombre_archivo=evidencia.nombre_archivo,
+                    ruta_archivo=url_final_archivo,
+                    estado=evidencia.estado  # <-- LÍNEA AÑADIDA
+                )
+            )
+    
     if caso.asignaciones:
         asignacion = caso.asignaciones[0]
         if asignacion.estudiante:
@@ -427,3 +370,51 @@ def analizar_caso_completo(id_caso: int, solicitud: SolicitudAnalisis, sesion: S
         return estado_final
     except Exception as e:
         raise HTTPException(status_code=504, detail=f"El analisis del caso tardo demasiado en responder.")
+    
+
+
+
+@router_expedientes.post("/documentos/{id_evidencia}/enviar-a-revision", status_code=status.HTTP_200_OK)
+def enviar_documento_a_revision(
+    id_evidencia: int,
+    sesion: Session = Depends(obtener_sesion),
+    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
+):
+    """
+    Permite a un estudiante cambiar el estado de un documento de 'subido' a 'en_revision'.
+    """
+    # 1. Validar que el usuario es un estudiante
+    if not cuenta_actual.estudiante:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acción no permitida para este rol.")
+
+    # 2. Obtener el documento (evidencia) y validar su existencia
+    documento = sesion.get(Evidencia, id_evidencia)
+    if not documento:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Documento no encontrado.")
+
+    # 3. Validar que el estudiante tiene permiso sobre el caso de este documento
+    asignacion = sesion.exec(
+        select(Asignacion).where(
+            Asignacion.id_caso == documento.id_caso,
+            Asignacion.id_estudiante == cuenta_actual.estudiante.id,
+            Asignacion.estado == "aceptado"
+        )
+    ).first()
+    if not asignacion:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tiene permiso para modificar este documento.")
+
+    # 4. Validar que el documento fue subido por el estudiante
+    if documento.subido_por_id_cuenta != cuenta_actual.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo puede enviar a revisión los documentos que usted ha subido.")
+
+    # 5. Validar que el estado actual del documento es 'subido'
+    if documento.estado != EstadoEvidencia.SUBIDO.value:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"El documento no se puede enviar a revisión desde el estado actual ('{documento.estado}').")
+
+    # 6. Actualizar el estado y guardar en la base de datos
+    documento.estado = EstadoEvidencia.EN_REVISION.value
+    sesion.add(documento)
+    sesion.commit()
+    sesion.refresh(documento)
+
+    return {"mensaje": f"El documento '{documento.nombre_archivo}' ha sido enviado a revisión."}    

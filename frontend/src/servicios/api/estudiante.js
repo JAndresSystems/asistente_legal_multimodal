@@ -1,0 +1,182 @@
+//C:\react\asistente_legal_multimodal\frontend\src\servicios\api\estudiante.js
+import { URL_BASE_BACKEND, obtenerCabeceras } from './config.js';
+
+export const apiObtenerMisAsignaciones = async () => {
+  console.log("API: Solicitando la lista de casos asignados para el estudiante.");
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/mis-asignaciones`, {
+      method: 'GET',
+      headers: obtenerCabeceras(),
+    });
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+    return await respuesta.json();
+  } catch (error) {
+    console.error("API: Error al obtener las asignaciones del estudiante:", error);
+    throw error;
+  }
+};
+
+export const apiObtenerDetalleExpediente = async (idCaso) => {
+  console.log(`API: Solicitando detalles para el expediente ID: ${idCaso}`);
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}`, {
+      method: 'GET',
+      headers: obtenerCabeceras(),
+    });
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+    return await respuesta.json();
+  } catch (error) {
+    console.error(`API: Error al obtener el detalle del expediente ${idCaso}:`, error);
+    throw error;
+  }
+};
+
+export const apiConsultarAgenteJuridico = async (idCaso, pregunta) => {
+  console.log(`API: Enviando pregunta al Agente Juridico para el caso ${idCaso}: "${pregunta}"`);
+  try {
+    const cuerpoDeLaPeticion = { id_caso: idCaso, pregunta: pregunta };
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/agentes/consulta-juridica`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+      body: JSON.stringify(cuerpoDeLaPeticion),
+    });
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+    return await respuesta.json();
+  } catch (error) {
+    console.error("API: Error al consultar al Agente Juridico:", error);
+    throw error;
+  }
+};
+
+export const apiGenerarDocumento = async (idCaso, nombrePlantilla) => {
+  console.log(`API: Solicitando generar documento '${nombrePlantilla}' para el caso ${idCaso}`);
+  try {
+    const cuerpoDeLaPeticion = { id_caso: idCaso, nombre_plantilla: nombrePlantilla };
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/agentes/generar-documento`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+      body: JSON.stringify(cuerpoDeLaPeticion),
+    });
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+    return await respuesta.json();
+  } catch (error) {
+    console.error("API: Error al generar el documento:", error);
+    throw error;
+  }
+};
+
+export const apiAceptarAsignacion = async (idCaso) => {
+  console.log(`API: Aceptando asignacion para el caso ${idCaso}`);
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}/aceptar`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+    });
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+    return await respuesta.json();
+  } catch (error) {
+    console.error(`API: Error al aceptar el caso ${idCaso}:`, error);
+    throw error;
+  }
+};
+
+export const apiRechazarAsignacion = async (idCaso) => {
+  console.log(`API: Rechazando asignacion para el caso ${idCaso}`);
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}/rechazar`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+    });
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+    return await respuesta.json();
+  } catch (error) {
+    console.error(`API: Error al rechazar el caso ${idCaso}:`, error);
+    throw error;
+  }
+};
+
+export const apiSubirDocumentoEstudiante = async (idCaso, archivo) => {
+  console.log(`API: Estudiante subiendo el archivo '${archivo.name}' al caso ${idCaso}`);
+  const formData = new FormData();
+  formData.append("archivo", archivo);
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}/subir-documento`, {
+      method: 'POST',
+      headers: obtenerCabeceras(true), // Usamos la funcion centralizada para FormData
+      body: formData,
+    });
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+    return await respuesta.json();
+  } catch (error) {
+    console.error(`API: Error al subir el documento para el caso ${idCaso}:`, error);
+    throw error;
+  }
+};
+
+export const apiCrearNotaEstudiante = async (idCaso, contenido) => {
+  console.log(`API: Estudiante creando nota en el caso ${idCaso}`);
+  const cuerpoDeLaPeticion = { contenido: contenido };
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}/crear-nota`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+      body: JSON.stringify(cuerpoDeLaPeticion),
+    });
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+    return await respuesta.json();
+  } catch (error) {
+    console.error(`API: Error al crear la nota para el caso ${idCaso}:`, error);
+    throw error;
+  }
+};
+
+
+/**
+ * Docstring:
+ * Llama al endpoint para que un estudiante envíe un documento a revisión del asesor.
+ * @param {number} idEvidencia El ID del documento (evidencia) a enviar.
+ */
+export const apiEnviarParaRevision = async (idEvidencia) => {
+  console.log(`API: Estudiante enviando a revisión el documento ID: ${idEvidencia}`);
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/documentos/${idEvidencia}/enviar-a-revision`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+      // No se necesita cuerpo (body) para esta petición
+    });
+
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+
+    return await respuesta.json(); // Devuelve { mensaje: "..." }
+  } catch (error) {
+    console.error(`API: Error al enviar a revisión el documento ${idEvidencia}:`, error);
+    throw error;
+  }
+};

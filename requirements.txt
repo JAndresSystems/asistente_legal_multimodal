@@ -43,4 +43,6 @@ pip install "python-jose[cryptography]"
 
 #frontend> npm install react-router-dom
 
+#frontend> npm install react-markdown   <--- estilos de texto de las respuestas de los agentes
+
 

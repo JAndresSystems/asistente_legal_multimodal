@@ -1,0 +1,86 @@
+.contenedorPrincipal {
+  background-color: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-top: 2rem;
+}
+
+.contenedorPrincipal h3 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.descripcion {
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 1.5rem;
+}
+
+.selectPlantilla {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: white;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.botonGenerar {
+  width: 100%;
+  padding: 12px;
+  background-color: #17a2b8; /* Un color cian para 'generar' */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.botonGenerar:hover {
+  background-color: #138496;
+}
+
+.botonGenerar:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #d93025;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  background-color: #fbeae5;
+  border: 1px solid #d93025;
+  padding: 0.5rem;
+  border-radius: 5px;
+}
+
+.contenedorResultado {
+  margin-top: 2rem;
+  padding: 1rem;
+  border-top: 2px solid #eee;
+  background-color: #eaf7ea; /* Fondo verde suave para éxito */
+  border-radius: 5px;
+}
+
+.contenedorResultado h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #155724; /* Verde oscuro para el texto */
+}
+
+.enlaceDescarga {
+  color: #155724;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.enlaceDescarga:hover {
+  text-decoration: underline;
+}

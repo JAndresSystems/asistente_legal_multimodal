@@ -1,9 +1,7 @@
-# backend/seed_db.py
-
 from sqlmodel import Session, SQLModel
 from .base_de_datos import motor
 
-from .api.modelos_compartidos import Cuenta, Usuario, Estudiante, Asesor, Caso, Evidencia, Asignacion
+from .api.modelos_compartidos import Cuenta, Usuario, Estudiante, Asesor
 from .seguridad.contrasenas import obtener_hash_de_contrasena
 
 def resetear_y_poblar_la_base_de_datos():
@@ -23,38 +21,25 @@ def resetear_y_poblar_la_base_de_datos():
         contrasena_hasheada_comun = obtener_hash_de_contrasena("secreto123")
 
         # --- Creacion de la Cuenta y Perfil del USUARIO (CIUDADANO) ---
-        cuenta_usuario = Cuenta(
-            email="juan.consulta@email.com",
-            contrasena_hash=contrasena_hasheada_comun,
-            rol="usuario"
-        )
-        usuario_de_prueba = Usuario(
-            nombre="Juan Consultante",
-            cedula="123456789",
-            cuenta=cuenta_usuario
-        )
+        cuenta_usuario = Cuenta(email="juan.consulta@email.com", contrasena_hash=contrasena_hasheada_comun, rol="usuario")
+        usuario_de_prueba = Usuario(nombre="Juan Consultante", cedula="123456789", cuenta=cuenta_usuario)
         sesion.add(usuario_de_prueba)
         print("-> Se ha añadido 1 cuenta de usuario (ciudadano).")
 
         # --- Creacion de la Cuenta y Perfil para la ESTUDIANTE de prueba ---
-        cuenta_estudiante = Cuenta(
-            email="ana.rojas@email.com",
-            contrasena_hash=contrasena_hasheada_comun,
-            rol="estudiante"
-        )
-        estudiante_ana = Estudiante(
-            nombre_completo="Ana Sofia Rojas", 
-            area_especialidad="Derecho Privado",
-            cuenta=cuenta_estudiante
-        )
+        cuenta_estudiante = Cuenta(email="ana.rojas@email.com", contrasena_hash=contrasena_hasheada_comun, rol="estudiante")
+        estudiante_ana = Estudiante(nombre_completo="Ana Sofia Rojas", area_especialidad="Derecho Privado", cuenta=cuenta_estudiante)
         sesion.add(estudiante_ana)
         print("-> Se ha añadido 1 cuenta de estudiante (ana.rojas@email.com).")
 
-        # --- INICIO DE LA MODIFICACION: Cobertura completa de areas ---
-        # Creamos estudiantes y asesores para TODAS las areas de competencia.
-        
+        # --- Creacion de la Cuenta y Perfil para el ASESOR de prueba ---
+        cuenta_asesor = Cuenta(email="ricardo.mendoza@email.com", contrasena_hash=contrasena_hasheada_comun, rol="asesor")
+        usuario_para_asesor = Usuario(nombre="Dr. Ricardo Mendoza", cedula="987654321", cuenta=cuenta_asesor)
+        sesion.add(usuario_para_asesor)
+        print("-> Se ha añadido 1 cuenta de asesor (ricardo.mendoza@email.com).")
+
+        # --- Creacion de perfiles de Estudiantes y Asesores para cubrir todas las areas ---
         estudiantes = [
-            # Se añade uno extra para Derecho Privado para probar el balanceo de carga.
             Estudiante(nombre_completo="Carlos David Perez", area_especialidad="Derecho Privado"),
             Estudiante(nombre_completo="Laura Valentina Gomez", area_especialidad="Derecho Publico"),
             Estudiante(nombre_completo="Juan Felipe Moreno", area_especialidad="Derecho Laboral"),
@@ -73,13 +58,11 @@ def resetear_y_poblar_la_base_de_datos():
         sesion.add_all(estudiantes)
         sesion.add_all(asesores)
         
-        # --- FIN DE LA MODIFICACION: Se eliminan casos y asignaciones predefinidas ---
-        
         sesion.commit()
 
-        print("-> Se han añadido 5 estudiantes adicionales y 5 asesores, cubriendo todas las areas.")
-        print("-> No se han creado casos ni asignaciones para asegurar una prueba limpia.")
-        print("EXITO: La base de datos ha sido reseteada y poblada con personal completo.")
+        print("-> Se han añadido 5 estudiantes adicionales y 5 perfiles de asesores, cubriendo todas las areas.")
+        print("-> No se han creado casos ni asignaciones para asegurar una prueba de flujo limpia.")
+        print("EXITO: La base de datos ha sido reseteada y poblada con personal completo y cuentas de prueba.")
 
 if __name__ == "__main__":
     resetear_y_poblar_la_base_de_datos()

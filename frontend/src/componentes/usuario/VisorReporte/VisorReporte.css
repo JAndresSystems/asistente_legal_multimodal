@@ -38,3 +38,28 @@
   word-break: break-word;
   color: #dc3545;
 }
+
+
+/* Estilos para el contenido renderizado con Markdown */
+.markdown-content,
+.markdown-cell {
+  line-height: 1.6;
+}
+
+.markdown-content h3,
+.markdown-cell h3 {
+  font-size: 1.2rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.3rem;
+  margin-top: 1rem;
+}
+
+.markdown-content p,
+.markdown-cell p {
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content ul, .markdown-content ol,
+.markdown-cell ul, .markdown-cell ol {
+  padding-left: 20px;
+}

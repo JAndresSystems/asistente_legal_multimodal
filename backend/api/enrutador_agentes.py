@@ -55,14 +55,15 @@ def consultar_agente_juridico(
     cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
 ):
     """
-    Endpoint para que un estudiante realice una consulta al Agente Juridico.
-    Ahora busca el contexto del caso antes de invocar al agente.
+    Endpoint para que un estudiante O ASESOR realice una consulta al Agente Juridico.
     """
-    if cuenta_actual.rol != "estudiante":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="...")
-
-    # --- INICIO DE LA MODIFICACION: Añadimos contexto del caso ---
-    print(f"--- [API /consulta-juridica] Buscando contexto para caso {solicitud.id_caso}...")
+    # --- INICIO DE LA MODIFICACION: Permitir acceso al asesor ---
+    roles_permitidos = ["estudiante", "asesor"]
+    if cuenta_actual.rol not in roles_permitidos:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso denegado. Se requiere rol de estudiante o asesor."
+        )
     caso = sesion.get(Caso, solicitud.id_caso)
     if not caso:
         raise HTTPException(status_code=404, detail="El caso especificado no fue encontrado.")
@@ -96,14 +97,15 @@ def generar_documento_agente(
     cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
 ):
     """
-    Endpoint para que un estudiante solicite la generacion de un documento
-    a partir de una plantilla y los datos de un caso.
+    Endpoint para que un estudiante O ASESOR solicite la generacion de un documento.
     """
-    if cuenta_actual.rol != "estudiante":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo los estudiantes pueden generar documentos.")
-
-    print(f"--- [AGENTE DOCS] Recibida solicitud para generar '{solicitud.nombre_plantilla}' para el caso {solicitud.id_caso}")
-    
+    # --- Permitir acceso al asesor ---
+    roles_permitidos = ["estudiante", "asesor"]
+    if cuenta_actual.rol not in roles_permitidos:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso denegado. Se requiere rol de estudiante o asesor."
+        )
     caso = sesion.get(Caso, solicitud.id_caso)
     if not caso or not caso.usuario:
         raise HTTPException(status_code=404, detail="Caso o usuario asociado no encontrado.")

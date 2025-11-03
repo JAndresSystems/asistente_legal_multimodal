@@ -478,3 +478,72 @@
   font-size: 0.9rem;
   margin: 0;
 }
+
+
+
+.documento-acciones {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.estado-documento {
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: capitalize;
+}
+
+/* Colores para cada estado del documento */
+.estado-subido { background-color: #e2e3e5; color: #383d41; }
+.estado-en-revision { background-color: #fff3cd; color: #856404; }
+.estado-aprobado { background-color: #d4edda; color: #155724; }
+.estado-cambios-solicitados { background-color: #f8d7da; color: #721c24; }
+
+.boton-accion-doc {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background-color 0.2s;
+}
+.boton-accion-doc:hover { background-color: #0056b3; }
+.boton-accion-doc:disabled { background-color: #aaa; cursor: not-allowed; }
+.error-accion {
+  border: 1px solid #d9534f;
+  padding: 1rem;
+  border-radius: 5px;
+  margin-bottom: 1rem;
+}
+
+
+
+
+/* Estilos para el contenido renderizado con Markdown */
+.markdown-content,
+.markdown-cell {
+  line-height: 1.6;
+}
+
+.markdown-content h3,
+.markdown-cell h3 {
+  font-size: 1.2rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.3rem;
+  margin-top: 1rem;
+}
+
+.markdown-content p,
+.markdown-cell p {
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content ul, .markdown-content ol,
+.markdown-cell ul, .markdown-cell ol {
+  padding-left: 20px;
+}

@@ -1,0 +1,108 @@
+.contenedorPrincipal {
+  background-color: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-top: 2rem; /* Espacio para separarlo de otros paneles */
+}
+
+.contenedorPrincipal h3 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.descripcion {
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 1.5rem;
+}
+
+.textareaPregunta {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-family: inherit;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  resize: vertical;
+}
+
+.botonConsultar {
+  width: 100%;
+  padding: 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.botonConsultar:hover {
+  background-color: #0056b3;
+}
+
+.botonConsultar:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #d93025;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  background-color: #fbeae5;
+  border: 1px solid #d93025;
+  padding: 0.5rem;
+  border-radius: 5px;
+}
+
+.contenedorRespuesta {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #eee;
+}
+
+.contenidoRespuesta {
+  background-color: #fff;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  line-height: 1.6;
+}
+
+/* Estilos para el contenido Markdown renderizado */
+.contenidoRespuesta h3 {
+  font-size: 1.2rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.3rem;
+  margin-top: 1rem;
+}
+.contenidoRespuesta p {
+  margin-bottom: 0.5rem;
+}
+.contenidoRespuesta ul, .contenidoRespuesta ol {
+  padding-left: 20px;
+}
+
+.fuentes {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: #666;
+}
+.fuentes h5 {
+  margin-bottom: 0.5rem;
+}
+.fuentes ul {
+  padding-left: 15px;
+  list-style-type: square;
+}
+.fuentes li {
+  margin-bottom: 0.3rem;
+  word-break: break-all; /* Para evitar que las fuentes largas rompan el layout */
+}

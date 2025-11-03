@@ -4,8 +4,9 @@
 // --- INICIO DE LA MODIFICACION ---
 // MODIFICACION: Añadimos useCallback y la nueva funcion de API
 import React, { useState, useEffect, useCallback } from 'react';
-import { apiObtenerDetalleExpediente, apiConsultarAgenteJuridico, apiGenerarDocumento, apiSubirDocumentoEstudiante, apiCrearNotaEstudiante } from '../../../servicios/api';
+import { apiObtenerDetalleExpediente, apiConsultarAgenteJuridico, apiGenerarDocumento, apiSubirDocumentoEstudiante, apiCrearNotaEstudiante, apiEnviarParaRevision  } from '../../../servicios/api';
 // --- FIN DE LA MODIFICACION ---
+import ReactMarkdown from 'react-markdown'; 
 import './VistaExpedienteEstudiante.css';
 
 // Componente auxiliar para mostrar el reporte JSON de forma legible y segura
@@ -35,19 +36,27 @@ const VisorReporteEstructurado = ({ reporteJson }) => {
   try {
     const reporte = JSON.parse(reporteJson);
 
-    // Funcion auxiliar para renderizar una seccion del reporte
     const renderizarSeccion = (titulo, data) => {
       if (!data) return null;
+      // Caso especial para el Análisis Jurídico, que es un objeto con 'contenido'
+      if (titulo === "Análisis Jurídico Inicial" && typeof data === 'object' && data.contenido) {
+        return (
+          <div className="reporte-seccion">
+            <h4>{titulo}</h4>
+            <div className="markdown-content">
+              <ReactMarkdown>{data.contenido}</ReactMarkdown>
+            </div>
+          </div>
+        );
+      }
       return (
         <div className="reporte-seccion">
           <h4>{titulo}</h4>
           {Object.entries(data).map(([clave, valor]) => {
-            if (typeof valor === 'object' && valor !== null) return null; // Omitir objetos anidados por ahora
+            if (typeof valor === 'object' && valor !== null) return null;
             const claveLegible = clave.replace(/_/g, ' ');
             const valorLegible = typeof valor === 'boolean' ? (valor ? 'Sí' : 'No') : String(valor);
-            return (
-              <p key={clave}><strong>{claveLegible}:</strong> {valorLegible}</p>
-            );
+            return (<p key={clave}><strong>{claveLegible}:</strong> {valorLegible}</p>);
           })}
         </div>
       );
@@ -109,6 +118,9 @@ const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
   const [cargandoNota, setCargandoNota] = useState(false);
   const [errorNota, setErrorNota] = useState('');
 
+  const [enviandoRevisionId, setEnviandoRevisionId] = useState(null); // ID del doc en proceso
+  const [errorAccion, setErrorAccion] = useState('');
+
  // Esto asegura que la función no se recree en cada render, a menos que sus dependencias cambien.
   // No necesita saber el valor anterior de 'expediente' para funcionar.
   const cargarExpediente = useCallback(async () => {
@@ -118,6 +130,7 @@ const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
       // la lógica de 'cargando' se maneja por separado.
       setCargando(true); 
       setError('');
+      setErrorAccion('');
       const datosExpediente = await apiObtenerDetalleExpediente(expedienteId);
       setExpediente(datosExpediente);
     } catch (err) {
@@ -214,6 +227,20 @@ const handleGenerarDocumento = async (e) => {
   };
 
 
+  const handleEnviarParaRevision = async (idEvidencia) => {
+    setEnviandoRevisionId(idEvidencia);
+    setErrorAccion('');
+    try {
+      await apiEnviarParaRevision(idEvidencia);
+      await cargarExpediente(); // Recargar para ver el nuevo estado
+    } catch (err) {
+      setErrorAccion(err.message || 'Error al enviar el documento.');
+    } finally {
+      setEnviandoRevisionId(null);
+    }
+  };
+
+
 
   if (cargando) {
     return <div className="vista-expediente-cargando">Cargando expediente...</div>;
@@ -266,32 +293,42 @@ const handleGenerarDocumento = async (e) => {
         <p>{expediente.descripcion_hechos}</p>
       </div>
 
-      {/* --- INICIO DE LA MODIFICACION: Nueva sección de Línea de Tiempo y Formularios --- */}
       <div className="expediente-seccion">
         <h3>Línea de Tiempo del Expediente</h3>
+        {errorAccion && <p className="error-texto error-accion">{errorAccion}</p>}
         <div className="linea-de-tiempo-contenedor">
           {lineaDeTiempo.length > 0 ? (
             lineaDeTiempo.map((item, index) => (
               <div key={`${item.tipo}-${item.id || index}`} className="linea-de-tiempo-item">
-                {/* Renderizado para un DOCUMENTO */}
+                
                 {item.tipo === 'documento' && (
                   <>
                     <span className="icono">📄</span>
                     <div className="contenido">
                       <p><strong>Documento añadido:</strong> <a href={`${baseURL}${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer">{item.nombre_archivo}</a></p>
-                      {/* Aquí podríamos mostrar la fecha si la tuviéramos disponible en el objeto 'evidencia' */}
-                      {/* <small>Subido por: [Nombre del autor]</small> */}
+                      <div className="documento-acciones">
+                        <span className={`estado-documento estado-${item.estado.replace('_', '-')}`}>{item.estado.replace('_', ' ')}</span>
+                        
+                        {item.estado === 'subido' && (
+                          <button 
+                            onClick={() => handleEnviarParaRevision(item.id)}
+                            className="boton-accion-doc"
+                            disabled={enviandoRevisionId === item.id}
+                          >
+                            {enviandoRevisionId === item.id ? 'Enviando...' : 'Enviar a Revisión'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </>
                 )}
-                {/* Renderizado para una NOTA */}
+
                 {item.tipo === 'nota' && (
                   <>
                     <span className="icono">📝</span>
                     <div className="contenido">
                       <p>{item.contenido}</p>
                       <small>Nota añadida el {new Date(item.fecha_creacion).toLocaleString('es-CO')}</small>
-                      {/* <small> por [Nombre del autor]</small> */}
                     </div>
                   </>
                 )}
@@ -300,9 +337,7 @@ const handleGenerarDocumento = async (e) => {
           ) : <p>No hay documentos ni notas en este expediente.</p>}
         </div>
 
-        {/* Contenedor para los formularios de acción */}
         <div className="formularios-accion-contenedor">
-          {/* Formulario para subir documentos */}
           <form onSubmit={handleSubirDocumento} className="formulario-accion">
             <h4>Añadir Documento</h4>
             <input 
@@ -316,7 +351,6 @@ const handleGenerarDocumento = async (e) => {
             {errorSubida && <p className="error-texto">{errorSubida}</p>}
           </form>
 
-          {/* Formulario para crear notas */}
           <form onSubmit={handleCrearNota} className="formulario-accion">
             <h4>Añadir Nota</h4>
             <textarea 
@@ -332,7 +366,6 @@ const handleGenerarDocumento = async (e) => {
           </form>
         </div>
       </div>
-      {/* --- FIN DE LA MODIFICACION --- */}
 
       {expediente.reporte_consolidado && (
         <div className="expediente-seccion">
@@ -361,7 +394,7 @@ const handleGenerarDocumento = async (e) => {
           {respuestaAgente && (
             <div className="agente-respuesta-formateada">
               <h4>Respuesta:</h4>
-              <p>{respuestaAgente.contenido}</p>
+              <ReactMarkdown>{respuestaAgente.contenido}</ReactMarkdown>
               <h5>Fuentes:</h5>
               <ul>{respuestaAgente.fuentes.map((f, i) => (<li key={i}>{f}</li>))}</ul>
             </div>

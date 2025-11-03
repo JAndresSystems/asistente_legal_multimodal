@@ -1,0 +1,189 @@
+/* Estilo principal para el contenedor del dashboard */
+.dashboardContenedor {
+  width: 100%;
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilo para el título principal de la vista */
+.titulo {
+  color: #333;
+  text-align: center;
+  margin-bottom: 2rem;
+  font-size: 1.8rem;
+  border-bottom: 2px solid #0056b3;
+  padding-bottom: 0.5rem;
+}
+
+/* Estilos para la tabla de casos */
+.tablaCasos {
+  width: 100%;
+  border-collapse: collapse; /* Une los bordes de las celdas */
+  margin-top: 1rem;
+}
+
+.tablaCasos th, .tablaCasos td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.tablaCasos th {
+  background-color: #0056b3;
+  color: white;
+  font-weight: bold;
+}
+
+/* Colorea las filas alternas para mejorar la legibilidad */
+.tablaCasos tbody tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.tablaCasos tbody tr:hover {
+  background-color: #e2eafc; /* Resaltado al pasar el mouse */
+}
+
+/* Estilo para los botones de acción dentro de la tabla */
+.botonAccion {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.botonAccion:hover {
+  background-color: #0056b3;
+}
+
+/* Contenedor para mensajes de carga o error */
+.contenedorCentrado {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.2rem;
+  color: #555;
+}
+
+/* Estilo específico para mensajes de error */
+.error {
+  color: #d93025; /* Un color rojo para destacar el error */
+  font-weight: bold;
+}
+
+
+
+.panelMetricas,
+.panelCasos {
+  background-color: #ffffff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  margin-bottom: 2rem; /* Espacio entre paneles */
+}
+
+.panelMetricas h3,
+.panelCasos h3 {
+  margin-top: 0;
+  color: #0056b3;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Estilos específicos para la lista de métricas */
+.listaMetricas {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.itemMetrica {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.itemMetrica:last-child {
+  border-bottom: none;
+}
+
+.nombreEstudiante {
+  font-weight: 500;
+  color: #333;
+}
+
+.cargaTrabajo {
+  font-weight: bold;
+  background-color: #e2eafc;
+  color: #0056b3;
+  padding: 5px 10px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
+/* --- FIN DE LA MODIFICACIÓN --- */
+
+
+.tablaCasos {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.tablaCasos th, .tablaCasos td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.tablaCasos th {
+  background-color: #0056b3;
+  color: white;
+  font-weight: bold;
+}
+
+.tablaCasos tbody tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.tablaCasos tbody tr:hover {
+  background-color: #e2eafc;
+}
+
+.botonAccion {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.botonAccion:hover {
+  background-color: #0056b3;
+}
+
+.contenedorCentrado {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.2rem;
+  color: #555;
+}
+
+.error {
+  color: #d93025;
+  font-weight: bold;
+}

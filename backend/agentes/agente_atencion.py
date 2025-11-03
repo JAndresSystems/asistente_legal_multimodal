@@ -75,7 +75,7 @@ def nodo_agente_atencion(estado: EstadoChat) -> Dict[str, str]:
 
     return {"respuesta_agente": respuesta_final}
 
-# --- Construccion del Grafo (se mantiene igual) ---
+# --- Construccion del Grafo  ---
 grafo_atencion = StateGraph(EstadoChat)
 grafo_atencion.add_node("agente_atencion", nodo_agente_atencion)
 grafo_atencion.set_entry_point("agente_atencion")

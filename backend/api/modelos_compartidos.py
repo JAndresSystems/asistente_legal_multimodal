@@ -29,6 +29,15 @@ class EstadoCaso(str, Enum):
     RECHAZADO = "rechazado"
     CERRADO = "cerrado"
 
+class EstadoEvidencia(str, Enum):
+    """
+    Define los estados del ciclo de vida de un documento en el flujo de revisión.
+    """
+    SUBIDO = "subido"
+    EN_REVISION = "en_revision"
+    APROBADO = "aprobado"
+    CAMBIOS_SOLICITADOS = "cambios_solicitados"
+
 
 # --- INICIO DE LA MODIFICACION: Nuevo modelo para Cuentas ---
 class Cuenta(SQLModel, table=True):
@@ -78,7 +87,8 @@ class Nota(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     contenido: str = Field(sa_column=Column(Text))
     fecha_creacion: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    
+    # Campo nuevo para distinguir el tipo de nota
+    rol_autor: str = Field(default="estudiante")
     id_caso: int = Field(foreign_key="caso.id")
     id_cuenta_autor: int = Field(foreign_key="cuenta.id")
 
@@ -105,13 +115,12 @@ class Evidencia(SQLModel, table=True):
     id_caso: int = Field(foreign_key="caso.id")
     nombre_archivo: str
     ruta_archivo: str
-    estado: str = Field(default="subido")
-    tipo: str = Field(default="desconocido") # e.g., "documento", "imagen", "video", etc.
-    reporte_analisis: Optional[str] = Field(default=None, sa_column=Column(Text))    
-    # Nuevo campo para saber quién subió el archivo
+    # El estado ahora usará los valores definidos en el Enum EstadoEvidencia
+    estado: str = Field(default=EstadoEvidencia.SUBIDO.value, index=True)
+    tipo: str = Field(default="desconocido")
+    reporte_analisis: Optional[str] = Field(default=None, sa_column=Column(Text))
     subido_por_id_cuenta: Optional[int] = Field(default=None, foreign_key="cuenta.id")
     caso: "Caso" = Relationship(back_populates="evidencias")
-    # Nueva relación para acceder a la info de la cuenta que subió el archivo
     subido_por: Optional["Cuenta"] = Relationship()
 
 class Asignacion(SQLModel, table=True):
@@ -182,14 +191,10 @@ class CasoLecturaUsuario(SQLModel):
 
 
 class EvidenciaLecturaSimple(SQLModel):
-    """
-    Docstring:
-    Modelo para mostrar solo la informacion basica de una evidencia
-    en la vista de detalle del caso.
-    """
     id: int
     nombre_archivo: str
-    ruta_archivo: str  # Añadido para el frontend
+    ruta_archivo: str
+    estado: str  # <-- Campo añadido para que el frontend conozca el estado de la evidencia
 
 
 
@@ -197,6 +202,7 @@ class NotaLectura(SQLModel):
     id: int
     contenido: str
     fecha_creacion: datetime
+    rol_autor: str  # Añadido para identificar si es nota de estudiante o asesor
     # En el futuro podríamos añadir: autor_nombre: str
 
 
@@ -233,3 +239,58 @@ class RespuestaChat(SQLModel):
 
 class SolicitudAnalisis(SQLModel):
     texto_adicional_usuario: str = ""
+
+
+class CasoSupervisadoLectura(SQLModel):
+    """
+    Docstring:
+    Modelo de API especifico para devolver la lista de casos
+    en el dashboard del asesor. Incluye la informacion del caso
+    y el nombre del estudiante asignado.
+    """
+    id: int
+    descripcion_hechos: str
+    estado: str
+    fecha_creacion: datetime
+    nombre_estudiante: str
+
+
+class EstudianteLecturaSimple(SQLModel):
+    """
+    Docstring:
+    Modelo de API para devolver una lista simple de estudiantes,
+    util para mostrarlos en un menu desplegable de reasignacion.
+    """
+    id: int
+    nombre_completo: str
+    area_especialidad: str    
+
+
+
+class SolicitudReasignacion(SQLModel):
+    """
+    Docstring:
+    Modelo para validar la peticion de reasignar un caso.
+    Espera recibir el ID del nuevo estudiante.
+    """
+    id_nuevo_estudiante: int    
+
+
+class MetricaEstudiante(SQLModel):
+    """
+    Representa una única métrica de carga de trabajo para un estudiante.
+    """
+    nombre_estudiante: str
+    casos_asignados: int
+
+class DashboardAsesorData(SQLModel):
+    """
+    El modelo de respuesta completo para el dashboard del asesor.
+    Combina la lista detallada de casos y las métricas de carga de trabajo.
+    """
+    casos_supervisados: List[CasoSupervisadoLectura]
+    metricas_carga_trabajo: List[MetricaEstudiante]
+
+
+
+

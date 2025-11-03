@@ -12,6 +12,8 @@ import VistaRegistro from './componentes/VistaAutenticacion/VistaRegistro';
 import LayoutUsuario from './componentes/layouts/LayoutUsuario';
 import LayoutEstudiante from './componentes/layouts/LayoutEstudiante';
 
+import LayoutAsesor from './componentes/layouts/LayoutAsesor';
+
 function App() {
   const { usuario, estaAutenticado, cargando, login, registro, logout } = useAuth();
   const [vistaAuth, setVistaAuth] = useState('login');
@@ -30,6 +32,10 @@ function App() {
 
     if (!usuario) {
       return <div>Verificando permisos...</div>;
+    }
+
+    if (usuario.rol === 'asesor') {
+      return <LayoutAsesor />;
     }
 
     // LÓGICA DE ENRUTAMIENTO DE ROLES: SIMPLE, DIRECTA E INFALIBLE

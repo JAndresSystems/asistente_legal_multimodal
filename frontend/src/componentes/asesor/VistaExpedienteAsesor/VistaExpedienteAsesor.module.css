@@ -1,0 +1,365 @@
+/* ==========================================================================
+   1. Estilos Generales y Cabecera
+   ========================================================================== */
+.vistaContenedor {
+  width: 100%;
+  max-width: 1400px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 1rem;
+}
+
+.titulo {
+  color: #333;
+  font-size: 2rem;
+  margin: 0;
+}
+
+.estadoCaso {
+  background-color: #e2eafc;
+  color: #0056b3;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-weight: bold;
+  text-transform: capitalize;
+}
+
+.botonVolver {
+  background-color: transparent;
+  border: 1px solid #0056b3;
+  color: #0056b3;
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-bottom: 2rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.botonVolver:hover {
+  background-color: #0056b3;
+  color: white;
+}
+
+/* ==========================================================================
+   2. Layout de Rejilla y Columnas
+   ========================================================================== */
+.contenidoGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.columnaPrincipal {
+  background-color: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.columnaLateral {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* ==========================================================================
+   3. Línea de Tiempo
+   ========================================================================== */
+.lineaDeTiempo {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.itemTimeline {
+  display: flex;
+  align-items: flex-start;
+}
+
+.iconoTimeline {
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  background-color: #e2eafc;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.iconoAsesor {
+  background-color: #fffbe6;
+  color: #c48b01;
+}
+
+.contenidoItem {
+  border: 1px solid #ddd;
+  padding: 1rem;
+  border-radius: 5px;
+  width: 100%;
+  background-color: #fff;
+}
+
+.contenidoItem p {
+  margin: 0 0 0.5rem 0;
+}
+
+.contenidoNota {
+  white-space: pre-wrap;
+  background-color: #fdfdfd;
+  padding: 0.5rem;
+  border-left: 3px solid #007bff;
+}
+
+.fechaNota {
+  font-size: 0.8rem;
+  color: #777;
+  margin-top: 0.5rem;
+  display: block;
+}
+
+.enlaceDescarga {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.enlaceDescarga:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   4. Componentes de la Columna Lateral (Resumen y Formulario)
+   ========================================================================== */
+.resumen,
+.formularioNotas {
+  background-color: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+
+.resumen {
+  
+}
+
+
+
+.resumen h3,
+.columnaPrincipal h3,
+.formularioNotas h3 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.resumen p {
+  line-height: 1.6;
+}
+
+.resumen hr {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 1.5rem 0;
+}
+
+.textareaNota {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-family: inherit;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  resize: vertical;
+}
+
+.botonGuardarNota {
+  width: 100%;
+  padding: 12px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.botonGuardarNota:hover {
+  background-color: #218838;
+}
+
+.botonGuardarNota:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+.errorFormulario {
+  color: #d93025;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+/* ==========================================================================
+   5. Estados de Carga y Error
+   ========================================================================== */
+.contenedorCentrado {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.2rem;
+  color: #555;
+}
+
+.error {
+  color: #d93025;
+  font-weight: bold;
+}
+
+
+
+
+
+.botonFinalizar {
+  padding: 10px 20px;
+  background-color: #dc3545; /* Rojo para una acción destructiva/final */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap; /* Evita que el texto del botón se parta */
+}
+
+.botonFinalizar:hover {
+  background-color: #c82333;
+}
+
+.botonFinalizar:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+.errorAccion {
+  color: #c82333;
+  font-size: 0.8rem;
+  text-align: right;
+  margin-top: 0.5rem;
+}
+
+
+
+
+.botonAccion {
+  width: 100%;
+  padding: 10px;
+  background-color: #ffc107; /* Amarillo para una acción de gestión */
+  color: #212529;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.botonAccion:hover { background-color: #e0a800; }
+.botonAccion:disabled { background-color: #aaa; cursor: not-allowed; }
+.contenedorReasignacion p { margin-top: 0; font-size: 0.9rem; color: #555; }
+.selectEstudiante {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: white;
+}
+.botonesReasignacion {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+.botonCancelar, .botonConfirmar {
+  flex-grow: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.botonCancelar { background-color: #6c757d; color: white; }
+.botonCancelar:hover { background-color: #5a6268; }
+.botonConfirmar { background-color: #007bff; color: white; }
+.botonConfirmar:hover { background-color: #0056b3; }
+.botonConfirmar:disabled { background-color: #aaa; cursor: not-allowed; }
+/* --- FIN DE LA MODIFICACION --- */
+
+/* ==========================================================================
+   5. Estados de Carga y Error
+   ========================================================================== */
+.contenedorCentrado { text-align: center; padding: 3rem; font-size: 1.2rem; color: #555; }
+.error { color: #d93025; font-weight: bold; }
+
+
+
+
+.documentoEstadoContenedor {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.estadoDocumento {
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.estado-subido { background-color: #e2e3e5; color: #383d41; }
+.estado-en-revision { background-color: #fff3cd; color: #856404; }
+.estado-aprobado { background-color: #d4edda; color: #155724; }
+.estado-cambios-solicitados { background-color: #f8d7da; color: #721c24; }
+.botonesRevision { display: flex; gap: 0.5rem; }
+.botonAprobar, .botonRechazar {
+  border: none;
+  padding: 6px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: bold;
+  transition: opacity 0.2s;
+}
+.botonAprobar { background-color: #28a745; color: white; }
+.botonRechazar { background-color: #fd7e14; color: white; }
+.botonAprobar:disabled, .botonRechazar:disabled { opacity: 0.5; cursor: not-allowed; }
+.errorAccionDoc {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 1rem;
+  border-radius: 5px;
+  margin-bottom: 1rem;
+}

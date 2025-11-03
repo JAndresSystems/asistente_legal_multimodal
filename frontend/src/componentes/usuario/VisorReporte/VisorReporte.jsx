@@ -2,6 +2,7 @@
 
 import React from 'react';
 import './VisorReporte.css';
+import ReactMarkdown from 'react-markdown'; 
 
 const SeccionReporte = ({ titulo, datosSeccion }) => {
   let datosObjeto;
@@ -23,6 +24,18 @@ const SeccionReporte = ({ titulo, datosSeccion }) => {
   } else {
     // Para strings simples, números, etc., lo envolvemos en un objeto para mostrarlo
     datosObjeto = { "resultado": String(datosSeccion) };
+  }
+   if (titulo === 'Análisis Jurídico' && datosObjeto && datosObjeto.contenido) {
+    return (
+      <>
+        <tr className="fila-seccion-titulo"><td colSpan="2">{titulo.replace(/_/g, ' ')}</td></tr>
+        <tr>
+          <td colSpan="2" className="markdown-cell">
+            <ReactMarkdown>{datosObjeto.contenido}</ReactMarkdown>
+          </td>
+        </tr>
+      </>
+    );
   }
   // ==============================================================================
   // FIN DE LA CORRECCION

@@ -18,7 +18,7 @@ class EstadoDelGrafo(TypedDict):
     # --- RESULTADOS DE LA CADENA DE PROCESAMIENTO ---
     resultado_triaje: Optional[Dict[str, Any]]
     
-    # --- ¡NUEVOS CAMPOS PARA ANALISIS MULTIMODAL! ---
+    
     # Estos campos almacenaran los resultados de los agentes especializados.
     # Los inicializamos como opcionales porque solo uno de ellos se llenara
     # por cada ejecucion del grafo, dependiendo del tipo de evidencia.
@@ -35,11 +35,11 @@ class EstadoDelGrafo(TypedDict):
     Ejemplo: {'transcripcion': '...', 'resumen_puntos_clave': '...'}
     """
 
-    # --- RESULTADOS DE AGENTES POSTERIORES (Se mantienen) ---
+    # --- RESULTADOS DE AGENTES POSTERIORES  ---
     resultado_determinador_competencias: Optional[Dict[str, Any]]
     resultado_repartidor: Optional[Dict[str, Any]]
     
-    # --- ENTRADAS Y RESULTADOS DE AGENTES AUXILIARES (Se mantienen) ---
+    # --- ENTRADAS Y RESULTADOS DE AGENTES AUXILIARES  ---
     solicitud_agente_juridico: Optional[str]
     solicitud_agente_documentos: Optional[Dict[str, str]]
     resultado_agente_juridico: Optional[str]
