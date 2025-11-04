@@ -4,7 +4,8 @@ import { URL_BASE_BACKEND, obtenerCabeceras } from './config.js';
 export const apiObtenerMisAsignaciones = async () => {
   console.log("API: Solicitando la lista de casos asignados para el estudiante.");
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/mis-asignaciones`, {
+    // MODIFICACION: Se añade /api
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/expedientes/mis-asignaciones`, {
       method: 'GET',
       headers: obtenerCabeceras(),
     });
@@ -22,7 +23,8 @@ export const apiObtenerMisAsignaciones = async () => {
 export const apiObtenerDetalleExpediente = async (idCaso) => {
   console.log(`API: Solicitando detalles para el expediente ID: ${idCaso}`);
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}`, {
+    // MODIFICACION: Se añade /api
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/expedientes/${idCaso}`, {
       method: 'GET',
       headers: obtenerCabeceras(),
     });
@@ -37,11 +39,13 @@ export const apiObtenerDetalleExpediente = async (idCaso) => {
   }
 };
 
+// NOTA: Las rutas de /agentes tambien deben estandarizarse si no lo estan ya. Asumimos que si.
 export const apiConsultarAgenteJuridico = async (idCaso, pregunta) => {
   console.log(`API: Enviando pregunta al Agente Juridico para el caso ${idCaso}: "${pregunta}"`);
   try {
     const cuerpoDeLaPeticion = { id_caso: idCaso, pregunta: pregunta };
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/agentes/consulta-juridica`, {
+    // MODIFICACION: Se añade /api
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/agentes/consulta-juridica`, {
       method: 'POST',
       headers: obtenerCabeceras(),
       body: JSON.stringify(cuerpoDeLaPeticion),
@@ -61,7 +65,8 @@ export const apiGenerarDocumento = async (idCaso, nombrePlantilla) => {
   console.log(`API: Solicitando generar documento '${nombrePlantilla}' para el caso ${idCaso}`);
   try {
     const cuerpoDeLaPeticion = { id_caso: idCaso, nombre_plantilla: nombrePlantilla };
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/agentes/generar-documento`, {
+    // MODIFICACION: Se añade /api
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/agentes/generar-documento`, {
       method: 'POST',
       headers: obtenerCabeceras(),
       body: JSON.stringify(cuerpoDeLaPeticion),
@@ -80,7 +85,8 @@ export const apiGenerarDocumento = async (idCaso, nombrePlantilla) => {
 export const apiAceptarAsignacion = async (idCaso) => {
   console.log(`API: Aceptando asignacion para el caso ${idCaso}`);
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}/aceptar`, {
+    // MODIFICACION: Se añade /api
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/expedientes/${idCaso}/aceptar`, {
       method: 'POST',
       headers: obtenerCabeceras(),
     });
@@ -98,7 +104,8 @@ export const apiAceptarAsignacion = async (idCaso) => {
 export const apiRechazarAsignacion = async (idCaso) => {
   console.log(`API: Rechazando asignacion para el caso ${idCaso}`);
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}/rechazar`, {
+    // MODIFICACION: Se añade /api
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/expedientes/${idCaso}/rechazar`, {
       method: 'POST',
       headers: obtenerCabeceras(),
     });
@@ -118,9 +125,10 @@ export const apiSubirDocumentoEstudiante = async (idCaso, archivo) => {
   const formData = new FormData();
   formData.append("archivo", archivo);
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}/subir-documento`, {
+    // MODIFICACION: Se añade /api
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/expedientes/${idCaso}/subir-documento`, {
       method: 'POST',
-      headers: obtenerCabeceras(true), // Usamos la funcion centralizada para FormData
+      headers: obtenerCabeceras(true),
       body: formData,
     });
     if (!respuesta.ok) {
@@ -138,7 +146,8 @@ export const apiCrearNotaEstudiante = async (idCaso, contenido) => {
   console.log(`API: Estudiante creando nota en el caso ${idCaso}`);
   const cuerpoDeLaPeticion = { contenido: contenido };
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/${idCaso}/crear-nota`, {
+    // MODIFICACION: Se añade /api
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/expedientes/${idCaso}/crear-nota`, {
       method: 'POST',
       headers: obtenerCabeceras(),
       body: JSON.stringify(cuerpoDeLaPeticion),
@@ -154,27 +163,19 @@ export const apiCrearNotaEstudiante = async (idCaso, contenido) => {
   }
 };
 
-
-/**
- * Docstring:
- * Llama al endpoint para que un estudiante envíe un documento a revisión del asesor.
- * @param {number} idEvidencia El ID del documento (evidencia) a enviar.
- */
 export const apiEnviarParaRevision = async (idEvidencia) => {
   console.log(`API: Estudiante enviando a revisión el documento ID: ${idEvidencia}`);
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/expedientes/documentos/${idEvidencia}/enviar-a-revision`, {
+    // MODIFICACION: Se añade /api
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/expedientes/documentos/${idEvidencia}/enviar-a-revision`, {
       method: 'POST',
       headers: obtenerCabeceras(),
-      // No se necesita cuerpo (body) para esta petición
     });
-
     if (!respuesta.ok) {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
     }
-
-    return await respuesta.json(); // Devuelve { mensaje: "..." }
+    return await respuesta.json();
   } catch (error) {
     console.error(`API: Error al enviar a revisión el documento ${idEvidencia}:`, error);
     throw error;

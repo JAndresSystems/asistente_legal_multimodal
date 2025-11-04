@@ -16,6 +16,8 @@ from .api.enrutador_agentes import router_agentes
 
 from .api.enrutador_asesor import router_asesor
 
+from .api.enrutador_administrador import router as router_administrador
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("INFO:     Iniciando la aplicación...")
@@ -52,6 +54,7 @@ aplicacion.include_router(router_expedientes)
 # 2. Registramos el nuevo enrutador en la aplicación.
 aplicacion.include_router(router_agentes)
 aplicacion.include_router(router_asesor)
+aplicacion.include_router(router_administrador)
 print("-> Enrutadores registrados exitosamente.")
 
 @aplicacion.get("/", tags=["Root"])

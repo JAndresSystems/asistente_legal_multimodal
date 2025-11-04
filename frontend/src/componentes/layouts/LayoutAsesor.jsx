@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import DashboardAsesor from '../asesor/DashboardAsesor/DashboardAsesor';
 // 1. Descomentamos la importacion del componente que muestra el expediente.
 import VistaExpedienteAsesor from '../asesor/VistaExpedienteAsesor/VistaExpedienteAsesor';
-
+import { useAuth } from '../../contextos/ContextoAutenticacion';
 /**
  * Docstring:
  * Este componente actua como el controlador de vistas principal para el rol de Asesor.
@@ -16,6 +16,8 @@ const LayoutAsesor = () => {
   // Estado para saber que expediente especifico se debe mostrar
   const [expedienteId, setExpedienteId] = useState(null);
 
+
+  const { logout } = useAuth();
   // Funcion para navegar a la vista de un expediente especifico
   const navegarAExpediente = (idCaso) => {
     setExpedienteId(idCaso);
@@ -28,20 +30,18 @@ const LayoutAsesor = () => {
     setVistaActual('dashboard');
   };
 
-  // Renderizado condicional basado en el estado de la vista
-  if (vistaActual === 'dashboard') {
-    // Pasamos la funcion de navegacion como prop al dashboard
-    return <DashboardAsesor onVerExpediente={navegarAExpediente} />;
-  }
-
-  if (vistaActual === 'expediente') {
-    // 2. Reemplazamos el bloque del placeholder por la llamada real al componente.
-    //    Le pasamos el ID del expediente y la funcion para volver.
-    return <VistaExpedienteAsesor expedienteId={expedienteId} onVolverADashboard={navegarADashboard} />;
-  }
-
-  // Fallback por si el estado es invalido
-  return <div>Vista no reconocida.</div>;
+   return (
+    <div>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 2rem", backgroundColor: "#1c3b57", color: "white" }}>
+        <h1>Panel del Asesor Supervisor</h1>
+        <button onClick={logout}>Cerrar Sesión</button>
+      </header>
+      <main>
+        {vistaActual === 'dashboard' && <DashboardAsesor onVerExpediente={navegarAExpediente} />}
+        {vistaActual === 'expediente' && <VistaExpedienteAsesor expedienteId={expedienteId} onVolverADashboard={navegarADashboard} />}
+      </main>
+    </div>
+  );
 };
 
 export default LayoutAsesor;

@@ -2,14 +2,13 @@
 import { URL_BASE_BACKEND, obtenerCabeceras } from './config.js';
 
 /**
- * Docstring:
- * Llama al endpoint para obtener los datos completos del dashboard del asesor,
- * incluyendo la lista de casos y las métricas de carga de trabajo.
+ * Llama al endpoint para obtener los datos del dashboard del asesor.
  */
 export const apiObtenerDashboardAsesor = async () => {
   console.log("API: Solicitando datos completos del dashboard para el asesor.");
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/asesor/dashboard`, {
+    // MODIFICACION: Se añade /api al inicio de la ruta
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/dashboard`, {
       method: 'GET',
       headers: obtenerCabeceras(),
     });
@@ -18,25 +17,22 @@ export const apiObtenerDashboardAsesor = async () => {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
     }
-
-    return await respuesta.json(); // Devuelve { casos_supervisados, metricas_carga_trabajo }
+    return await respuesta.json();
   } catch (error) {
     console.error("API: Error al obtener los datos del dashboard:", error);
     throw error;
   }
 };
 
-
 /**
- * Docstring:
- * Llama al endpoint para que un asesor obtenga los detalles completos
- * de un expediente especifico que supervisa.
+ * Llama al endpoint para que un asesor obtenga los detalles de un expediente.
  * @param {number} idCaso El ID del caso a consultar.
  */
 export const apiObtenerDetalleExpedienteAsesor = async (idCaso) => {
   console.log(`API: Asesor solicitando detalles para el expediente ID: ${idCaso}`);
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/asesor/expedientes/${idCaso}`, {
+    // MODIFICACION: Se añade /api al inicio de la ruta
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/expedientes/${idCaso}`, {
       method: 'GET',
       headers: obtenerCabeceras(),
     });
@@ -45,7 +41,6 @@ export const apiObtenerDetalleExpedienteAsesor = async (idCaso) => {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
     }
-
     return await respuesta.json();
   } catch (error) {
     console.error(`API: Error al obtener el detalle del expediente ${idCaso} para el asesor:`, error);
@@ -53,80 +48,64 @@ export const apiObtenerDetalleExpedienteAsesor = async (idCaso) => {
   }
 };
 
-
-
 /**
- * Docstring:
- * Llama al endpoint para que un asesor cree una nota de supervisión en un caso.
- * @param {number} idCaso El ID del caso al que se adjunta la nota.
+ * Llama al endpoint para que un asesor cree una nota de supervisión.
+ * @param {number} idCaso El ID del caso.
  * @param {string} contenido El texto de la nota.
  */
 export const apiCrearNotaAsesor = async (idCaso, contenido) => {
   console.log(`API: Asesor creando nota en el caso ${idCaso}`);
-  
-  const cuerpoDeLaPeticion = {
-    contenido: contenido,
-  };
-
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/asesor/expedientes/${idCaso}/crear-nota`, {
+    // MODIFICACION: Se añade /api al inicio de la ruta
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/expedientes/${idCaso}/crear-nota`, {
       method: 'POST',
       headers: obtenerCabeceras(),
-      body: JSON.stringify(cuerpoDeLaPeticion),
+      body: JSON.stringify({ contenido: contenido }),
     });
 
     if (!respuesta.ok) {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
     }
-
-    return await respuesta.json(); // Devuelve el objeto de la nueva nota creada
+    return await respuesta.json();
   } catch (error) {
     console.error(`API: Error al crear la nota de supervisor para el caso ${idCaso}:`, error);
     throw error;
   }
 };
 
-
-
-
 /**
- * Docstring:
  * Llama al endpoint para que un asesor marque un caso como 'cerrado'.
  * @param {number} idCaso El ID del caso a finalizar.
  */
 export const apiFinalizarCaso = async (idCaso) => {
   console.log(`API: Asesor solicitando finalizar el caso ID: ${idCaso}`);
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/asesor/expedientes/${idCaso}/finalizar`, {
+    // MODIFICACION: Se añade /api al inicio de la ruta
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/expedientes/${idCaso}/finalizar`, {
       method: 'POST',
       headers: obtenerCabeceras(),
-      // No se necesita cuerpo (body) para esta petición
     });
 
     if (!respuesta.ok) {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
     }
-
-    return await respuesta.json(); // Devuelve { mensaje, caso }
+    return await respuesta.json();
   } catch (error) {
     console.error(`API: Error al finalizar el caso ${idCaso}:`, error);
     throw error;
   }
 };
 
-
-
 /**
- * Docstring:
- * Llama al endpoint para obtener una lista de todos los estudiantes disponibles
- * en el sistema, para la funcionalidad de reasignacion.
+ * Llama al endpoint para obtener una lista de todos los estudiantes disponibles.
  */
 export const apiObtenerEstudiantes = async () => {
   console.log("API: Solicitando la lista de todos los estudiantes.");
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/asesor/estudiantes-disponibles`, {
+    // MODIFICACION: Se añade /api al inicio de la ruta
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/estudiantes-disponibles`, {
       method: 'GET',
       headers: obtenerCabeceras(),
     });
@@ -135,61 +114,48 @@ export const apiObtenerEstudiantes = async () => {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
     }
-
-    return await respuesta.json(); // Devuelve la lista de estudiantes
+    return await respuesta.json();
   } catch (error) {
     console.error("API: Error al obtener la lista de estudiantes:", error);
     throw error;
   }
 };
 
-
-
 /**
- * Docstring:
  * Llama al endpoint para que un asesor reasigne un caso a un nuevo estudiante.
  * @param {number} idCaso El ID del caso a reasignar.
  * @param {number} idNuevoEstudiante El ID del estudiante que recibirá el caso.
  */
 export const apiReasignarCaso = async (idCaso, idNuevoEstudiante) => {
   console.log(`API: Asesor reasignando el caso ${idCaso} al estudiante ${idNuevoEstudiante}`);
-  
-  const cuerpoDeLaPeticion = {
-    id_nuevo_estudiante: idNuevoEstudiante,
-  };
-
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/asesor/expedientes/${idCaso}/reasignar`, {
+    // MODIFICACION: Se añade /api al inicio de la ruta
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/expedientes/${idCaso}/reasignar`, {
       method: 'POST',
       headers: obtenerCabeceras(),
-      body: JSON.stringify(cuerpoDeLaPeticion),
+      body: JSON.stringify({ id_nuevo_estudiante: idNuevoEstudiante }),
     });
 
     if (!respuesta.ok) {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
     }
-
-    return await respuesta.json(); // Devuelve { mensaje: "..." }
+    return await respuesta.json();
   } catch (error) {
     console.error(`API: Error al reasignar el caso ${idCaso}:`, error);
     throw error;
   }
 };
 
-
-
-
-
 /**
- * Docstring:
  * Llama al endpoint para que un asesor apruebe un documento.
- * @param {number} idEvidencia El ID del documento (evidencia) a aprobar.
+ * @param {number} idEvidencia El ID del documento a aprobar.
  */
 export const apiAprobarDocumento = async (idEvidencia) => {
   console.log(`API: Asesor aprobando el documento ID: ${idEvidencia}`);
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/asesor/documentos/${idEvidencia}/aprobar`, {
+    // MODIFICACION: Se añade /api al inicio de la ruta
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/documentos/${idEvidencia}/aprobar`, {
       method: 'POST',
       headers: obtenerCabeceras(),
     });
@@ -198,8 +164,7 @@ export const apiAprobarDocumento = async (idEvidencia) => {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
     }
-
-    return await respuesta.json(); // Devuelve { mensaje: "..." }
+    return await respuesta.json();
   } catch (error) {
     console.error(`API: Error al aprobar el documento ${idEvidencia}:`, error);
     throw error;
@@ -207,14 +172,14 @@ export const apiAprobarDocumento = async (idEvidencia) => {
 };
 
 /**
- * Docstring:
  * Llama al endpoint para que un asesor solicite cambios en un documento.
- * @param {number} idEvidencia El ID del documento (evidencia) a rechazar.
+ * @param {number} idEvidencia El ID del documento a rechazar.
  */
 export const apiSolicitarCambiosDocumento = async (idEvidencia) => {
   console.log(`API: Asesor solicitando cambios para el documento ID: ${idEvidencia}`);
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/asesor/documentos/${idEvidencia}/solicitar-cambios`, {
+    // MODIFICACION: Se añade /api al inicio de la ruta
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/documentos/${idEvidencia}/solicitar-cambios`, {
       method: 'POST',
       headers: obtenerCabeceras(),
     });
@@ -223,8 +188,7 @@ export const apiSolicitarCambiosDocumento = async (idEvidencia) => {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
     }
-
-    return await respuesta.json(); // Devuelve { mensaje: "..." }
+    return await respuesta.json();
   } catch (error) {
     console.error(`API: Error al solicitar cambios para el documento ${idEvidencia}:`, error);
     throw error;

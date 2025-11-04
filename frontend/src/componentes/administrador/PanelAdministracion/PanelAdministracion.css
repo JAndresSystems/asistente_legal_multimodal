@@ -1,0 +1,201 @@
+/* C:\react\asistente_legal_multimodal\frontend\src\componentes\administrador\PanelAdministracion\PanelAdministracion.css */
+
+.panel-admin-contenedor {
+  padding: 2rem;
+  font-family: sans-serif;
+}
+
+.form-creacion-seccion {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.form-creacion-seccion h2 {
+  margin-top: 0;
+}
+
+.form-grupo {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-grupo label {
+  margin-bottom: 0.25rem;
+  font-weight: bold;
+}
+
+.form-grupo input,
+.form-grupo select {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.mensaje-error {
+  color: red;
+  margin-bottom: 1rem;
+}
+
+.tabla-personal {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-personal thead tr {
+  border-bottom: 2px solid black;
+}
+
+.tabla-personal th,
+.tabla-personal td {
+  text-align: left;
+  padding: 12px 8px;
+}
+
+.tabla-personal tbody tr {
+  border-bottom: 1px solid #eee;
+}
+
+.tabla-personal tbody tr:hover {
+  background-color: #f5f5f5;
+}
+
+
+
+
+/* Estilos para la insignia de estado (Activo/Inactivo) */
+.estado-activo,
+.estado-inactivo {
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-weight: bold;
+  font-size: 0.8em;
+  color: white;
+}
+
+.estado-activo {
+  background-color: #28a745; /* Verde */
+}
+
+.estado-inactivo {
+  background-color: #6c757d; /* Gris */
+}
+
+/* Estilos base para los botones de acción */
+.boton-activar,
+.boton-desactivar {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.boton-activar {
+  background-color: #007bff; /* Azul */
+}
+
+.boton-activar:hover {
+  background-color: #0056b3;
+}
+
+.boton-desactivar {
+  background-color: #dc3545; /* Rojo */
+}
+
+.boton-desactivar:hover {
+  background-color: #c82333;
+}
+
+
+
+
+
+/* Celda de acciones para alinear los botones */
+.celda-acciones {
+  display: flex;
+  gap: 0.5rem; /* Espacio entre los botones */
+  align-items: center;
+}
+
+/* Botón de Editar */
+.boton-editar {
+  background-color: #ffc107; /* Amarillo */
+  color: #212529;
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.boton-editar:hover {
+  background-color: #e0a800;
+}
+
+/* Botón de Eliminar */
+.boton-eliminar {
+  background-color: #a4000f; /* Rojo más oscuro */
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.boton-eliminar:hover {
+  background-color: #83000c;
+}
+
+/* --- Estilos para el Modal --- */
+
+/* El fondo oscuro que cubre toda la pantalla */
+.modal-overlay {
+  position: fixed; /* Se queda fijo incluso si se hace scroll */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6); /* Negro semitransparente */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Asegura que esté por encima de todo */
+}
+
+/* La caja blanca que contiene el formulario */
+.modal-contenido {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px; /* Ancho máximo para el modal */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.modal-contenido h2 {
+  margin-top: 0;
+}
+
+/* Contenedor para los botones de acción dentro del modal */
+.modal-acciones {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end; /* Alinea los botones a la derecha */
+  gap: 1rem;
+}
+
+/* Botón de Guardar Cambios (dentro del modal) */
+.boton-guardar {
+  background-color: #28a745; /* Verde */
+  color: white;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.boton-guardar:hover {
+  background-color: #218838;
+}

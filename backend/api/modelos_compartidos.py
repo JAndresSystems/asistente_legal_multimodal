@@ -5,7 +5,7 @@ from typing import Optional, List
 # =================================================================================
 # MODELOS DE TABLAS DE BASE DE DATOS
 # =================================================================================
-
+from typing import Optional, List, Any
 from enum import Enum
 
 from datetime import datetime
@@ -39,6 +39,18 @@ class EstadoEvidencia(str, Enum):
     CAMBIOS_SOLICITADOS = "cambios_solicitados"
 
 
+class AreaEspecialidad(SQLModel, table=True):
+    """
+    Representa una única área de especialidad del derecho.
+    Esto centraliza los nombres y evita errores de tipeo en el resto del sistema.
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nombre: str = Field(unique=True, index=True)
+
+    estudiantes: List["Estudiante"] = Relationship(back_populates="area")
+    asesores: List["Asesor"] = Relationship(back_populates="area")    
+
+
 # --- INICIO DE LA MODIFICACION: Nuevo modelo para Cuentas ---
 class Cuenta(SQLModel, table=True):
     """
@@ -54,6 +66,7 @@ class Cuenta(SQLModel, table=True):
 
     usuario: Optional["Usuario"] = Relationship(back_populates="cuenta")
     estudiante: Optional["Estudiante"] = Relationship(back_populates="cuenta")
+    asesor: Optional["Asesor"] = Relationship(back_populates="cuenta")
 
 
 class Usuario(SQLModel, table=True):
@@ -73,13 +86,17 @@ class Estudiante(SQLModel, table=True):
     id_cuenta: Optional[int] = Field(default=None, foreign_key="cuenta.id", unique=True)
     cuenta: Optional["Cuenta"] = Relationship(back_populates="estudiante")
     nombre_completo: str
-    area_especialidad: str
+    id_area_especialidad: int = Field(foreign_key="areaespecialidad.id")
+    area: AreaEspecialidad = Relationship(back_populates="estudiantes")
     asignaciones: List["Asignacion"] = Relationship(back_populates="estudiante")
 
 class Asesor(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    id_cuenta: Optional[int] = Field(default=None, foreign_key="cuenta.id", unique=True)
+    cuenta: Optional["Cuenta"] = Relationship(back_populates="asesor")
     nombre_completo: str
-    area_especialidad: str
+    id_area_especialidad: int = Field(foreign_key="areaespecialidad.id")
+    area: AreaEspecialidad = Relationship(back_populates="asesores")
     asignaciones: List["Asignacion"] = Relationship(back_populates="asesor")
 
 
@@ -241,6 +258,17 @@ class SolicitudAnalisis(SQLModel):
     texto_adicional_usuario: str = ""
 
 
+class RespuestaAnalisisIniciado(SQLModel):
+    """Modelo de respuesta al iniciar un análisis asíncrono."""
+    mensaje: str
+    id_tarea: str
+
+class EstadoTarea(SQLModel):
+    """Modelo de respuesta para consultar el estado de una tarea de Celery."""
+    id_tarea: str
+    estado: str  # PENDING, SUCCESS, FAILURE
+    resultado: Optional[Any] = None
+
 class CasoSupervisadoLectura(SQLModel):
     """
     Docstring:
@@ -290,6 +318,50 @@ class DashboardAsesorData(SQLModel):
     """
     casos_supervisados: List[CasoSupervisadoLectura]
     metricas_carga_trabajo: List[MetricaEstudiante]
+
+
+
+class PersonalCreacion(SQLModel):
+    """
+    Modelo para validar los datos que envia el administrador para crear
+    una nueva cuenta de Estudiante o Asesor.
+    """
+    email: str
+    contrasena: str
+    nombre_completo: str
+    id_area_especialidad: int
+    rol: str # Debe ser 'estudiante' o 'asesor'
+
+class PersonalGestionLectura(SQLModel):
+    """
+    Modelo de respuesta para la lista de personal.
+    Combina datos de la cuenta (email, rol, estado) y del perfil (nombre, area).
+    """
+    id_cuenta: int
+    email: str
+    rol: str
+    esta_activo: bool
+    nombre_completo: str
+    area_especialidad: str
+
+
+class PersonalEdicion(SQLModel):
+    """
+    Modelo para validar los datos que envia el administrador para editar
+    una cuenta existente. Todos los campos son opcionales, permitiendo
+    actualizaciones parciales (ej. solo cambiar la contraseña).
+    """
+    nombre_completo: Optional[str] = None
+    id_area_especialidad: Optional[int] = None
+    email: Optional[str] = None
+    # Solo se debe proporcionar si se desea cambiar la contraseña.
+    contrasena: Optional[str] = None    
+
+
+class AreaLectura(SQLModel):
+    id: int
+    nombre: str    
+
 
 
 

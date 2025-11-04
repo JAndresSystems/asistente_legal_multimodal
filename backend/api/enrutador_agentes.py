@@ -40,12 +40,13 @@ class RespuestaGeneracionDocumento(BaseModel):
 
 # --- CONFIGURACION DEL ENRUTADOR ---
 
+#  '/api' al prefijo para que coincida con el resto de la aplicacion
+# y solucionar el error '404 Not Found'.
 router_agentes = APIRouter(
-    prefix="/agentes",
+    prefix="/api/agentes",
     tags=["Agentes Auxiliares (IA)"],
     dependencies=[Depends(obtener_cuenta_actual)]
 )
-
 # --- ENDPOINT DE CONSULTA AL AGENTE JURIDICO ---
 
 @router_agentes.post("/consulta-juridica", response_model=RespuestaAgente)

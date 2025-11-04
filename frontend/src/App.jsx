@@ -14,8 +14,10 @@ import LayoutEstudiante from './componentes/layouts/LayoutEstudiante';
 
 import LayoutAsesor from './componentes/layouts/LayoutAsesor';
 
+import LayoutAdministrador from "./componentes/layouts/LayoutAdministrador";
+
 function App() {
-  const { usuario, estaAutenticado, cargando, login, registro, logout } = useAuth();
+  const { usuario, estaAutenticado, cargando, login, registro } = useAuth();
   const [vistaAuth, setVistaAuth] = useState('login');
 
   const renderizarContenido = () => {
@@ -34,6 +36,10 @@ function App() {
       return <div>Verificando permisos...</div>;
     }
 
+     if (usuario.rol === "administrador") {
+      return <LayoutAdministrador />;
+    }
+
     if (usuario.rol === 'asesor') {
       return <LayoutAsesor />;
     }
@@ -50,13 +56,12 @@ function App() {
     return <div>Rol de usuario no reconocido: {usuario.rol}</div>;
   };
 
+  // Ahora, App.jsx solo provee el contenedor principal.
   return (
     <div className="aplicacion-principal">
-      <header className="app-header">
-        <h1>Asistente Legal Multimodal</h1>
-        {estaAutenticado && (<button onClick={logout} className="boton-logout">Cerrar Sesión</button>)}
-      </header>
-      <main className="app-contenido">{renderizarContenido()}</main>
+      <main className="app-contenido">
+        {renderizarContenido()}
+      </main>
     </div>
   );
 }

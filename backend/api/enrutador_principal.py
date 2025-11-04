@@ -8,34 +8,42 @@ from pydantic import BaseModel
 
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import (
-    Caso, CasoCreacion, Evidencia,CasoLecturaConEvidencias, Nota, NotaCreacion, NotaLectura, 
+    Caso, CasoCreacion, Evidencia, Nota, NotaCreacion, NotaLectura, 
     PreguntaChat, RespuestaChat, SolicitudAnalisis, Cuenta,
     Usuario, CasoLecturaUsuario, EstadoCaso, CasoDetalleUsuario,
-    EvidenciaLecturaSimple,Asignacion, EstadoEvidencia
+    EvidenciaLecturaSimple, Asignacion, EstadoEvidencia,CasoLecturaConEvidencias
 )
 from ..tareas import procesar_evidencia_tarea
 from ..agentes.agente_atencion import grafo_atencion_compilado
 from ..seguridad.jwt_manager import obtener_cuenta_actual
 
+
+
+
+
+
+
+
 # --- CONFIGURACION DE ENRUTADORES ---
 router_casos = APIRouter(
-    prefix="/casos",
+    prefix="/api/casos",
     tags=["Casos (Ciudadano)"],
     dependencies=[Depends(obtener_cuenta_actual)]
 )
-
 router_expedientes = APIRouter(
-    prefix="/expedientes",
+    prefix="/api/expedientes",
     tags=["Expedientes (Estudiante)"],
     dependencies=[Depends(obtener_cuenta_actual)]
 )
-
-
-
-router_casos = APIRouter(prefix="/casos", tags=["Gestión de Casos (Ciudadano)"], dependencies=[Depends(obtener_cuenta_actual)])
-router_expedientes = APIRouter(prefix="/expedientes", tags=["Gestión de Expedientes (Estudiante)"], dependencies=[Depends(obtener_cuenta_actual)])
-router_chat = APIRouter(prefix="/chat", tags=["Chat de Atencion"])
-router_evidencias = APIRouter(prefix="/evidencias", tags=["Gestión de Evidencias"], dependencies=[Depends(obtener_cuenta_actual)])
+router_chat = APIRouter(
+    prefix="/api/chat", 
+    tags=["Chat de Atencion"]
+)
+router_evidencias = APIRouter(
+    prefix="/api/evidencias", 
+    tags=["Gestión de Evidencias"],
+    dependencies=[Depends(obtener_cuenta_actual)]
+)
 
 # --- ENDPOINT DEL CHAT DE ATENCION ---
 @router_chat.post("/", response_model=RespuestaChat)
@@ -281,36 +289,34 @@ def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_ses
 @router_casos.get("/{id_caso}", response_model=CasoDetalleUsuario)
 def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
     caso = sesion.get(Caso, id_caso)
-    if not caso:
-        raise HTTPException(status_code=404, detail="Caso no encontrado")
-    if not cuenta_actual.usuario or caso.id_usuario != cuenta_actual.usuario.id:
-        raise HTTPException(status_code=403, detail="No tiene permiso para acceder a este caso.")
+    if not caso or (not cuenta_actual.usuario or caso.id_usuario != cuenta_actual.usuario.id):
+        raise HTTPException(status_code=404, detail="Caso no encontrado o sin permisos.")
 
     respuesta = CasoDetalleUsuario.model_validate(caso)
-
-    if caso.evidencias:
-        respuesta.evidencias = []
-        for evidencia in caso.evidencias:
-            ruta_normalizada = str(evidencia.ruta_archivo).replace("\\", "/")
-            prefijo = "backend/archivos_subidos/"
-            ruta_relativa = ruta_normalizada[len(prefijo):] if ruta_normalizada.startswith(prefijo) else ruta_normalizada
-            url_final_archivo = f"/archivos_subidos/{ruta_relativa}"
-            respuesta.evidencias.append(
-                EvidenciaLecturaSimple(
-                    id=evidencia.id,
-                    nombre_archivo=evidencia.nombre_archivo,
-                    ruta_archivo=url_final_archivo,
-                    estado=evidencia.estado  # <-- LÍNEA AÑADIDA
-                )
-            )
     
+    # Poblar datos de la asignación si existe
     if caso.asignaciones:
         asignacion = caso.asignaciones[0]
         if asignacion.estudiante:
             respuesta.estudiante_asignado = asignacion.estudiante.nombre_completo
-            respuesta.area_asignada = asignacion.estudiante.area_especialidad
+            # --- INICIO DE LA CORRECCION ---
+            # Accedemos a la relación .area y luego a su atributo .nombre
+            if asignacion.estudiante.area:
+                respuesta.area_asignada = asignacion.estudiante.area.nombre
+            # --- FIN DE LA CORRECCION ---
         if asignacion.asesor:
             respuesta.asesor_asignado = asignacion.asesor.nombre_completo
+    
+    # Poblar URLs de evidencias
+    if caso.evidencias:
+        respuesta.evidencias = [
+             EvidenciaLecturaSimple(
+                id=ev.id,
+                nombre_archivo=ev.nombre_archivo,
+                ruta_archivo=str(ev.ruta_archivo).replace("\\", "/").replace("backend/", "/"),
+                estado=ev.estado
+            ) for ev in caso.evidencias
+        ]
             
     return respuesta
 
@@ -362,15 +368,27 @@ def subir_evidencia_simple(
 
 @router_casos.post("/{id_caso}/analizar")
 def analizar_caso_completo(id_caso: int, solicitud: SolicitudAnalisis, sesion: Session = Depends(obtener_sesion)):
+    """
+    Inicia la tarea de análisis y ESPERA a que se complete.
+    Esta es la lógica correcta para el flujo interactivo del Agente de Triaje.
+    """
     caso_actual = sesion.get(Caso, id_caso)
-    if not caso_actual or not caso_actual.evidencias: raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
+    if not caso_actual or not caso_actual.evidencias: 
+        raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
+    
+    # Se inicia la tarea en segundo plano...
     tarea_resultado = procesar_evidencia_tarea.delay(id_caso, solicitud.texto_adicional_usuario)
+    
     try:
-        estado_final = tarea_resultado.get(timeout=120)
+        # ...y el servidor ESPERA aquí hasta que la tarea termine o falle por timeout.
+        estado_final = tarea_resultado.get(timeout=180) # Timeout de 3 minutos
         return estado_final
     except Exception as e:
-        raise HTTPException(status_code=504, detail=f"El analisis del caso tardo demasiado en responder.")
-    
+        # Si la tarea tarda más de 3 minutos, se lanza el error 504.
+        raise HTTPException(status_code=504, detail=f"El analisis del caso tardo demasiado en responder: {e}")
+
+
+
 
 
 

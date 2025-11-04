@@ -15,7 +15,7 @@
  *             para renderizarse y funcionar.
  */
 import { useState, useEffect, useRef } from 'react';
-import { chatearConAgente, crearNuevoCaso, subirEvidencia, analizarCaso } from '../../../servicios/api';
+import { chatearConAgente, crearNuevoCaso, subirEvidencia, analizarCaso } from '../../../servicios/api/ciudadano';
 
 
 export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTriajeTerminado, onIniciarTriaje }) => {
@@ -126,15 +126,18 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
             const mensajeRechazo = `Hemos evaluado la informacion de su caso y, lamentablemente, no cumple con los criterios de competencia: '${justificacion}'.`;
             setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: mensajeRechazo }]);
             setTriajeFinalizado(true);
-            onTriajeTerminado(false);
+            onTriajeTerminado(false); // Informa al layout que el triaje terminó sin éxito
         } else {
             const pregunta = resultadoAnalisis.resultado_triaje.pregunta_para_usuario;
             if (pregunta) {
+                // ¡ESTA ES LA LÓGICA CLAVE! El agente hace otra pregunta.
                 setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: pregunta }]);
             } else {
+                // Si no hay más preguntas, el triaje ha terminado con éxito.
                 onTriajeTerminado(true);
             }
         }
+        
       } catch (error) { 
         console.error("Error en el proceso de evidencia:", error);
         setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: 'Ocurrió un error al procesar tu solicitud. Por favor, intenta de nuevo.' }]);

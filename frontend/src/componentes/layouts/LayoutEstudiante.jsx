@@ -5,10 +5,12 @@ import React, { useState } from 'react';
 // Importamos ambas vistas que este layout controlara
 import DashboardEstudiante from '../estudiante/DashboardEstudiante/DashboardEstudiante';
 import VistaExpedienteEstudiante from '../estudiante/VistaExpedienteEstudiante/VistaExpedienteEstudiante';
+import { useAuth } from '../../contextos/ContextoAutenticacion';
 
 function LayoutEstudiante() {
   const [vistaActual, setVistaActual] = useState('dashboard'); // 'dashboard' o 'expediente'
   const [expedienteId, setExpedienteId] = useState(null);
+    const { logout } = useAuth();
 
   // Esta funcion se pasara al Dashboard para que pueda iniciar la navegacion
   const handleVerExpediente = (id) => {
@@ -24,17 +26,18 @@ function LayoutEstudiante() {
   };
   
   // Renderizado condicional basado en el estado
-  if (vistaActual === 'dashboard') {
-    return <DashboardEstudiante onVerExpediente={handleVerExpediente} />;
-  }
-  
-  if (vistaActual === 'expediente') {
-    // AHORA RENDERIZAMOS EL COMPONENTE REAL
-    return <VistaExpedienteEstudiante expedienteId={expedienteId} onVolver={handleVolverAlDashboard} />;
-  }
-
-  // Fallback por si el estado es invalido
-  return <div>Estado de vista no reconocido.</div>;
+   return (
+    <div>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 2rem", backgroundColor: "#571c1c", color: "white" }}>
+        <h1>Portal del Estudiante</h1>
+        <button onClick={logout}>Cerrar Sesión</button>
+      </header>
+      <main>
+        {vistaActual === 'dashboard' && <DashboardEstudiante onVerExpediente={handleVerExpediente} />}
+        {vistaActual === 'expediente' && <VistaExpedienteEstudiante expedienteId={expedienteId} onVolver={handleVolverAlDashboard} />}
+      </main>
+    </div>
+  );
 }
 
 export default LayoutEstudiante;

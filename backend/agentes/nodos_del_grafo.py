@@ -7,7 +7,8 @@ from .estado_del_grafo import EstadoDelGrafo
 from ..herramientas.herramientas_lenguaje import analizar_evidencia_con_gemini, generar_respuesta_texto
 from ..herramientas.herramienta_rag import buscar_en_base_de_conocimiento
 from ..base_de_datos import motor # Eliminamos importaciones no usadas
-from ..api.modelos_compartidos import Estudiante, Asesor, Asignacion, Caso, EstadoCaso # Eliminamos importaciones no usadas
+from ..api.modelos_compartidos import (
+    Caso, Asignacion, Estudiante, Asesor, EstadoCaso, AreaEspecialidad)# Eliminamos importaciones no usadas
 
 def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     """
@@ -208,52 +209,69 @@ def nodo_agente_determinador_competencias(estado: EstadoDelGrafo) -> Dict[str, A
 
 
 
-def encontrar_persona_con_menos_carga(sesion: Session, modelo: Any, area: str) -> Optional[int]:
+def encontrar_persona_con_menos_carga(sesion: Session, modelo: Any, id_area: int) -> Optional[int]:
+    """
+    Busca en la BD la persona (Estudiante o Asesor) con menos casos asignados
+    para un ÁREA DE ESPECIALIDAD específica, usando su ID.
+    """
     declaracion = (
         select(modelo.id, func.count(Asignacion.id_caso).label("carga_trabajo"))
         .join(Asignacion, modelo.id == getattr(Asignacion, f"id_{modelo.__name__.lower()}"), isouter=True)
-        .where(modelo.area_especialidad == area)
-        .group_by(modelo.id).order_by(func.count(Asignacion.id_caso).asc())
+        # La condición ahora usa el ID del área, no un string.
+        .where(modelo.id_area_especialidad == id_area)
+        .group_by(modelo.id)
+        .order_by(func.count(Asignacion.id_caso).asc())
     )
     resultado = sesion.exec(declaracion).first()
+    
+    # Devuelve el ID de la persona si se encuentra, sino None.
     return resultado.id if resultado else None
 
 def nodo_agente_repartidor(estado: EstadoDelGrafo) -> Dict[str, Any]:
+    """
+    Nodo que asigna un caso a un estudiante y asesor basándose en el área de competencia
+    y la carga de trabajo actual.
+    """
     print("\n--- [AGENTE REPARTIDOR] Iniciando ejecucion del nodo ---")
     id_caso = estado["id_caso"]
     resultado_competencias = estado.get("resultado_determinador_competencias", {})
-    area_competencia = resultado_competencias.get("area_competencia")
+    nombre_area = resultado_competencias.get("area_competencia")
     
-    if not area_competencia or area_competencia in ["No Clasificable"]:
+    if not nombre_area or nombre_area in ["No Clasificable"]:
+        print(f"-> ALERTA: Área de competencia inválida ('{nombre_area}'). No se puede asignar.")
         return {"resultado_repartidor": {"detalle": "No se pudo asignar. Area de competencia no valida.", "operacion_db": "omitida"}}
 
     with Session(motor) as sesion_db:
-        id_estudiante = encontrar_persona_con_menos_carga(sesion_db, Estudiante, area_competencia)
-        id_asesor = encontrar_persona_con_menos_carga(sesion_db, Asesor, area_competencia)
+        # Paso 1: "Traducir" el nombre del área a su ID correspondiente en la BD.
+        area_obj = sesion_db.exec(
+            select(AreaEspecialidad).where(AreaEspecialidad.nombre == nombre_area)
+        ).first()
+
+        if not area_obj:
+            print(f"-> ERROR: El área '{nombre_area}' no se encontró en la base de datos.")
+            return {"resultado_repartidor": {"detalle": f"El área '{nombre_area}' no existe. No se pudo asignar.", "operacion_db": "omitida"}}
+
+        id_area_competencia = area_obj.id
+        print(f"-> INFO: Área '{nombre_area}' corresponde al ID: {id_area_competencia}.")
+
+        # Paso 2: Encontrar al estudiante y asesor usando el ID del área.
+        id_estudiante = encontrar_persona_con_menos_carga(sesion_db, Estudiante, id_area_competencia)
+        id_asesor = encontrar_persona_con_menos_carga(sesion_db, Asesor, id_area_competencia)
         
         if id_estudiante is not None and id_asesor is not None:
-            # 1. Crear la nueva asignacion (con estado 'pendiente' por defecto)
-            nueva_asignacion = Asignacion(
-                id_caso=id_caso,
-                id_estudiante=id_estudiante,
-                id_asesor=id_asesor
-            )
+            nueva_asignacion = Asignacion(id_caso=id_caso, id_estudiante=id_estudiante, id_asesor=id_asesor)
             sesion_db.add(nueva_asignacion)
             
-            # 2. Obtener el caso para actualizar su estado a 'pendiente_aceptacion'
             caso_a_actualizar = sesion_db.get(Caso, id_caso)
             if caso_a_actualizar:
                 caso_a_actualizar.estado = EstadoCaso.PENDIENTE_ACEPTACION
                 sesion_db.add(caso_a_actualizar)
-                print(f"-> EXITO (DB): Caso {id_caso} actualizado a estado '{EstadoCaso.PENDIENTE_ACEPTACION.value}'.")
-            else:
-                print(f"-> ERROR (DB): No se pudo encontrar el Caso {id_caso} para actualizar su estado.")
-
-            # 3. Guardar todos los cambios en la base de datos
+                print(f"-> EXITO (DB): Caso {id_caso} actualizado a '{EstadoCaso.PENDIENTE_ACEPTACION.value}'.")
+            
             sesion_db.commit()
             
-            mensaje_db = f"Asignacion creada en estado 'pendiente' para estudiante {id_estudiante}."
-            print(f"-> EXITO (DB): Caso {id_caso} ofrecido a Estudiante {id_estudiante} y Asesor {id_asesor}.")
+            mensaje_db = f"Asignacion creada en estado 'pendiente' para estudiante {id_estudiante} y asesor {id_asesor}."
+            print(f"-> EXITO (DB): Caso {id_caso} ofrecido al equipo.")
         else:
             mensaje_db = "No se encontraron estudiantes o asesores disponibles en el area."
             print(f"-> ALERTA (DB): No se pudo realizar la asignacion para el caso {id_caso}.")

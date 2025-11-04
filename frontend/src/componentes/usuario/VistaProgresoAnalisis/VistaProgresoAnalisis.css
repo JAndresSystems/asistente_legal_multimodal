@@ -123,3 +123,26 @@
   cursor: not-allowed;
   opacity: 0.7;
 }
+
+
+.spinner-contenedor {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 0;
+}
+
+.spinner {
+  border: 8px solid #f3f3f3; /* Gris claro */
+  border-top: 8px solid #005a4b; /* Color principal del portal de usuario */
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  animation: spin 1.5s linear infinite;
+}
+
+/* La animación que hace girar el spinner */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
