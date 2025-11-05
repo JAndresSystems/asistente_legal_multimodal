@@ -1,307 +1,230 @@
-//C:\react\asistente_legal_multimodal\frontend\src\componentes\administrador\PanelAdministracion\PanelAdministracion.jsx
-import React, { useState, useEffect } from "react";
-import {
-  apiObtenerPersonal,
-  apiCrearPersonal,
-  apiCambiarEstadoCuenta, 
-  apiEditarPersonal,
-  apiEliminarPersonal,
-  apiObtenerAreas, 
-} from "../../../servicios/api/administrador";
+// C:\react\asistente_legal_multimodal\frontend\src\componentes\administrador\PanelAdministracion\PanelAdministracion.jsx
 
+import React from "react";
+import { usePanelAdministracionLogic } from "./usePanelAdministracionLogic"; // Importamos nuestro Hook
 import "./PanelAdministracion.css";
 
-
 const PanelAdministracion = () => {
-   const [listaAreas, setListaAreas] = useState([]);
-  const [listaPersonal, setListaPersonal] = useState([]);
-  const [nuevoPersonal, setNuevoPersonal] = useState({
-    email: "",
-    contrasena: "",
-    nombre_completo: "",
-    area_especialidad: "",
-    rol: "estudiante",
-  });
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState(null);
+  // Obtenemos todos los estados y funciones desde nuestro Hook de lógica
+const {
+    listaPersonal, listaAreas, listaUsuarios, nuevoPersonal, nuevaAreaNombre,
+    setNuevaAreaNombre, areaAEditar, setAreaAEditar, modalVisible, personaAEditar,
+    datosFormularioEdicion, cargando, error, setError,
+    handleInputChange, handleSubmit, handleCambiarEstado, handleAbrirModal,
+    handleCerrarModal, handleInputChangeModal, handleSubmitEdicion,
+    handleEliminar, handleCrearArea, handleEliminarArea, handleIniciarEdicionArea,
+    handleCancelarEdicionArea, handleGuardarEdicionArea, handleCambiarEstadoUsuario,
+    asesorSeleccionadoId, estudiantesSeleccionadosIds, handleAsesorChange,
+    handleEstudianteCheckboxChange, handleGuardarAsignacion,
+  } = usePanelAdministracionLogic();
 
 
+   const asesores = listaPersonal.filter(p => p.rol === 'asesor');
+  const estudiantes = listaPersonal.filter(p => p.rol === 'estudiante');
 
-   const [modalVisible, setModalVisible] = useState(false);
-  const [personaAEditar, setPersonaAEditar] = useState(null);
-  const [datosFormularioEdicion, setDatosFormularioEdicion] = useState({
-    nombre_completo: "",
-    area_especialidad: "",
-    email: "",
-    contrasena: "", // Este campo es para la *nueva* contraseña
-  });
-
-
-useEffect(() => {
-    const cargarDatosIniciales = async () => {
-      try {
-        setCargando(true);
-        setError(null);
-        const [personalData, areasData] = await Promise.all([
-          apiObtenerPersonal(),
-          apiObtenerAreas(),
-        ]);
-        setListaPersonal(personalData);
-        setListaAreas(areasData);
-        // Pre-seleccionar la primera área en el formulario de creación
-        if (areasData.length > 0) {
-          setNuevoPersonal(prev => ({ ...prev, id_area_especialidad: areasData[0].id }));
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setCargando(false);
-      }
-    };
-    cargarDatosIniciales();
-  }, []);
-
-
-
-
-  useEffect(() => {
-    cargarPersonal();
-  }, []);
-
-  const cargarPersonal = async () => {
-    try {
-      setCargando(true);
-      setError(null);
-      const data = await apiObtenerPersonal();
-      setListaPersonal(data);
-    } catch (error) {
-      setError(
-        error.message ||
-          "Ocurrió un error al cargar los datos del personal."
-      );
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNuevoPersonal((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }));
-  };
-
- const handleSubmit = async (e) => {
-    e.preventDefault();
-    // --- INICIO DE LA CORRECCION ---
-    // La validación ahora comprueba 'id_area_especialidad'.
-    if (!nuevoPersonal.email || !nuevoPersonal.contrasena || !nuevoPersonal.nombre_completo || !nuevoPersonal.id_area_especialidad) {
-      setError("Todos los campos son obligatorios.");
-      return;
-    }
-    // --- FIN DE LA CORRECCION ---
-    try {
-      setError(null);
-      await apiCrearPersonal(nuevoPersonal);
-      alert("Personal creado exitosamente.");
-      // Limpiamos el formulario y volvemos a cargar los datos
-      const idAreaDefault = listaAreas.length > 0 ? listaAreas[0].id : "";
-      setNuevoPersonal({ email: "", contrasena: "", nombre_completo: "", id_area_especialidad: idAreaDefault, rol: "estudiante" });
-      cargarPersonal(); // Función simplificada para solo recargar personal
-    } catch (err) {
-      setError(err.message || "Error al crear el nuevo personal.");
-    }
-  };
-
-
-const handleCambiarEstado = async (idCuenta) => {
-    // Preguntamos para seguridad, es una buena práctica.
-    if (!confirm("¿Está seguro de que desea cambiar el estado de esta cuenta?")) {
-      return;
-    }
-
-    try {
-      setError(null);
-      const perfilActualizado = await apiCambiarEstadoCuenta(idCuenta);
-      
-      // Actualizamos el estado local para reflejar el cambio en la UI al instante,
-      // sin necesidad de volver a cargar toda la lista desde el servidor.
-      setListaPersonal(listaPersonal.map(persona => 
-        persona.id_cuenta === idCuenta ? perfilActualizado : persona
-      ));
-
-      alert("El estado de la cuenta ha sido actualizado exitosamente.");
-
-    } catch (error) {
-      setError(error.message || "Error al actualizar el estado de la cuenta.");
-      // Mostramos el error en la UI, pero no detenemos la aplicación.
-    }
-  };
-
-
-
-
-  const handleAbrirModal = (persona) => {
-    setPersonaAEditar(persona);
-    
-    // Buscamos el objeto 'area' completo que corresponde al nombre del área de la persona.
-    const areaActual = listaAreas.find(area => area.nombre === persona.area_especialidad);
-    // Obtenemos su ID. Si no lo encontramos, dejamos el campo vacío.
-    const idAreaActual = areaActual ? areaActual.id : "";
-
-    setDatosFormularioEdicion({
-      nombre_completo: persona.nombre_completo,
-      // Usamos el ID que acabamos de encontrar para inicializar el formulario.
-      id_area_especialidad: idAreaActual,
-      email: persona.email,
-      contrasena: "", 
-    });
-    setModalVisible(true);
-  };
-
-  const handleCerrarModal = () => {
-    setModalVisible(false);
-    setPersonaAEditar(null);
-  };
-
-  const handleInputChangeModal = (e) => {
-    const { name, value } = e.target;
-    setDatosFormularioEdicion(prevState => ({ ...prevState, [name]: value }));
-  };
-
-  const handleSubmitEdicion = async (e) => {
-    e.preventDefault();
-    
-    // Preparamos los datos: solo enviamos los campos que tienen valor.
-    // Si la contraseña está vacía, no se envía, y el backend no la cambiará.
-    const datosParaEnviar = { ...datosFormularioEdicion };
-    if (!datosParaEnviar.contrasena) {
-      delete datosParaEnviar.contrasena;
-    }
-
-    try {
-      setError(null);
-      const perfilActualizado = await apiEditarPersonal(personaAEditar.id_cuenta, datosParaEnviar);
-      setListaPersonal(listaPersonal.map(p => (p.id_cuenta === personaAEditar.id_cuenta ? perfilActualizado : p)));
-      alert("Personal actualizado exitosamente.");
-      handleCerrarModal();
-    } catch (error) {
-      // Idealmente, mostraríamos este error dentro del modal
-      alert(`Error al actualizar: ${error.message}`);
-      setError(error.message);
-    }
-  };
-
-  const handleEliminar = async (idCuenta) => {
-    if (!confirm("¡ADVERTENCIA!\n¿Está seguro de que desea ELIMINAR permanentemente esta cuenta?\nEsta acción no se puede deshacer.")) {
-      return;
-    }
-
-    try {
-      setError(null);
-      await apiEliminarPersonal(idCuenta);
-      // Actualizamos la lista filtrando la persona eliminada.
-      setListaPersonal(listaPersonal.filter(p => p.id_cuenta !== idCuenta));
-      alert("La cuenta ha sido eliminada exitosamente.");
-    } catch (error) {
-      setError(error.message);
-    }
-  };
-
-
-
-
-
-  return (
+  // El componente ahora solo se encarga de renderizar el JSX
+ return (
     <div className="panel-admin-contenedor">
       <h1>Panel de Administración</h1>
-      <p>Gestión de cuentas de Estudiantes y Asesores.</p>
+      {error && <p className="mensaje-error" onClick={() => setError(null)}>Error: {error} (clic para cerrar)</p>}
 
-      {/* --- Formulario de Creación --- */}
-      <div className="form-creacion-seccion">
-        <h2>Crear Nuevo Personal</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-grupo"><label>Email:</label><input type="email" name="email" value={nuevoPersonal.email} onChange={handleInputChange} required /></div>
-          <div className="form-grupo"><label>Contraseña:</label><input type="password" name="contrasena" value={nuevoPersonal.contrasena} onChange={handleInputChange} required /></div>
-          <div className="form-grupo"><label>Nombre Completo:</label><input type="text" name="nombre_completo" value={nuevoPersonal.nombre_completo} onChange={handleInputChange} required /></div>
-          
-          {/* --- INICIO DE LA CORRECCION: Reemplazar input de texto por menú desplegable --- */}
-          <div className="form-grupo">
-            <label>Área de Especialidad:</label>
-            <select name="id_area_especialidad" value={nuevoPersonal.id_area_especialidad} onChange={handleInputChange}>
-              {listaAreas.map(area => (
-                <option key={area.id} value={area.id}>{area.nombre}</option>
-              ))}
-            </select>
-          </div>
-          {/* --- FIN DE LA CORRECCION --- */}
-
-          <div className="form-grupo"><label>Rol:</label><select name="rol" value={nuevoPersonal.rol} onChange={handleInputChange}><option value="estudiante">Estudiante</option><option value="asesor">Asesor</option></select></div>
-          <button type="submit">Crear Cuenta</button>
-        </form>
-      </div>
-
-      {/* --- Tabla de Personal del Sistema --- */}
-      <h2>Personal del Sistema</h2>
-      {cargando && <p>Cargando lista de personal...</p>}
-      {error && <p className="mensaje-error">Error: {error}</p>}
-      {!cargando && !error && (
-        <table className="tabla-personal">
+      {/* SECCION DE GESTION DE AREAS */}
+      <div className="gestion-seccion">
+        <h2>Gestión de Áreas de Especialidad</h2>
+        <div className="area-creacion-fila">
+          <form onSubmit={handleCrearArea} className="area-form">
+            <input
+              type="text"
+              value={nuevaAreaNombre}
+              onChange={(e) => setNuevaAreaNombre(e.target.value)}
+              placeholder="Nombre de la nueva área"
+              required
+            />
+            <button type="submit">Crear Área</button>
+          </form>
+        </div>
+        <table className="tabla-areas">
           <thead>
             <tr>
-              <th>Nombre Completo</th>
-              <th>Email</th>
-              <th>Rol</th>
-              <th>Especialidad</th>
-              <th>Estado</th>
-              <th>Acciones</th>
+              <th>Nombre del Área</th>
+              <th style={{ width: "200px" }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {listaPersonal.map((persona) => (
-              <tr key={persona.id_cuenta}>
-                <td>{persona.nombre_completo}</td>
-                <td>{persona.email}</td>
-                <td>{persona.rol}</td>
-                <td>{persona.area_especialidad}</td>
-                <td>
-                  <span className={persona.esta_activo ? 'estado-activo' : 'estado-inactivo'}>
-                    {persona.esta_activo ? "Activo" : "Inactivo"}
-                  </span>
-                </td>
-                <td className="celda-acciones">
-                  <button onClick={() => handleAbrirModal(persona)} className="boton-editar">Editar</button>
-                  <button onClick={() => handleCambiarEstado(persona.id_cuenta)} className={persona.esta_activo ? 'boton-desactivar' : 'boton-activar'}>
-                    {persona.esta_activo ? "Desactivar" : "Activar"}
-                  </button>
-                  <button onClick={() => handleEliminar(persona.id_cuenta)} className="boton-eliminar">Eliminar</button>
-                </td>
+            {listaAreas.map((area) => (
+              <tr key={area.id}>
+                {areaAEditar && areaAEditar.id === area.id ? (
+                  <>
+                    <td>
+                      <form onSubmit={handleGuardarEdicionArea}>
+                        <input
+                          type="text"
+                          value={areaAEditar.nombre}
+                          onChange={(e) => setAreaAEditar({ ...areaAEditar, nombre: e.target.value })}
+                          autoFocus
+                        />
+                      </form>
+                    </td>
+                    <td className="celda-acciones">
+                      <button onClick={handleGuardarEdicionArea} className="boton-guardar">Guardar</button>
+                      <button onClick={handleCancelarEdicionArea}>Cancelar</button>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td>{area.nombre}</td>
+                    <td className="celda-acciones">
+                      <button onClick={() => handleIniciarEdicionArea(area)} className="boton-editar">Editar</button>
+                      <button onClick={() => handleEliminarArea(area.id)} className="boton-eliminar">Eliminar</button>
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
-      )}
+      </div>
 
-      {/* --- Modal de Edición --- */}
+      {/* SECCION DE ASIGNACION DE SUPERVISORES (CON LOGICA DE FILTRADO MEJORADA) */}
+      <div className="gestion-seccion">
+        <h2>Asignación de Supervisores</h2>
+        <div className="asignacion-contenedor">
+          <div className="asignacion-columna">
+            <label htmlFor="asesor-select"><strong>1. Seleccione un Asesor Supervisor:</strong></label>
+            <select id="asesor-select" value={asesorSeleccionadoId} onChange={handleAsesorChange}>
+              <option value="">-- Elija un asesor --</option>
+              {asesores.map(asesor => (
+                <option key={asesor.id_cuenta} value={asesor.id_cuenta}>
+                  {asesor.nombre_completo}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="asignacion-columna">
+            <label><strong>2. Asigne los Estudiantes a su cargo:</strong></label>
+            <div className="lista-estudiantes-checkbox">
+              {asesorSeleccionadoId ? (
+                (() => {
+                  const asesorSeleccionado = asesores.find(a => a.id_cuenta === parseInt(asesorSeleccionadoId));
+                  const estudiantesFiltrados = estudiantes.filter(estudiante => 
+                    !estudiante.nombre_supervisor || (asesorSeleccionado && estudiante.nombre_supervisor === asesorSeleccionado.nombre_completo)
+                  );
+
+                  if (estudiantesFiltrados.length === 0) {
+                    return <p>No hay estudiantes disponibles para asignar a este asesor.</p>;
+                  }
+
+                  return estudiantesFiltrados.map(estudiante => (
+                    <div key={estudiante.id_cuenta} className="checkbox-item">
+                      <input type="checkbox" id={`estudiante-${estudiante.id_cuenta}`} checked={estudiantesSeleccionadosIds.has(estudiante.id_cuenta)} onChange={() => handleEstudianteCheckboxChange(estudiante.id_cuenta)} />
+                      <label htmlFor={`estudiante-${estudiante.id_cuenta}`}>{estudiante.nombre_completo}</label>
+                    </div>
+                  ));
+                })()
+              ) : <p>Por favor, seleccione un asesor para ver los estudiantes.</p>}
+            </div>
+          </div>
+        </div>
+        <div className="asignacion-acciones">
+          <button onClick={handleGuardarAsignacion} disabled={!asesorSeleccionadoId}>Guardar Asignación</button>
+        </div>
+      </div>
+
+      {/* SECCION DE GESTION DE PERSONAL (TABLA MODIFICADA) */}
+      <div className="gestion-seccion">
+        <h2>Gestión de Personal del Sistema</h2>
+        <div className="form-creacion-seccion">
+            <h3>Crear Nuevo Personal</h3>
+            <form onSubmit={handleSubmit}>
+              <div className="form-grupo"><label>Email:</label><input type="email" name="email" value={nuevoPersonal.email} onChange={handleInputChange} required /></div>
+              <div className="form-grupo"><label>Contraseña:</label><input type="password" name="contrasena" value={nuevoPersonal.contrasena} onChange={handleInputChange} required /></div>
+              <div className="form-grupo"><label>Nombre Completo:</label><input type="text" name="nombre_completo" value={nuevoPersonal.nombre_completo} onChange={handleInputChange} required /></div>
+              <div className="form-grupo">
+                  <label>Área de Especialidad:</label>
+                  <select name="id_area_especialidad" value={nuevoPersonal.id_area_especialidad} onChange={handleInputChange}>
+                  {listaAreas.map(area => (<option key={area.id} value={area.id}>{area.nombre}</option>))}
+                  </select>
+              </div>
+              <div className="form-grupo"><label>Rol:</label><select name="rol" value={nuevoPersonal.rol} onChange={handleInputChange}><option value="estudiante">Estudiante</option><option value="asesor">Asesor</option></select></div>
+              <button type="submit">Crear Cuenta</button>
+            </form>
+        </div>
+        {cargando ? <p>Cargando lista de personal...</p> : (
+            <table className="tabla-personal">
+            <thead>
+                <tr>
+                    <th>Nombre Completo</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th>Especialidad</th>
+                    <th>Supervisor</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {listaPersonal.map((persona) => (
+                <tr key={persona.id_cuenta}>
+                    <td>{persona.nombre_completo}</td>
+                    <td>{persona.email}</td>
+                    <td>{persona.rol}</td>
+                    <td>{persona.area_especialidad}</td>
+                    <td>{persona.rol === 'estudiante' ? (persona.nombre_supervisor || <span style={{color: 'gray'}}>No asignado</span>) : 'N/A'}</td>
+                    <td><span className={persona.esta_activo ? 'estado-activo' : 'estado-inactivo'}>{persona.esta_activo ? "Activo" : "Inactivo"}</span></td>
+                    <td className="celda-acciones">
+                        <button onClick={() => handleAbrirModal(persona)} className="boton-editar">Editar</button>
+                        <button onClick={() => handleCambiarEstado(persona.id_cuenta)} className={persona.esta_activo ? 'boton-desactivar' : 'boton-activar'}>{persona.esta_activo ? "Desactivar" : "Activar"}</button>
+                        <button onClick={() => handleEliminar(persona.id_cuenta)} className="boton-eliminar">Eliminar</button>
+                    </td>
+                </tr>
+                ))}
+            </tbody>
+            </table>
+        )}
+      </div>
+
+      {/* SECCION DE GESTION DE USUARIOS (CIUDADANOS) */}
+      <div className="gestion-seccion">
+        <h2>Gestión de Cuentas de Ciudadanos</h2>
+        {cargando ? <p>Cargando lista de usuarios...</p> : (
+            <table className="tabla-personal">
+            <thead>
+                <tr>
+                    <th>Nombre Completo</th>
+                    <th>Email</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {listaUsuarios.map((usuario) => (
+                <tr key={usuario.id_cuenta}>
+                    <td>{usuario.nombre_completo}</td>
+                    <td>{usuario.email}</td>
+                    <td><span className={usuario.esta_activo ? 'estado-activo' : 'estado-inactivo'}>{usuario.esta_activo ? "Activo" : "Inactivo"}</span></td>
+                    <td className="celda-acciones">
+                    <button onClick={() => handleCambiarEstadoUsuario(usuario.id_cuenta)} className={usuario.esta_activo ? 'boton-desactivar' : 'boton-activar'}>{usuario.esta_activo ? "Desactivar" : "Activar"}</button>
+                    </td>
+                </tr>
+                ))}
+            </tbody>
+            </table>
+        )}
+      </div>
+
+      {/* MODAL DE EDICION DE PERSONAL */}
       {modalVisible && personaAEditar && (
         <div className="modal-overlay">
           <div className="modal-contenido">
             <h2>Editando a: {personaAEditar.nombre_completo}</h2>
             <form onSubmit={handleSubmitEdicion}>
               <div className="form-grupo"><label>Nombre Completo:</label><input type="text" name="nombre_completo" value={datosFormularioEdicion.nombre_completo} onChange={handleInputChangeModal} required /></div>
-              
-              {/* --- INICIO DE LA CORRECCION: Reemplazar input de texto por menú desplegable --- */}
               <div className="form-grupo">
                 <label>Área de Especialidad:</label>
                 <select name="id_area_especialidad" value={datosFormularioEdicion.id_area_especialidad} onChange={handleInputChangeModal}>
-                  {listaAreas.map(area => (
-                    <option key={area.id} value={area.id}>{area.nombre}</option>
-                  ))}
+                  {listaAreas.map(area => (<option key={area.id} value={area.id}>{area.nombre}</option>))}
                 </select>
               </div>
-              {/* --- FIN DE LA CORRECCION --- */}
-
               <div className="form-grupo"><label>Email:</label><input type="email" name="email" value={datosFormularioEdicion.email} onChange={handleInputChangeModal} required /></div>
               <div className="form-grupo"><label>Nueva Contraseña (dejar en blanco para no cambiar):</label><input type="password" name="contrasena" value={datosFormularioEdicion.contrasena} onChange={handleInputChangeModal} /></div>
               <div className="modal-acciones">

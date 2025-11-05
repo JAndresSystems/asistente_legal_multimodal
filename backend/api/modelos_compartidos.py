@@ -89,6 +89,8 @@ class Estudiante(SQLModel, table=True):
     id_area_especialidad: int = Field(foreign_key="areaespecialidad.id")
     area: AreaEspecialidad = Relationship(back_populates="estudiantes")
     asignaciones: List["Asignacion"] = Relationship(back_populates="estudiante")
+    id_asesor_supervisor: Optional[int] = Field(default=None, foreign_key="asesor.id")
+    supervisor: Optional["Asesor"] = Relationship(back_populates="estudiantes_supervisados")
 
 class Asesor(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -98,6 +100,7 @@ class Asesor(SQLModel, table=True):
     id_area_especialidad: int = Field(foreign_key="areaespecialidad.id")
     area: AreaEspecialidad = Relationship(back_populates="asesores")
     asignaciones: List["Asignacion"] = Relationship(back_populates="asesor")
+    estudiantes_supervisados: List["Estudiante"] = Relationship(back_populates="supervisor")
 
 
 class Nota(SQLModel, table=True):
@@ -343,6 +346,17 @@ class PersonalGestionLectura(SQLModel):
     esta_activo: bool
     nombre_completo: str
     area_especialidad: str
+    nombre_supervisor: Optional[str] = None
+
+
+class UsuarioGestionLectura(SQLModel):
+    """
+    Modelo de respuesta para la lista de usuarios (ciudadanos) en el panel de admin.
+    """
+    id_cuenta: int
+    email: str
+    nombre_completo: str # El nombre viene de la tabla Usuario
+    esta_activo: bool
 
 
 class PersonalEdicion(SQLModel):
@@ -361,6 +375,22 @@ class PersonalEdicion(SQLModel):
 class AreaLectura(SQLModel):
     id: int
     nombre: str    
+
+
+class AreaCreacionEdicion(SQLModel):
+    """
+    Modelo para validar los datos que envia el administrador para
+    crear una nueva area o editar una existente.
+    """
+    nombre: str    
+
+
+class SupervisionAsignacion(SQLModel):
+    """
+    Modelo para la petición de asignar una lista de estudiantes a un asesor.
+    """
+    id_asesor: int
+    ids_estudiantes: List[int]
 
 
 

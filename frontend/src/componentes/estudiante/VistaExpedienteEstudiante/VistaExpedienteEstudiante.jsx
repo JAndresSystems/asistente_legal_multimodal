@@ -286,6 +286,9 @@ const handleGenerarDocumento = async (e) => {
       <div className="expediente-metadata">
         <p><strong>Fecha de Creación:</strong> {new Date(expediente.fecha_creacion).toLocaleString('es-CO')}</p>
         <p><strong>Estado:</strong> <span className={`estado-caso estado-${expediente.estado.replace('_', '-')}`}>{expediente.estado.replace('_', ' ')}</span></p>
+      {expediente.asesor_asignado && (
+          <p><strong>Asesor Supervisor del Caso:</strong> {expediente.asesor_asignado}</p>
+        )}
       </div>
 
       <div className="expediente-seccion">

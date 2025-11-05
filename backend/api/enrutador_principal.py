@@ -236,19 +236,35 @@ def crear_nota_estudiante(
 
 @router_expedientes.get("/{id_caso}", response_model=CasoDetalleUsuario)
 def obtener_detalle_expediente(id_caso: int, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
+    # Tu validación de permisos es perfecta.
     if not hasattr(cuenta_actual, 'estudiante') or not cuenta_actual.estudiante:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado.")
     
+    # Esta consulta ya te da acceso a todo lo que necesitas.
     asignacion = sesion.exec(select(Asignacion).where(Asignacion.id_caso == id_caso, Asignacion.id_estudiante == cuenta_actual.estudiante.id)).first()
     if not asignacion:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asignación no encontrada o sin permisos.")
 
-    caso = sesion.get(Caso, id_caso)
+    caso = asignacion.caso
     if not caso:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Caso asociado a la asignación no encontrado.")
     
+    # --- INICIO DE LA CORRECCIÓN ---
+
+    # 1. Creamos la respuesta base a partir del objeto 'caso'.
     respuesta = CasoDetalleUsuario.model_validate(caso)
 
+    # 2. Poblamos los nombres usando las relaciones del objeto 'asignacion'.
+    if asignacion.estudiante:
+        respuesta.estudiante_asignado = asignacion.estudiante.nombre_completo
+        # El área la obtenemos a través del estudiante de la asignación.
+        if asignacion.estudiante.area:
+            respuesta.area_asignada = asignacion.estudiante.area.nombre
+            
+    if asignacion.asesor:
+        respuesta.asesor_asignado = asignacion.asesor.nombre_completo
+
+    # 3. Tu lógica para procesar evidencias es correcta y se mantiene.
     if caso.evidencias:
         respuesta.evidencias = []
         for evidencia in caso.evidencias:
@@ -261,16 +277,9 @@ def obtener_detalle_expediente(id_caso: int, sesion: Session = Depends(obtener_s
                     id=evidencia.id,
                     nombre_archivo=evidencia.nombre_archivo,
                     ruta_archivo=url_final_archivo,
-                    estado=evidencia.estado  # <-- LÍNEA AÑADIDA
+                    estado=evidencia.estado
                 )
             )
-    
-    if caso.asignaciones:
-        asignacion_info = caso.asignaciones[0]
-        if asignacion_info.estudiante:
-            respuesta.estudiante_asignado = asignacion_info.estudiante.nombre_completo
-        if asignacion_info.asesor:
-            respuesta.asesor_asignado = asignacion_info.asesor.nombre_completo
             
     return respuesta
 

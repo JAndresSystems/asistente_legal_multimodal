@@ -230,7 +230,7 @@ def encontrar_persona_con_menos_carga(sesion: Session, modelo: Any, id_area: int
 def nodo_agente_repartidor(estado: EstadoDelGrafo) -> Dict[str, Any]:
     """
     Nodo que asigna un caso a un estudiante y asesor basándose en el área de competencia
-    y la carga de trabajo actual.
+    y la carga de trabajo actual. Además, establece la relación de supervisión permanente.
     """
     print("\n--- [AGENTE REPARTIDOR] Iniciando ejecucion del nodo ---")
     id_caso = estado["id_caso"]
@@ -242,7 +242,6 @@ def nodo_agente_repartidor(estado: EstadoDelGrafo) -> Dict[str, Any]:
         return {"resultado_repartidor": {"detalle": "No se pudo asignar. Area de competencia no valida.", "operacion_db": "omitida"}}
 
     with Session(motor) as sesion_db:
-        # Paso 1: "Traducir" el nombre del área a su ID correspondiente en la BD.
         area_obj = sesion_db.exec(
             select(AreaEspecialidad).where(AreaEspecialidad.nombre == nombre_area)
         ).first()
@@ -254,11 +253,25 @@ def nodo_agente_repartidor(estado: EstadoDelGrafo) -> Dict[str, Any]:
         id_area_competencia = area_obj.id
         print(f"-> INFO: Área '{nombre_area}' corresponde al ID: {id_area_competencia}.")
 
-        # Paso 2: Encontrar al estudiante y asesor usando el ID del área.
         id_estudiante = encontrar_persona_con_menos_carga(sesion_db, Estudiante, id_area_competencia)
         id_asesor = encontrar_persona_con_menos_carga(sesion_db, Asesor, id_area_competencia)
         
         if id_estudiante is not None and id_asesor is not None:
+            # --- INICIO DE LA MODIFICACION ---
+
+            # 1. Obtenemos el objeto completo del estudiante para poder actualizarlo.
+            estudiante_a_actualizar = sesion_db.get(Estudiante, id_estudiante)
+            
+            # 2. Si el estudiante existe y no tiene un supervisor permanente...
+            if estudiante_a_actualizar and not estudiante_a_actualizar.id_asesor_supervisor:
+                # 3. ...le asignamos el asesor de este caso como su supervisor.
+                estudiante_a_actualizar.id_asesor_supervisor = id_asesor
+                sesion_db.add(estudiante_a_actualizar)
+                print(f"-> EXITO (DB): Asignado Asesor ID {id_asesor} como supervisor permanente de Estudiante ID {id_estudiante}.")
+
+            # --- FIN DE LA MODIFICACION ---
+
+            # La lógica original de asignación del caso continúa sin cambios.
             nueva_asignacion = Asignacion(id_caso=id_caso, id_estudiante=id_estudiante, id_asesor=id_asesor)
             sesion_db.add(nueva_asignacion)
             

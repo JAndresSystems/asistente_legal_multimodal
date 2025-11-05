@@ -139,3 +139,139 @@ export const apiObtenerAreas = async () => {
   }
   return respuesta.json();
 };
+
+
+
+
+/**
+ * Llama al endpoint para crear una nueva Area de Especialidad.
+ * @param {Object} datosArea - Un objeto que debe contener el nombre del área. Ej: { nombre: "Derecho Ambiental" }
+ * @returns {Promise<Object>} Una promesa que se resuelve con el objeto del área creada.
+ */
+export const apiCrearArea = async (datosArea) => {
+  const respuesta = await fetch(
+    `${URL_BASE_BACKEND}/api/administrador/areas-especialidad`,
+    {
+      method: "POST",
+      headers: obtenerCabeceras(),
+      body: JSON.stringify(datosArea),
+    }
+  );
+
+  if (!respuesta.ok) {
+    const error = await respuesta.json();
+    throw new Error(error.detail || "Error al crear el área.");
+  }
+  return respuesta.json();
+};
+
+/**
+ * Llama al endpoint para actualizar el nombre de un Area de Especialidad.
+ * @param {number} idArea - El ID del área a modificar.
+ * @param {Object} datosArea - Un objeto con el nuevo nombre. Ej: { nombre: "Nuevo Nombre" }
+ * @returns {Promise<Object>} Una promesa que se resuelve con el objeto del área actualizada.
+ */
+export const apiEditarArea = async (idArea, datosArea) => {
+  const respuesta = await fetch(
+    `${URL_BASE_BACKEND}/api/administrador/areas-especialidad/${idArea}`,
+    {
+      method: "PUT",
+      headers: obtenerCabeceras(),
+      body: JSON.stringify(datosArea),
+    }
+  );
+
+  if (!respuesta.ok) {
+    const error = await respuesta.json();
+    throw new Error(error.detail || "Error al actualizar el área.");
+  }
+  return respuesta.json();
+};
+
+/**
+ * Llama al endpoint para eliminar un Area de Especialidad.
+ * @param {number} idArea - El ID del área a eliminar.
+ * @returns {Promise<void>} Una promesa que se resuelve si la eliminación es exitosa.
+ */
+export const apiEliminarArea = async (idArea) => {
+  const respuesta = await fetch(
+    `${URL_BASE_BACKEND}/api/administrador/areas-especialidad/${idArea}`,
+    {
+      method: "DELETE",
+      headers: obtenerCabeceras(),
+    }
+  );
+
+  if (!respuesta.ok) {
+    const error = await respuesta.json();
+    throw new Error(error.detail || "Error al eliminar el área.");
+  }
+};
+
+
+
+/**
+ * Llama al endpoint para obtener la lista de todas las cuentas de rol "usuario".
+ * @returns {Promise<Array>} Una promesa que se resuelve con la lista de usuarios.
+ */
+export const apiObtenerUsuarios = async () => {
+  const respuesta = await fetch(
+    `${URL_BASE_BACKEND}/api/administrador/usuarios`,
+    {
+      method: "GET",
+      headers: obtenerCabeceras(),
+    }
+  );
+  if (!respuesta.ok) {
+    const error = await respuesta.json();
+    throw new Error(error.detail || "Error al obtener la lista de usuarios.");
+  }
+  return respuesta.json();
+};
+
+/**
+ * Llama al endpoint para activar o desactivar una cuenta de usuario (ciudadano).
+ * @param {number} idCuenta - El ID de la cuenta a modificar.
+ * @returns {Promise<Object>} Una promesa que se resuelve con los datos actualizados del usuario.
+ */
+export const apiCambiarEstadoCuentaUsuario = async (idCuenta) => {
+  const respuesta = await fetch(
+    `${URL_BASE_BACKEND}/api/administrador/usuarios/${idCuenta}/cambiar-estado`,
+    {
+      method: "POST",
+      headers: obtenerCabeceras(),
+    }
+  );
+
+  if (!respuesta.ok) {
+    const error = await respuesta.json();
+    throw new Error(error.detail || "Error al cambiar el estado de la cuenta del usuario.");
+  }
+  return respuesta.json();
+};
+
+
+
+/**
+ * Llama al endpoint para asignar o actualizar la lista de estudiantes supervisados por un asesor.
+ * @param {Object} asignacion - El objeto con los datos de la asignación.
+ * @param {number} asignacion.id_asesor - El ID del asesor supervisor.
+ * @param {Array<number>} asignacion.ids_estudiantes - La lista completa de IDs de estudiantes que deben quedar asignados.
+ * @returns {Promise<Object>} Una promesa que se resuelve con el mensaje de éxito del backend.
+ */
+export const apiAsignarSupervisor = async (asignacion) => {
+  const respuesta = await fetch(
+    `${URL_BASE_BACKEND}/api/administrador/supervision/asignar`,
+    {
+      method: "POST",
+      headers: obtenerCabeceras(),
+      body: JSON.stringify(asignacion),
+    }
+  );
+
+  if (!respuesta.ok) {
+    const error = await respuesta.json();
+    throw new Error(error.detail || "Error al actualizar la asignación de supervisión.");
+  }
+  return respuesta.json();
+};
