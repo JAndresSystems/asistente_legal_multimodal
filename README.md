@@ -6,8 +6,8 @@ Comando: Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePo
 
 backend
 ven: .\venv\Scripts\Activate.ps1  
-luego: uvicorn backend.main:aplicacion 
-
+luego: (venv) PS C:\react\asistente_legal_multimodal> uvicorn backend.main:aplicacion --reload
+(venv) PS C:\react\asistente_legal_multimodal> celery -A backend.tareas worker --loglevel=info -P solo
 frontend
 PS C:\react\asistente_legal_multimodal\frontend> npm run dev
 

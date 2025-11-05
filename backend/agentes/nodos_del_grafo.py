@@ -23,18 +23,14 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     print(f"--- [AGENTE TRIAJE] Analizando {len(rutas_archivos)} archivos y texto adicional: '{texto_adicional[:50]}...'")
 
     try:
-        # Hacemos una consulta amplia para obtener todo el contexto de una vez.
-        consulta_contexto = "Cuales son las competencias y beneficiarios de los consultorios juridicos y cuales son las evidencias esenciales por tipo de caso?"
-        lista_contexto = buscar_en_base_de_conocimiento(
-            consulta=consulta_contexto,
-            area_competencia="admisibilidad"
-        )
-        # La variable se llama 'contexto_completo'
+        # --- MODIFICACION: La llamada ahora es más simple y directa ---
+        consulta_contexto = "Reglas de admisibilidad, competencia, beneficiarios y cuantías de los consultorios jurídicos según la Ley 2113. También, qué documentos son esenciales para casos de familia, laboral o civil."
+        lista_contexto = buscar_en_base_de_conocimiento(consulta=consulta_contexto)
         contexto_completo = "\n\n---\n\n".join(lista_contexto)
-        print(f"--- [AGENTE TRIAJE] Contexto legal y documental recuperado de RAG.")
+        print(f"--- [AGENTE TRIAJE] Contexto legal y documental recuperado de RAG vectorial.")
     except Exception as e:
-        print(f"--- [AGENTE TRIAJE] ERROR: Fallo al buscar en RAG 'admisibilidad': {e}")
-        contexto_completo = "Error: No se pudo recuperar la guia de documentos."
+        print(f"--- [AGENTE TRIAJE] ERROR: Fallo al buscar en RAG: {e}")
+        contexto_completo = "Error: No se pudo recuperar el contexto legal."
 
     prompt_completo = f"""
     ERES un abogado de triaje para un consultorio juridico gratuito, riguroso pero razonable. Tu mision es calificar casos y pedir la documentacion justa y necesaria. Tu respuesta DEBE ser unicamente un objeto JSON.
@@ -153,26 +149,14 @@ def nodo_agente_determinador_competencias(estado: EstadoDelGrafo) -> Dict[str, A
         print("--- [AGENTE COMPETENCIAS] ALERTA: No se encontraron hechos clave. Terminando.")
         return {"resultado_determinador_competencias": {"area_competencia": "No Clasificable", "justificacion_breve": "No se proporcionó un resumen de los hechos para analizar."}}
 
-    print(f"--- [AGENTE COMPETENCIAS] Hechos a clasificar: '{hechos_clave_triaje[:100]}...'")
-
-    # 2. Consultar CADA base de conocimiento de competencia.
-    areas_de_competencia = ["derecho_privado", "derecho_publico", "derecho_penal", "derecho_laboral"]
-    contexto_consolidado = ""
-    for area in areas_de_competencia:
-        try:
-            print(f"--- [AGENTE COMPETENCIAS] Buscando contexto en el area: {area}...")
-            # Usamos los hechos del caso como consulta para el RAG
-            lista_contexto_area = buscar_en_base_de_conocimiento(
-                consulta=hechos_clave_triaje,
-                area_competencia=area
-            )
-            contexto_area = "\n\n".join(lista_contexto_area)
-            contexto_consolidado += f"--- CONTEXTO DE {area.upper()} ---\n{contexto_area}\n\n"
-        except Exception as e:
-            print(f"--- [AGENTE COMPETENCIAS] ERROR: Fallo al buscar en RAG '{area}': {e}")
-            contexto_consolidado += f"--- CONTEXTO DE {area.upper()} ---\nError al recuperar informacion.\n\n"
-    
-    print("--- [AGENTE COMPETENCIAS] Contexto de todas las areas recuperado.")
+    try:
+        print(f"--- [AGENTE COMPETENCIAS] Buscando contexto vectorial para los hechos...")
+        # Usamos los hechos del caso para encontrar los fragmentos de ley más relevantes
+        lista_contexto = buscar_en_base_de_conocimiento(consulta=hechos_clave_triaje, n_resultados=8)
+        contexto_consolidado = "\n\n".join(lista_contexto)
+    except Exception as e:
+        print(f"--- [AGENTE COMPETENCIAS] ERROR: Fallo al buscar en RAG: {e}")
+        contexto_consolidado = "Error al recuperar contexto."
 
     # 3. Construir el prompt final para la decisión.
     prompt_completo = f"""
@@ -321,10 +305,7 @@ def nodo_agente_juridico(estado: EstadoDelGrafo) -> Dict[str, Any]:
         instrucciones_adicionales = "Enfócate en ser muy conciso en la sección 'Estrategia Procesal'."
 
     consulta_rag = f"Hechos del caso: {hechos_del_caso}\n\nPregunta: {pregunta_interactiva or 'Análisis inicial'}"
-    contexto_encontrado = buscar_en_base_de_conocimiento(
-        consulta=consulta_rag,
-        area_competencia="derecho_privado"
-    )
+    contexto_encontrado = buscar_en_base_de_conocimiento(consulta=consulta_rag)
     contexto_para_prompt = "\n\n---\n\n".join(contexto_encontrado)
 
     # --- INICIO DE LA MODIFICACION FINAL: EL PROMPT DE TUTOR ESTRUCTURADO ---

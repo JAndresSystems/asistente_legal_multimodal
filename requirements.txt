@@ -1,48 +1,29 @@
+# backend/requirements.txt
+
+# --- Framework Principal ---
 fastapi
 uvicorn[standard]
-python-dotenv
-google-generativeai
-openai-whisper
-torch
-torchvision
-torchaudio
-nougat-ocr
-sentence-transformers
-faiss-cpu
-timm==0.5.4
-transformers==4.25.1
-huggingface-hub==0.19.4
-python-multipart
-PyMuPDF
-
 sqlmodel
 psycopg2-binary
+python-dotenv
+python-multipart
+# --- Contraseñas y Seguridad ---
+passlib[argon2]
+python-jose[cryptography]
 
-celery[redis]
-flower
+# --- Tareas Asíncronas ---
+celery
+redis
 
-pydub
-ffmpeg-python
+# --- Ecosistema de IA ---
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-google-genai>=1.0.0
+google-generativeai>=0.5.0
+langgraph>=0.1.0
+chromadb>=0.5.0
+pypdf>=4.0.0
 
-langchain-google-genai
-
-
-sentence-transformers
-faiss-cpu
-langchain-text-splitters
-
+# --- Utilidades ---
 python-docx
-
-
-pip install bcrypt==3.2.0
-
-
-pip install "python-jose[cryptography]"
-
-#frontend> npm install jwt-decode
-
-#frontend> npm install react-router-dom
-
-#frontend> npm install react-markdown   <--- estilos de texto de las respuestas de los agentes
-
-
+docx2txt

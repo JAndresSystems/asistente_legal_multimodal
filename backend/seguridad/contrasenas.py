@@ -4,7 +4,7 @@ from passlib.context import CryptContext
 
 # 1. Creamos un contexto de criptografia.
 #    Le decimos que el esquema de hashing por defecto sera "bcrypt".
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 def verificar_contrasena(contrasena_plana: str, contrasena_hash: str) -> bool:
     """

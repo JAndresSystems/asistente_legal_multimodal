@@ -27,12 +27,10 @@ def nodo_agente_atencion(estado: EstadoChat) -> Dict[str, str]:
     print(f"--- [AGENTE ATENCION] Pregunta recibida: '{pregunta}'")
     
     try:
-        lista_contexto_rag = buscar_en_base_de_conocimiento(
-            consulta=pregunta,
-            area_competencia="faqs" 
-        )
+        # --- MODIFICACION: La llamada ahora es más simple ---
+        lista_contexto_rag = buscar_en_base_de_conocimiento(consulta=pregunta)
         contexto_rag = "\n\n---\n\n".join(lista_contexto_rag)
-        print(f"--- [AGENTE ATENCION] Contexto recuperado de RAG (primeros 200 chars): {contexto_rag[:200]}...")
+        print(f"--- [AGENTE ATENCION] Contexto recuperado de RAG.")
     except Exception as e:
         print(f"--- [AGENTE ATENCION] ERROR: Fallo al buscar en RAG: {e}")
         contexto_rag = "No se pudo recuperar informacion de soporte."
