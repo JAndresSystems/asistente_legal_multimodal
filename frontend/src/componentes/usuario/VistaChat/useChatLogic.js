@@ -61,10 +61,8 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
       } else if (agenteInicial === 'triaje_evidencias') {
         const nuevoMensaje = { autor: 'agente', texto: 'Perfecto, tu caso ha sido creado. Ahora, por favor, adjunta todos los archivos de evidencia que tengas (documentos, imágenes) o graba un audio con tu narración.' };
         setMensajes(anteriores => [...anteriores, nuevoMensaje]);
-      
       } else if (agenteInicial === 'recepcionista') {
-        const nuevoMensaje = { autor: 'agente', texto: 'Si tiene alguna otra pregunta general sobre el consultorio, no dude en consultarme.' };
-        setMensajes(anteriores => [...anteriores, nuevoMensaje]);
+       
         setTriajeFinalizado(false);
         setMostrarSugerencias(true);
       }
@@ -89,28 +87,21 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
     
     setEntradaUsuario('');
 
-    
     if (modoAgente === 'recepcionista') {
-     
       const respuestaAgente = await chatearConAgente(textoAEnviar);
       setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: respuestaAgente.texto }]);
       if (respuestaAgente.iniciarTriaje) {
-          onIniciarTriaje(); // Llamamos a la función del layout para cambiar de modo
+          onIniciarTriaje();
       }
-     
     } else if (modoAgente === 'triaje_descripcion') {
       try {
-        
         const casoCreado = await crearNuevoCaso({ descripcion_hechos: textoAEnviar, id_usuario: 1 });
-        // Llama a la función del layout, pero ya no cambia el estado por sí mismo.
         onCasoCreado(casoCreado.id);
-        // Las líneas que cambiaban el modo y mostraban el mensaje se han eliminado de aquí.
-        
       } catch (error) { 
         console.error("Error al crear el caso:", error);
         setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: 'Hubo un error al crear tu caso. Por favor, intenta de nuevo.' }]);
       }
-    }  else if (modoAgente === 'triaje_evidencias') {
+    } else if (modoAgente === 'triaje_evidencias') {
       try {
         if (archivosParaSubir.length > 0) {
           await Promise.all(archivosParaSubir.map(archivo => subirEvidencia(casoIdActual, archivo)));
@@ -120,32 +111,32 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
         
         const resultadoAnalisis = await analizarCaso(casoIdActual, textoAEnviar);
         const esAdmisible = resultadoAnalisis?.resultado_triaje?.admisible;
-
+        
         if (esAdmisible === false) {
-            const justificacion = resultadoAnalisis.resultado_triaje.justificacion || "No se proporcionó una justificación.";
-            const mensajeRechazo = `Hemos evaluado la informacion de su caso y, lamentablemente, no cumple con los criterios de competencia: '${justificacion}'.`;
-            setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: mensajeRechazo }]);
+            
+            const justificacionBackend = resultadoAnalisis?.resultado_triaje?.justificacion || "No se proporcionó una justificación.";
+           
+            
+            const mensajeRechazo = { autor: 'agente', texto: justificacionBackend };
+            const mensajeGuia = { autor: 'agente', texto: 'Si tiene alguna otra pregunta general sobre el consultorio, no dude en consultarme.' };
+
+            setMensajes(anteriores => [...anteriores, mensajeRechazo, mensajeGuia]);
             setTriajeFinalizado(true);
-            onTriajeTerminado(false); // Informa al layout que el triaje terminó sin éxito
+            onTriajeTerminado(false);
         } else {
-            const pregunta = resultadoAnalisis.resultado_triaje.pregunta_para_usuario;
-            if (pregunta) {
-                // ¡ESTA ES LA LÓGICA CLAVE! El agente hace otra pregunta.
-                setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: pregunta }]);
+            const preguntaDelAgente = resultadoAnalisis.resultado_triaje.pregunta_para_usuario;
+            
+            if (preguntaDelAgente) {
+                setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: preguntaDelAgente }]);
             } else {
-                // Si no hay más preguntas, el triaje ha terminado con éxito.
                 onTriajeTerminado(true);
             }
         }
-        
       } catch (error) { 
         console.error("Error en el proceso de evidencia:", error);
         setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: 'Ocurrió un error al procesar tu solicitud. Por favor, intenta de nuevo.' }]);
       }
     }
-    // ==============================================================================
-    // FIN DE LA MODIFICACION DE LÓGICA
-    // ==============================================================================
     setEstaProcesando(false);
   };
   

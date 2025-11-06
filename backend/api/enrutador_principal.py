@@ -5,6 +5,10 @@ from pathlib import Path
 from sqlmodel import Session, select
 from typing import List
 from pydantic import BaseModel
+import json
+from datetime import datetime
+
+
 
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import (
@@ -18,7 +22,8 @@ from ..agentes.agente_atencion import grafo_atencion_compilado
 from ..seguridad.jwt_manager import obtener_cuenta_actual
 
 
-
+from fpdf import FPDF
+from fastapi.responses import Response
 
 
 
@@ -285,6 +290,112 @@ def obtener_detalle_expediente(id_caso: int, sesion: Session = Depends(obtener_s
 
 
 
+@router_expedientes.get("/{id_caso}/reporte-pdf")
+def generar_reporte_pdf_expediente(id_caso: int, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
+    # 1. Validación de Permisos para Estudiantes/Asesores (se mantiene)
+    if cuenta_actual.rol not in ["estudiante", "asesor"]:
+         raise HTTPException(status_code=status.HTTP_4_FORBIDDEN, detail="Acceso denegado.")
+
+    if cuenta_actual.rol == "estudiante":
+        asignacion = sesion.exec(select(Asignacion).where(Asignacion.id_caso == id_caso, Asignacion.id_estudiante == cuenta_actual.estudiante.id)).first()
+    else: # Es un asesor
+        id_estudiantes_supervisados = [est.id for est in cuenta_actual.asesor.estudiantes_supervisados]
+        asignacion = sesion.exec(select(Asignacion).where(
+            Asignacion.id_caso == id_caso,
+            (Asignacion.id_asesor == cuenta_actual.asesor.id) | (Asignacion.id_estudiante.in_(id_estudiantes_supervisados))
+        )).first()
+
+    if not asignacion:
+        raise HTTPException(status_code=404, detail="Asignación no encontrada o sin permisos para este expediente.")
+
+    caso = asignacion.caso
+    if not caso:
+        raise HTTPException(status_code=404, detail="Caso asociado a la asignación no encontrado.")
+
+    # --- INICIO DE LA MODIFICACIÓN ---
+    # 2. Lógica de Generación de PDF (replicando su versión avanzada)
+    pdf = PDF()
+    pdf.add_page()
+    
+    # Sección 1: Datos del Solicitante
+    pdf.chapter_title('1. Datos del Solicitante')
+    if caso.usuario and caso.usuario.cuenta:
+        info_usuario = f"Nombre: {caso.usuario.nombre}\nCédula: {caso.usuario.cedula}\nEmail: {caso.usuario.cuenta.email}"
+        pdf.chapter_body(info_usuario)
+
+    # Sección 2: Datos Generales del Caso
+    pdf.chapter_title('2. Datos Generales del Caso')
+    info_caso = f"ID del Caso: {caso.id}\nFecha de Creación: {caso.fecha_creacion.strftime('%Y-%m-%d %H:%M')}\nEstado Actual: {caso.estado.replace('_', ' ').title()}"
+    pdf.chapter_body(info_caso)
+
+    # Sección 3: Descripción de los Hechos
+    pdf.chapter_title('3. Descripción de los Hechos')
+    pdf.chapter_body(caso.descripcion_hechos)
+    
+    # Sección 4: Análisis Preliminar de la IA (Lógica avanzada de parseo)
+    if caso.reporte_consolidado:
+        pdf.chapter_title('4. Análisis Preliminar de la IA')
+        try:
+            reporte = json.loads(caso.reporte_consolidado)
+            
+            if "TRIEJE" in reporte:
+                triaje = reporte["TRIEJE"]
+                pdf.sub_title('ANÁLISIS DE TRIAJE')
+                pdf.indented_text(f"Admisible: {'Sí' if triaje.get('admisible') else 'No'}")
+                pdf.indented_text(f"Justificación: {triaje.get('justificacion', 'N/A')}")
+                pdf.indented_text(f"Hechos Clave: {triaje.get('hechos_clave', 'N/A')}")
+                pdf.indented_text(f"Información Suficiente: {'Sí' if triaje.get('informacion_suficiente') else 'No'}")
+            
+            if "COMPETENCIA" in reporte:
+                comp = reporte["COMPETENCIA"]
+                pdf.sub_title('ANÁLISIS DE COMPETENCIA')
+                pdf.indented_text(f"Área: {comp.get('area_competencia', 'N/A')}")
+                pdf.indented_text(f"Justificación: {comp.get('justificacion_breve', 'N/A')}")
+
+            if "ANALISIS_JURIDICO" in reporte:
+                jur = reporte["ANALISIS_JURIDICO"]
+                pdf.sub_title('ANÁLISIS JURÍDICO DEL CASO')
+                if jur.get('contenido'):
+                    lines = jur['contenido'].split('\n')
+                    for line in lines:
+                        cleaned_line = line.strip()
+                        if cleaned_line.startswith('###'):
+                            pdf.sub_title(cleaned_line.strip('# ').strip())
+                        elif cleaned_line.startswith('**'):
+                            pdf.indented_text(cleaned_line.strip('**').strip())
+                        elif cleaned_line.startswith('*') or cleaned_line.startswith('-'):
+                            pdf.indented_text(f"- {cleaned_line.strip('* -').strip()}", indent=15)
+                        elif cleaned_line:
+                            pdf.indented_text(cleaned_line)
+                if jur.get('fuentes'):
+                    pdf.indented_text('Fuentes Consultadas:')
+                    for f in jur['fuentes']:
+                        pdf.indented_text(f"- {f}", indent=15)
+        
+        except (json.JSONDecodeError, TypeError):
+            pdf.chapter_body(caso.reporte_consolidado)
+
+    # Sección 5: Equipo Asignado
+    pdf.chapter_title('5. Equipo Asignado')
+    nombre_estudiante = asignacion.estudiante.nombre_completo if asignacion.estudiante else "No disponible"
+    nombre_asesor = asignacion.asesor.nombre_completo if asignacion.asesor else "No disponible"
+    area = "No definida"
+    if asignacion.estudiante and asignacion.estudiante.area:
+        area = asignacion.estudiante.area.nombre
+    info_asignacion = f"Área de Competencia: {area}\nEstudiante a Cargo: {nombre_estudiante}\nAsesor Supervisor: {nombre_asesor}"
+    pdf.chapter_body(info_asignacion)
+
+    # CORRECCIÓN: Convertir a bytes de la forma correcta
+    pdf_bytes = bytes(pdf.output())
+    
+    return Response(
+        content=pdf_bytes,
+        media_type='application/pdf',
+        headers={'Content-Disposition': f'attachment; filename="reporte_caso_{id_caso}.pdf"'}
+    )
+
+
+
 @router_casos.post("", response_model=CasoLecturaConEvidencias, status_code=201)
 def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
     if not cuenta_actual.usuario:
@@ -445,3 +556,164 @@ def enviar_documento_a_revision(
     sesion.refresh(documento)
 
     return {"mensaje": f"El documento '{documento.nombre_archivo}' ha sido enviado a revisión."}    
+
+
+
+
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 12)
+        self.cell(0, 10, 'Reporte de Caso - Asistente Legal Multimodal', 0, 1, 'C')
+        self.ln(10)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'C')
+
+    def chapter_title(self, title):
+        self.set_font('Arial', 'B', 12)
+        self.cell(0, 10, title, 0, 1, 'L')
+        self.ln(4)
+
+    def chapter_body(self, body):
+        self.set_font('Arial', '', 12)
+        # Limpiar chars problemáticos (comillas curvas, etc.)
+        body = body.replace('’', "'").replace('“', '"').replace('”', '"').replace('–', '-')
+        self.multi_cell(0, 10, body)
+        self.ln()
+
+    def sub_title(self, subtitle):
+        self.set_font('Arial', '', 11)  # Sin negrita
+        self.cell(0, 8, subtitle, 0, 1, 'L')
+        self.ln(2)
+
+    def indented_text(self, text, indent=10):
+        self.set_x(indent)
+        self.multi_cell(0, 10, text)
+        self.ln(2)
+
+@router_casos.get("/{id_caso}/reporte-pdf")
+def generar_reporte_pdf_ciudadano(id_caso: int, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
+    caso = sesion.get(Caso, id_caso)
+    if not caso or (not cuenta_actual.usuario or caso.id_usuario != cuenta_actual.usuario.id):
+        raise HTTPException(status_code=404, detail="Caso no encontrado o sin permisos.")
+
+    pdf = PDF()
+    pdf.add_page()
+    
+    # Sección 1: Datos del Solicitante
+    pdf.chapter_title('1. Datos del Solicitante')
+    if caso.usuario and caso.usuario.cuenta:
+        info_usuario = (
+            f"Nombre: {caso.usuario.nombre}\n"
+            f"Cédula: {caso.usuario.cedula}\n"
+            f"Email: {caso.usuario.cuenta.email}"
+        )
+        pdf.chapter_body(info_usuario)
+
+    # Sección 2: Datos Generales del Caso
+    pdf.chapter_title('2. Datos Generales del Caso')
+    info_caso = (
+        f"ID del Caso: {caso.id}\n"
+        f"Fecha de Creación: {caso.fecha_creacion.strftime('%Y-%m-%d %H:%M')}\n"
+        f"Estado Actual: {caso.estado.replace('_', ' ').title()}"
+    )
+    pdf.chapter_body(info_caso)
+
+    # Sección 3: Descripción de los Hechos
+    pdf.chapter_title('3. Descripción de los Hechos')
+    pdf.chapter_body(caso.descripcion_hechos)
+
+    # Sección 4: Análisis Preliminar de la IA
+    if caso.reporte_consolidado:
+        pdf.chapter_title('4. Análisis Preliminar de la IA')
+        
+        try:
+            # Parsear el JSON string a un diccionario Python
+            reporte = json.loads(caso.reporte_consolidado)
+            
+            # Sección TRIAJE
+            if "TRIEJE" in reporte:
+                triaje = reporte["TRIEJE"]
+                pdf.sub_title('TRIAGE')
+                pdf.indented_text(f"Admisible: {'Sí' if triaje['admisible'] else 'No'}")
+                pdf.indented_text(f"Justificación: {triaje['justificacion']}")
+                pdf.indented_text(f"Hechos Clave: {triaje['hechos_clave']}")
+                pdf.indented_text(f"Información Suficiente: {'Sí' if triaje['informacion_suficiente'] else 'No'}")
+            
+            # Sección COMPETENCIA
+            if "COMPETENCIA" in reporte:
+                comp = reporte["COMPETENCIA"]
+                pdf.sub_title('COMPETENCIA')
+                pdf.indented_text(f"Área: {comp['area_competencia']}")
+                pdf.indented_text(f"Justificación: {comp['justificacion_breve']}")
+            
+            # Sección ASIGNACION
+            if "ASIGNACION" in reporte:
+                asign = reporte["ASIGNACION"]
+                pdf.sub_title('ASIGNACIÓN')
+                pdf.indented_text(f"Estudiante Asignado: ID {asign['id_estudiante_asignado']}")
+                pdf.indented_text(f"Asesor Asignado: ID {asign['id_asesor_asignado']}")
+                pdf.indented_text(f"Operación DB: {asign['operacion_db']}")
+            
+            # Sección ANALISIS_DOCUMENTO
+            if "ANALISIS_DOCUMENTO" in reporte:
+                doc = reporte["ANALISIS_DOCUMENTO"]
+                pdf.sub_title('ANÁLISIS DE DOCUMENTO')
+                pdf.indented_text(f"Tipo: {doc['tipo_documento_identificado']}")
+                pdf.indented_text("Partes Involucradas: " + ", ".join(doc['partes_involucradas']))
+                pdf.indented_text("Fechas Clave: " + ", ".join(doc['fechas_clave']))
+                pdf.indented_text(f"Resumen: {doc['resumen_del_objeto']}")
+                pdf.indented_text('Puntos Relevantes:')
+                for p in doc['puntos_relevantes']:
+                    pdf.indented_text(f"- {p}", indent=15)
+            
+            # Sección ANALISIS_JURIDICO
+            if "ANALISIS_JURIDICO" in reporte:
+                jur = reporte["ANALISIS_JURIDICO"]
+                pdf.sub_title('ANÁLISIS JURÍDICO')
+                # Parse simple de Markdown
+                lines = jur['contenido'].split('\n')
+                for line in lines:
+                    if line.startswith('###') or line.startswith('#'):
+                        pdf.sub_title(line.strip('# ').strip())
+                    elif line.startswith('**'):
+                        # Sin negrita, como texto normal
+                        pdf.indented_text(line.strip('**').strip())
+                    elif line.startswith('*') or line.startswith('-'):
+                        pdf.indented_text(f"- {line.strip('* -').strip()}", indent=15)
+                    else:
+                        pdf.indented_text(line)
+                pdf.indented_text('Fuentes:')
+                for f in jur['fuentes']:
+                    pdf.indented_text(f"- {f}", indent=15)
+        
+        except json.JSONDecodeError:
+            # Fallback
+            pdf.chapter_body(caso.reporte_consolidado)
+
+    # Sección 5: Equipo Asignado (si existe)
+    if caso.asignaciones:
+        asignacion = caso.asignaciones[0]
+        pdf.chapter_title('5. Equipo Asignado')
+        nombre_estudiante = asignacion.estudiante.nombre_completo if asignacion.estudiante else "No disponible"
+        nombre_asesor = asignacion.asesor.nombre_completo if asignacion.asesor else "No disponible"
+        area = "No definida"
+        if asignacion.estudiante and asignacion.estudiante.area:
+            area = asignacion.estudiante.area.nombre
+        info_asignacion = (
+            f"Área de Competencia: {area}\n"
+            f"Estudiante a Cargo: {nombre_estudiante}\n"
+            f"Asesor Supervisor: {nombre_asesor}"
+        )
+        pdf.chapter_body(info_asignacion)
+
+    # Convertir a bytes
+    pdf_bytes = bytes(pdf.output())
+    
+    return Response(
+        content=pdf_bytes,
+        media_type='application/pdf',
+        headers={'Content-Disposition': f'attachment; filename="reporte_caso_{id_caso}.pdf"'}
+    )

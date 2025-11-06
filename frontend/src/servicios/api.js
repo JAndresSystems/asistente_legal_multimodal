@@ -23,3 +23,6 @@ export * from './api/estudiante.js';
 
 // Exportar todas las funciones del modulo del asesor
 export * from './api/asesor.js';
+
+// Exportar las funcones de expedientes (comunes a varios roles)
+export * from './api/expediente.js';

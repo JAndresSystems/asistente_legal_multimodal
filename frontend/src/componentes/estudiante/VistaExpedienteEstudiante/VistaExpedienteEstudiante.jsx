@@ -4,7 +4,9 @@
 // --- INICIO DE LA MODIFICACION ---
 // MODIFICACION: Añadimos useCallback y la nueva funcion de API
 import React, { useState, useEffect, useCallback } from 'react';
-import { apiObtenerDetalleExpediente, apiConsultarAgenteJuridico, apiGenerarDocumento, apiSubirDocumentoEstudiante, apiCrearNotaEstudiante, apiEnviarParaRevision  } from '../../../servicios/api';
+import { apiObtenerDetalleExpediente, apiConsultarAgenteJuridico, apiGenerarDocumento, apiSubirDocumentoEstudiante, apiCrearNotaEstudiante, apiEnviarParaRevision,
+  apiDescargarReporteExpedientePDF 
+  } from '../../../servicios/api';
 // --- FIN DE LA MODIFICACION ---
 import ReactMarkdown from 'react-markdown'; 
 import './VistaExpedienteEstudiante.css';
@@ -120,6 +122,19 @@ const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
 
   const [enviandoRevisionId, setEnviandoRevisionId] = useState(null); // ID del doc en proceso
   const [errorAccion, setErrorAccion] = useState('');
+
+  const [descargandoPDF, setDescargandoPDF] = useState(false);
+
+const handleDescargarReporte = async () => {
+    setDescargandoPDF(true);
+    const resultado = await apiDescargarReporteExpedientePDF(expedienteId);
+    if (!resultado.exito) {
+      alert(resultado.mensaje || "No se pudo descargar el reporte PDF.");
+    }
+    setDescargandoPDF(false);
+  };
+
+
 
  // Esto asegura que la función no se recree en cada render, a menos que sus dependencias cambien.
   // No necesita saber el valor anterior de 'expediente' para funcionar.
@@ -282,6 +297,15 @@ const handleGenerarDocumento = async (e) => {
       <button onClick={onVolver} className="boton-volver">&larr; Volver al Dashboard</button>
       
       <h2>Detalle del Expediente #{expediente.id}</h2>
+      <div className="expediente-seccion-acciones">
+        <button
+          onClick={handleDescargarReporte}
+          className="boton-accion-principal"
+          disabled={descargandoPDF}
+        >
+          {descargandoPDF ? 'Generando PDF...' : 'Descargar Reporte Completo'}
+        </button>
+      </div>
       
       <div className="expediente-metadata">
         <p><strong>Fecha de Creación:</strong> {new Date(expediente.fecha_creacion).toLocaleString('es-CO')}</p>

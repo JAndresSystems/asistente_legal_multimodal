@@ -27,3 +27,6 @@ pypdf>=4.0.0
 # --- Utilidades ---
 python-docx
 docx2txt
+
+# --- Generación de Documentos ---
+fpdf2

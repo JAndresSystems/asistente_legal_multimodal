@@ -122,7 +122,7 @@ class Caso(SQLModel, table=True):
     id_usuario: int = Field(foreign_key="usuario.id")
     
     estado: str = Field(default=EstadoCaso.EN_REVISION.value, index=True)
-    
+    justificacion_rechazo: Optional[str] = Field(default=None, sa_column=Column(Text))
     reporte_consolidado: Optional[str] = Field(default=None, sa_column=Column(Text))
     
     usuario: "Usuario" = Relationship(back_populates="casos")
@@ -239,7 +239,7 @@ class CasoDetalleUsuario(SQLModel):
     descripcion_hechos: str
     fecha_creacion: datetime  # Añadido para el resumen
     reporte_consolidado: Optional[str] = None
-    
+    justificacion_rechazo: Optional[str] = None
     # Campos que se llenaran desde las relaciones de la base de datos
     area_asignada: Optional[str] = None
     estudiante_asignado: Optional[str] = None

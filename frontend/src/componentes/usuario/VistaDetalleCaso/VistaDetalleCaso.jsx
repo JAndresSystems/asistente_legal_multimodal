@@ -1,7 +1,7 @@
 // C:\react\asistente_legal_multimodal\frontend\src\componentes\usuario\VistaDetalleCaso\VistaDetalleCaso.jsx
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { obtenerDetallesCaso } from '../../../servicios/api';
+import { obtenerDetallesCaso ,  apiDescargarReportePDF} from '../../../servicios/api';
 import FormularioSubirEvidencia from '../FormularioSubirEvidencia/FormularioSubirEvidencia';
 import VisorReporte from '../VisorReporte/VisorReporte';
 import './VistaDetalleCaso.css';
@@ -10,6 +10,21 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
   const [caso, setCaso] = useState(null);
   const [estaCargando, setEstaCargando] = useState(true);
   const [error, setError] = useState(null);
+
+
+
+
+   const [descargando, setDescargando] = useState(false);
+
+  const manejarDescargaReporte = async () => {
+    setDescargando(true);
+    const resultado = await apiDescargarReportePDF(casoId);
+    if (!resultado.exito) {
+      // Opcional: Mostrar un mensaje de error al usuario si la descarga falla.
+      alert(resultado.mensaje || "Error al descargar el PDF.");
+    }
+    setDescargando(false);
+  };
 
   // Se envuelve la función de carga en useCallback.
   // Esto asegura que la función no se recree en cada renderizado,
@@ -69,6 +84,16 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
     <div className="detalle-contenedor">
       <button onClick={onVolverAlDashboard} className="boton-volver">&larr; Volver a Mis Casos</button>
       <h1>Detalles del Caso #{caso.id}</h1>
+
+       <div className="seccion-acciones">
+        <button 
+          onClick={manejarDescargaReporte} 
+          className="boton-descargar-pdf"
+          disabled={descargando}
+        >
+          {descargando ? 'Generando...' : 'Descargar Reporte en PDF'}
+        </button>
+      </div>
 
       <div className="seccion-detalle">
         <h2>Resumen del Caso</h2>

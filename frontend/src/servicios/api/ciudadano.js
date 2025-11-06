@@ -118,3 +118,46 @@ export const obtenerEstadoEvidencia = async (idEvidencia) => {
     throw error;
   }
 };
+
+
+
+export const apiDescargarReportePDF = async (idCaso) => {
+  console.log(`API: Solicitando reporte en PDF para el caso ${idCaso}`);
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/casos/${idCaso}/reporte-pdf`, {
+      method: 'GET',
+      headers: obtenerCabeceras(),
+    });
+
+    if (!respuesta.ok) {
+      // Si el servidor devuelve un error (ej. 404), lo manejamos aquí.
+      throw new Error(`Error del servidor: ${respuesta.status}`);
+    }
+
+    // 1. Convertimos la respuesta en un 'blob', que es la representación de un archivo.
+    const pdfBlob = await respuesta.blob();
+
+    // 2. Creamos una URL temporal en el navegador que apunta a este archivo en memoria.
+    const url = window.URL.createObjectURL(pdfBlob);
+
+    // 3. Creamos un enlace <a> invisible en el documento.
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `reporte_caso_${idCaso}.pdf`); // Nombre del archivo a descargar.
+    
+    // 4. Simulamos un clic en el enlace para iniciar la descarga.
+    document.body.appendChild(link);
+    link.click();
+    
+    // 5. Limpiamos eliminando el enlace y la URL temporal.
+    link.parentNode.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    return { exito: true };
+
+  } catch (error) {
+    console.error("API: Error al descargar el reporte en PDF:", error);
+    // Devolvemos un objeto de error para que la UI pueda reaccionar.
+    return { exito: false, mensaje: "No se pudo descargar el reporte." };
+  }
+};

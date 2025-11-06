@@ -7,7 +7,8 @@ import {
   apiObtenerEstudiantes,
   apiReasignarCaso,
   apiAprobarDocumento,         // 1. Importamos las nuevas APIs
-  apiSolicitarCambiosDocumento 
+  apiSolicitarCambiosDocumento ,
+   apiDescargarReporteExpedientePDF
 } from '../../../servicios/api';
 import styles from './VistaExpedienteAsesor.module.css';
 import AsistenteJuridico from './AsistenteJuridico/AsistenteJuridico';
@@ -35,6 +36,20 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
 
   const [procesandoDocId, setProcesandoDocId] = useState(null);
   const [errorAccionDoc, setErrorAccionDoc] = useState('');
+ const [descargandoPDF, setDescargandoPDF] = useState(false);
+
+
+
+ const handleDescargarReporte = async () => {
+    setDescargandoPDF(true);
+    const resultado = await apiDescargarReporteExpedientePDF(expedienteId);
+    if (!resultado.exito) {
+      alert(resultado.mensaje || "No se pudo descargar el reporte PDF.");
+    }
+    setDescargandoPDF(false);
+  };
+
+
 
   // ==========================================================================
   // 2. EFECTOS Y MANEJADORES DE DATOS
@@ -182,7 +197,14 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
           <h2 className={styles.titulo}>Expediente del Caso #{expediente.id}</h2>
           <span className={styles.estadoCaso}>{expediente.estado}</span>
         </div>
-        <div>
+        <div className={styles.cabeceraBotones}>
+          <button 
+            className={styles.botonDescargar}
+            onClick={handleDescargarReporte}
+            disabled={descargandoPDF}
+          >
+            {descargandoPDF ? "Generando..." : "Descargar Reporte"}
+          </button>
           <button 
             className={styles.botonFinalizar}
             onClick={handleFinalizarCaso}

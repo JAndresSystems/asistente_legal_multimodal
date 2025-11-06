@@ -53,11 +53,17 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     --- REGLA DE FLEXIBILIDAD Y BUENA FE (NUEVO Y MUY IMPORTANTE) ---
     Tu objetivo es pedir los documentos faltantes UNA SOLA VEZ. Después de que hayas hecho una pregunta pidiendo documentos (ej. pidiendo el informe de tránsito), si en la siguiente interacción el usuario sube CUALQUIER archivo (PDF, PNG, JPG), DEBES ASUMIR que ha intentado cumplir tu petición. NO vuelvas a pedir el mismo documento. Considera que con eso es suficiente para esta etapa, marca "informacion_suficiente" como "true" y permite que el caso avance.
 
+    {'''--- INICIO DE LA MODIFICACIÓN ---'''}
+    --- INSTRUCCION CRITICA DE JUSTIFICACION ---
+    Si y solo si decides que `admisible` es `false`, es OBLIGATORIO que tu `justificacion` contenga una cita textual del `CONTEXTO LEGAL` que respalda tu decisión. Tu explicación debe ser clara y conectar el hecho del caso con la norma.
+    (Ejemplo: "El caso no es admisible por superar la cuantía. Fundamento: '...la competencia por cuantía de los consultorios jurídicos no podrá superar los 50 SMLMV...'").
+
     REGLAS DE DECISION:
     1.  EVALUA ADMISIBILIDAD: ¿El caso es admisible?
     2.  VERIFICA SUFICIENCIA: ¿Tienes los documentos esenciales? Si no, aplica las REGLAS DE SOLICITUD. Si ya pediste y el usuario subió algo, aplica la REGLA DE FLEXIBILIDAD.
+    {'''--- FIN DE LA MODIFICACIÓN ---'''}
 
-    --- REGLAS DE EXCLUSION INQUEBRANTABLES ---
+    --- REGLAS DE EXCLUSION INQUEBRABLES ---
     1.  CASOS COMERCIALES: RECHAZA cualquier disputa comercial.
     
     REGLAS DE SOLICITUD (Aplica solo la primera vez que falten documentos):
@@ -67,7 +73,9 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     Analiza la evidencia y el texto. Devuelve un objeto JSON con la siguiente estructura:
     {{
       "admisible": boolean,
-      "justificacion": "string (Explica tu decisión)",
+      
+      "justificacion": "string (Si `admisible` es false, DEBE citar el contexto legal como se instruyó)",
+      
       "hechos_clave": "string (Resumen de los hechos)",
       "informacion_suficiente": boolean,
       "pregunta_para_usuario": "string (SOLO si 'informacion_suficiente' es false. De lo contrario, déjalo vacío '')"
@@ -373,32 +381,42 @@ def nodo_preparar_respuesta_rechazo(estado: EstadoDelGrafo) -> Dict[str, Any]:
     """
     Docstring:
     Este nodo se activa cuando el Agente de Triaje determina que un caso no es
-    admisible. Su funcion es tomar la justificacion del rechazo y construir
-    un mensaje final, claro y empatico para comunicarselo al usuario.
-
-    Args:
-        estado (EstadoDelGrafo): El estado actual del grafo, que contiene el
-                                 resultado del nodo de triaje.
-
-    Returns:
-        Dict[str, Any]: Un diccionario que actualiza el estado del grafo con
-                        la clave 'respuesta_para_usuario', conteniendo el
-                        mensaje de rechazo.
+    admisible. Sus funciones son:
+    1. Persistir el resultado del rechazo en la base de datos.
+    2. Construir un mensaje final, claro y empático para el usuario.
     """
     print("\n--- [AGENTE RECHAZO] Iniciando ejecucion del nodo ---")
     
-    # 1. Extraer la justificacion del rechazo del estado del grafo.
-    justificacion_rechazo = estado.get("resultado_triaje", {}).get("justificacion", "No se proporciono una justificacion especifica.")
-    print(f"--- [AGENTE RECHAZO] Justificacion recibida del triaje: '{justificacion_rechazo}'")
+    # --- INICIO DE LA MODIFICACIÓN ---
     
-    # 2. Construir el mensaje final para el usuario usando una plantilla.
+    # 1. Extraer los datos clave del estado.
+    id_caso = estado["id_caso"]
+    justificacion_rechazo = estado.get("resultado_triaje", {}).get("justificacion", "No se proporcionó una justificación específica.")
+    print(f"--- [AGENTE RECHAZO] Justificacion recibida del triaje: '{justificacion_rechazo}'")
+
+    # 2. Actualizar la base de datos con el estado y la justificación.
+    try:
+        with Session(motor) as sesion_db:
+            caso_a_actualizar = sesion_db.get(Caso, id_caso)
+            if caso_a_actualizar:
+                caso_a_actualizar.estado = EstadoCaso.RECHAZADO
+                caso_a_actualizar.justificacion_rechazo = justificacion_rechazo
+                sesion_db.add(caso_a_actualizar)
+                sesion_db.commit()
+                print(f"--- [AGENTE RECHAZO] (DB): Caso {id_caso} actualizado a '{EstadoCaso.RECHAZADO.value}' con justificación.")
+            else:
+                print(f"--- [AGENTE RECHAZO] (DB) ADVERTENCIA: No se encontró el caso {id_caso} para actualizar.")
+    except Exception as e:
+        print(f"--- [AGENTE RECHAZO] (DB) ERROR: Fallo al actualizar la base de datos: {e}")
+
+    # 3. Construir el mensaje final para el usuario usando una plantilla.
     mensaje_final_usuario = (
-        "Hemos evaluado la informacion de su caso y, lamentablemente, no cumple con los criterios "
-        "de competencia definidos para nuestro consultorio juridico por la siguiente razon: "
+        "Hemos evaluado la información de su caso y, lamentablemente, no cumple con los criterios "
+        "de competencia definidos para nuestro consultorio jurídico. La razón es la siguiente: "
         f"'{justificacion_rechazo}'. Le agradecemos su tiempo y por contactarnos."
     )
     
     print(f"--- [AGENTE RECHAZO] Mensaje final preparado para el usuario.")
     
-    # 3. Devolver el mensaje en la clave que el frontend espera.
+    # 4. Devolver el mensaje en la clave que el frontend espera.
     return {"respuesta_para_usuario": mensaje_final_usuario}
