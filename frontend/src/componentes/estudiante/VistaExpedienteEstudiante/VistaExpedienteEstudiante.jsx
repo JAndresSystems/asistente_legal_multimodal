@@ -5,7 +5,7 @@
 // MODIFICACION: Añadimos useCallback y la nueva funcion de API
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiObtenerDetalleExpediente, apiConsultarAgenteJuridico, apiGenerarDocumento, apiSubirDocumentoEstudiante, apiCrearNotaEstudiante, apiEnviarParaRevision,
-  apiDescargarReporteExpedientePDF 
+  apiDescargarReporteExpedientePDF ,apiEnviarNotificacion
   } from '../../../servicios/api';
 // --- FIN DE LA MODIFICACION ---
 import ReactMarkdown from 'react-markdown'; 
@@ -124,6 +124,11 @@ const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
   const [errorAccion, setErrorAccion] = useState('');
 
   const [descargandoPDF, setDescargandoPDF] = useState(false);
+
+  const [asuntoNotificacion, setAsuntoNotificacion] = useState('');
+  const [mensajeNotificacion, setMensajeNotificacion] = useState('');
+  const [enviandoNotificacion, setEnviandoNotificacion] = useState(false);
+  const [errorNotificacion, setErrorNotificacion] = useState('');
 
 const handleDescargarReporte = async () => {
     setDescargandoPDF(true);
@@ -256,6 +261,27 @@ const handleGenerarDocumento = async (e) => {
   };
 
 
+  const handleEnviarNotificacion = async (e) => {
+    e.preventDefault();
+    if (!asuntoNotificacion.trim() || !mensajeNotificacion.trim()) {
+      setErrorNotificacion("El asunto y el mensaje no pueden estar vacíos.");
+      return;
+    }
+    setEnviandoNotificacion(true);
+    setErrorNotificacion('');
+    try {
+      const respuesta = await apiEnviarNotificacion(expedienteId, asuntoNotificacion, mensajeNotificacion);
+      alert(respuesta.mensaje || "Notificación enviada con éxito."); // Feedback para el estudiante
+      setAsuntoNotificacion(''); // Limpiar el formulario
+      setMensajeNotificacion('');
+      await cargarExpediente(); // Recargar para ver la nueva nota de "sistema" en la línea de tiempo
+    } catch (err) {
+      setErrorNotificacion(err.message || 'Ocurrió un error al enviar la notificación.');
+    } finally {
+      setEnviandoNotificacion(false);
+    }
+  };
+
 
   if (cargando) {
     return <div className="vista-expediente-cargando">Cargando expediente...</div>;
@@ -354,8 +380,13 @@ const handleGenerarDocumento = async (e) => {
                   <>
                     <span className="icono">📝</span>
                     <div className="contenido">
+                       <p><strong>
+                        {item.rol_autor === 'sistema' 
+                          ? 'Notificación del Sistema:' 
+                          : `Nota de ${item.autor_nombre || item.rol_autor}:`}
+                      </strong></p>
                       <p>{item.contenido}</p>
-                      <small>Nota añadida el {new Date(item.fecha_creacion).toLocaleString('es-CO')}</small>
+                      <small>Añadida el {new Date(item.fecha_creacion).toLocaleString('es-CO')}</small>
                     </div>
                   </>
                 )}
@@ -391,6 +422,29 @@ const handleGenerarDocumento = async (e) => {
             </button>
             {errorNota && <p className="error-texto">{errorNota}</p>}
           </form>
+
+          <form onSubmit={handleEnviarNotificacion} className="formulario-accion">
+            <h4>Enviar Notificación al Usuario por Email</h4>
+            <input
+              type="text"
+              value={asuntoNotificacion}
+              onChange={(e) => setAsuntoNotificacion(e.target.value)}
+              placeholder="Asunto del correo"
+              disabled={enviandoNotificacion}
+            />
+            <textarea
+              value={mensajeNotificacion}
+              onChange={(e) => setMensajeNotificacion(e.target.value)}
+              placeholder="Escriba el mensaje para el usuario aquí. Puede usar este medio para solicitar documentos adicionales."
+              disabled={enviandoNotificacion}
+              rows={4}
+            />
+            <button type="submit" disabled={enviandoNotificacion}>
+              {enviandoNotificacion ? 'Enviando...' : 'Enviar Email'}
+            </button>
+            {errorNotificacion && <p className="error-texto">{errorNotificacion}</p>}
+          </form>
+
         </div>
       </div>
 

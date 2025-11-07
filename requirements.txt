@@ -30,3 +30,7 @@ docx2txt
 
 # --- Generación de Documentos ---
 fpdf2
+
+
+# --- Comunicaciones ---
+resend

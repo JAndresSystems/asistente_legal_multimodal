@@ -223,6 +223,7 @@ class NotaLectura(SQLModel):
     contenido: str
     fecha_creacion: datetime
     rol_autor: str  # Añadido para identificar si es nota de estudiante o asesor
+    autor_nombre: Optional[str] = None
     # En el futuro podríamos añadir: autor_nombre: str
 
 
@@ -392,6 +393,14 @@ class SupervisionAsignacion(SQLModel):
     id_asesor: int
     ids_estudiantes: List[int]
 
+
+
+class NotificacionCreacion(SQLModel):
+    """
+    Modelo para validar los datos que envía el estudiante para notificar al usuario.
+    """
+    asunto: str
+    mensaje: str
 
 
 

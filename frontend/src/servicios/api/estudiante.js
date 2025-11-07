@@ -184,3 +184,22 @@ export const apiEnviarParaRevision = async (idEvidencia) => {
 
 
 
+export const apiEnviarNotificacion = async (idCaso, asunto, mensaje) => {
+  console.log(`API: Enviando notificación para el caso ${idCaso}`);
+  const cuerpoDeLaPeticion = { asunto, mensaje };
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/expedientes/${idCaso}/enviar-notificacion`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+      body: JSON.stringify(cuerpoDeLaPeticion),
+    });
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+    return await respuesta.json();
+  } catch (error) {
+    console.error(`API: Error al enviar la notificación para el caso ${idCaso}:`, error);
+    throw error;
+  }
+};
