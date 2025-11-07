@@ -199,3 +199,22 @@
 .boton-guardar:hover {
   background-color: #218838;
 }
+
+.admin-saludo {
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #007bff; /* Un borde más prominente para el admin */
+}
+
+.admin-saludo h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2.2rem; /* Ligeramente más grande */
+  font-weight: 600;
+  color: #212529;
+}
+
+.admin-saludo p {
+  margin: 0;
+  color: #495057;
+  font-size: 1.1rem;
+}

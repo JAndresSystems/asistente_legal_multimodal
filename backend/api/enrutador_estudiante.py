@@ -1,6 +1,6 @@
 # Ubicación: backend/api/enrutador_estudiante.py
 
-# Ubicación: backend/api/enrutador_estudiante.py
+
 
 from fastapi import APIRouter, HTTPException, File, UploadFile, Depends, status
 import shutil
@@ -301,11 +301,9 @@ def enviar_notificacion_a_usuario(
 
 @router.get("/{id_caso}", response_model=CasoDetalleUsuario)
 def obtener_detalle_expediente(id_caso: int, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
-    # Tu validación de permisos es perfecta.
     if not hasattr(cuenta_actual, 'estudiante') or not cuenta_actual.estudiante:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado.")
     
-    # Esta consulta ya te da acceso a todo lo que necesitas.
     asignacion = sesion.exec(select(Asignacion).where(Asignacion.id_caso == id_caso, Asignacion.id_estudiante == cuenta_actual.estudiante.id)).first()
     if not asignacion:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asignación no encontrada o sin permisos.")
@@ -314,15 +312,10 @@ def obtener_detalle_expediente(id_caso: int, sesion: Session = Depends(obtener_s
     if not caso:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Caso asociado a la asignación no encontrado.")
     
-    # --- INICIO DE LA CORRECCIÓN ---
-
-    # 1. Creamos la respuesta base a partir del objeto 'caso'.
     respuesta = CasoDetalleUsuario.model_validate(caso)
 
-    # 2. Poblamos los nombres usando las relaciones del objeto 'asignacion'.
     if asignacion.estudiante:
         respuesta.estudiante_asignado = asignacion.estudiante.nombre_completo
-        # El área la obtenemos a través del estudiante de la asignación.
         if asignacion.estudiante.area:
             respuesta.area_asignada = asignacion.estudiante.area.nombre
             
@@ -335,32 +328,34 @@ def obtener_detalle_expediente(id_caso: int, sesion: Session = Depends(obtener_s
             nota_api = NotaLectura.model_validate(nota)
             cuenta_autor = sesion.get(Cuenta, nota.id_cuenta_autor)
             if cuenta_autor:
-                if cuenta_autor.rol == 'asesor' and cuenta_autor.asesor:
+                # --- INICIO DE LA MODIFICACIÓN ---
+                if cuenta_autor.rol == 'usuario' and cuenta_autor.usuario:
+                    nota_api.autor_nombre = cuenta_autor.usuario.nombre
+                # --- FIN DE LA MODIFICACIÓN ---
+                elif cuenta_autor.rol == 'asesor' and cuenta_autor.asesor:
                     nota_api.autor_nombre = cuenta_autor.asesor.nombre_completo
                 elif cuenta_autor.rol == 'estudiante' and cuenta_autor.estudiante:
-                    # Para el estudiante, mostramos "Tú" para sus propias notas.
                     nota_api.autor_nombre = "Tú" if cuenta_autor.id == cuenta_actual.id else cuenta_autor.estudiante.nombre_completo
                 elif cuenta_autor.rol == 'sistema':
                     nota_api.autor_nombre = "Sistema"
             notas_con_autor.append(nota_api)
         respuesta.notas = notas_con_autor    
 
-    # 3. Tu lógica para procesar evidencias es correcta y se mantiene.
     if caso.evidencias:
-        respuesta.evidencias = []
-        for evidencia in caso.evidencias:
-            ruta_normalizada = str(evidencia.ruta_archivo).replace("\\", "/")
-            prefijo = "backend/archivos_subidos/"
-            ruta_relativa = ruta_normalizada[len(prefijo):] if ruta_normalizada.startswith(prefijo) else ruta_normalizada
-            url_final_archivo = f"/archivos_subidos/{ruta_relativa}"
-            respuesta.evidencias.append(
-                EvidenciaLecturaSimple(
-                    id=evidencia.id,
-                    nombre_archivo=evidencia.nombre_archivo,
-                    ruta_archivo=url_final_archivo,
-                    estado=evidencia.estado
-                )
-            )
+        evidencias_con_autor = []
+        for ev in caso.evidencias:
+            evidencia_api = EvidenciaLecturaSimple.model_validate(ev)
+            evidencia_api.ruta_archivo = str(ev.ruta_archivo).replace("\\", "/").replace("backend/", "/")
+
+            if ev.subido_por_id_cuenta:
+                cuenta_autor = sesion.get(Cuenta, ev.subido_por_id_cuenta)
+                if cuenta_autor:
+                    if cuenta_autor.rol == 'usuario' and cuenta_autor.usuario:
+                        evidencia_api.autor_nombre = f"Usuario: {cuenta_autor.usuario.nombre}"
+                    elif cuenta_autor.rol == 'estudiante' and cuenta_autor.estudiante:
+                        evidencia_api.autor_nombre = "Tú" if cuenta_autor.id == cuenta_actual.id else cuenta_autor.estudiante.nombre_completo
+            evidencias_con_autor.append(evidencia_api)
+        respuesta.evidencias = evidencias_con_autor
             
     return respuesta
 

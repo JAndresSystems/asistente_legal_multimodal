@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from datetime import timedelta
-
+from sqlalchemy.orm import selectinload 
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import Cuenta, Usuario, Token, CuentaCreacion
 from ..seguridad.contrasenas import obtener_hash_de_contrasena, verificar_contrasena
@@ -53,13 +53,36 @@ def iniciar_sesion_y_obtener_token(form_data: OAuth2PasswordRequestForm = Depend
     Raises:
         HTTPException: Si las credenciales son incorrectas (401).
     """
-    cuenta = sesion.exec(select(Cuenta).where(Cuenta.email == form_data.username)).first()
+    consulta = (
+        select(Cuenta)
+        .options(
+            selectinload(Cuenta.usuario), 
+            selectinload(Cuenta.estudiante), 
+            selectinload(Cuenta.asesor)
+        )
+        .where(Cuenta.email == form_data.username)
+    )
+    cuenta = sesion.exec(consulta).first()
     if not cuenta or not verificar_contrasena(form_data.password, cuenta.contrasena_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Correo electronico o contraseña incorrectos", headers={"WWW-Authenticate": "Bearer"})
     
-    # Ahora el token no solo sabrá QUIÉN es el usuario (sub), sino QUÉ es (rol).
+    # --- INICIO DE LA MODIFICACIÓN ---
+    # Buscamos el perfil específico asociado a la cuenta
+    perfil = None
+    if cuenta.rol == 'usuario' and cuenta.usuario:
+        perfil = cuenta.usuario
+    elif cuenta.rol == 'estudiante' and cuenta.estudiante:
+        perfil = cuenta.estudiante
+    elif cuenta.rol == 'asesor' and cuenta.asesor:
+        perfil = cuenta.asesor
+    elif cuenta.rol == 'administrador':
+        # Para el admin, creamos un perfil genérico ya que no tiene tabla propia
+        perfil = {"nombre_completo": "Administrador del Sistema"}
+
+    # Creamos el token como antes
     datos_para_el_token = {"sub": cuenta.email, "rol": cuenta.rol}
-    
     tiempo_expiracion = timedelta(minutes=60)
     token_de_acceso = crear_token_de_acceso(data=datos_para_el_token, expires_delta=tiempo_expiracion)
-    return {"access_token": token_de_acceso, "token_type": "bearer"}
+    
+    # Devolvemos el token Y el perfil encontrado
+    return {"access_token": token_de_acceso, "token_type": "bearer", "perfil": perfil}

@@ -81,6 +81,12 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  max-height: 700px; /* Altura ligeramente mayor para la vista del asesor */
+  overflow-y: auto; /* Añadimos scroll vertical */
+  padding-right: 1rem; /* Espacio para la barra de scroll */
+  border: 1px solid #eee;
+  padding: 1rem;
+  border-radius: 5px;
 }
 
 .itemTimeline {

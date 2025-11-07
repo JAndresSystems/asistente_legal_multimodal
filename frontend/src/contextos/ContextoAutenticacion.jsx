@@ -23,29 +23,27 @@ export const ProveedorAuth = ({ children }) => {
 
   useEffect(() => {
     const tokenGuardado = localStorage.getItem('authToken');
-    if (tokenGuardado) {
+    const perfilGuardado = localStorage.getItem('userProfile');
+
+    if (tokenGuardado && perfilGuardado) {
       try {
-        // Decodificamos el token para verificar si ha expirado
         const decodedToken = jwtDecode(tokenGuardado);
         if (decodedToken.exp * 1000 > Date.now()) {
-          
           setAuthToken(tokenGuardado);
-          // ==============================================================================
-          // INICIO DE LA CORRECCION: Leemos el ROL al cargar la página
-          // ==============================================================================
-          setUsuario({ email: decodedToken.sub, rol: decodedToken.rol });
-          // ==============================================================================
-          // FIN DE LA CORRECCION
-          // ==============================================================================
+          
+          // --- INICIO DE LA MODIFICACIÓN ---
+          // Reconstruimos el objeto de usuario consistente al cargar
+          const perfil = JSON.parse(perfilGuardado);
+          setUsuario({ ...perfil, rol: decodedToken.rol }); // Fusionamos perfil y rol
+          // --- FIN DE LA MODIFICACIÓN ---
+          
           setEstaAutenticado(true);
         } else {
-          // Si el token ha expirado, lo limpiamos
-          localStorage.removeItem('authToken');
+          localStorage.clear(); // Limpiar todo si el token expira
         }
       } catch (error) {
-        console.error("Error al decodificar el token:", error);
-        // Si el token es invalido, lo limpiamos
-        localStorage.removeItem('authToken');
+        console.error("Error al procesar la sesión guardada:", error);
+        localStorage.clear();
       }
     }
     setCargando(false);
@@ -55,16 +53,19 @@ export const ProveedorAuth = ({ children }) => {
  const login = async (email, contrasena) => {
     try {
       const data = await apiLogin(email, contrasena);
-      localStorage.setItem('authToken', data.access_token);
-      setAuthToken(data.access_token);
       const decodedToken = jwtDecode(data.access_token);
-      // ==============================================================================
-      // INICIO DE LA CORRECCION: Leemos el ROL al iniciar sesión
-      // ==============================================================================
-      setUsuario({ email: decodedToken.sub, rol: decodedToken.rol });
-      // ==============================================================================
-      // FIN DE LA CORRECCION
-      // ==============================================================================
+      
+      // --- INICIO DE LA MODIFICACIÓN ---
+      // Creamos un objeto de usuario unificado que contiene todo lo que necesitamos
+      const usuarioCompleto = { ...data.perfil, rol: decodedToken.rol };
+      
+      localStorage.setItem('authToken', data.access_token);
+      localStorage.setItem('userProfile', JSON.stringify(usuarioCompleto)); // Guardamos el objeto unificado
+      
+      setAuthToken(data.access_token);
+      setUsuario(usuarioCompleto); // Establecemos el objeto unificado en el estado
+      // --- FIN DE LA MODIFICACIÓN ---
+      
       setEstaAutenticado(true);
     } catch (error) {
       console.error("Error en el login:", error);
@@ -81,32 +82,22 @@ export const ProveedorAuth = ({ children }) => {
     }
   };
   
-   const logout = () => {
-    localStorage.removeItem('authToken');
+    const logout = () => {
+    localStorage.clear(); // La forma más segura de limpiar todo
     setUsuario(null);
     setEstaAutenticado(false);
     setAuthToken(null);
-    // Adicionalmente, limpiamos el estado guardado de la app para evitar fugas de datos
-    localStorage.removeItem('app_vistaActual');
-    localStorage.removeItem('app_casoId');
-    localStorage.removeItem('app_agenteActivo');
   };
 
   // El valor que sera accesible por todos los componentes hijos
-  const valor = {
-    usuario,
-    estaAutenticado,
-    cargando,
-    login,
-    registro,
-    logout
-  };
+   const valor = { usuario, estaAutenticado, cargando, login, registro, logout };
 
-   return (
-    <ContextoAuth.Provider value={valor}>
-      {children}
-    </ContextoAuth.Provider>
-  );
+   return <ContextoAuth.Provider 
+
+   value={valor}>{children}
+
+   </ContextoAuth.Provider>;
+
 };
 
 // 3. CREACION DEL HOOK PERSONALIZADO

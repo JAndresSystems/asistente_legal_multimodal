@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiObtenerMisCasos } from '../../../servicios/api';
+import { useAuth } from '../../../contextos/ContextoAutenticacion';
 import './DashboardUsuario.css';
 
 // 1. (MODIFICACIÓN) Aceptamos una nueva prop: onVerDetalles
 function DashboardUsuario({ onIniciarNuevoCaso, onVerDetalles }) {
+  const { usuario } = useAuth();
   const [listaDeCasos, setListaDeCasos] = useState([]);
   const [estaCargando, setEstaCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -34,6 +36,11 @@ function DashboardUsuario({ onIniciarNuevoCaso, onVerDetalles }) {
 
   return (
     <div className="dashboard-contenedor">
+
+      <div className="dashboard-saludo">
+        <h2>Bienvenido de nuevo, {usuario?.nombre}</h2>
+        <p>Aquí puede ver el estado de sus casos o registrar uno nuevo.</p>
+      </div>
       <div className="dashboard-cabecera">
         <h1>Mis Casos Registrados</h1>
         <button onClick={onIniciarNuevoCaso} className="boton-nuevo-caso">

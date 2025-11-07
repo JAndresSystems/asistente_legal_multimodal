@@ -358,7 +358,10 @@ const handleGenerarDocumento = async (e) => {
                   <>
                     <span className="icono">📄</span>
                     <div className="contenido">
-                      <p><strong>Documento añadido:</strong> <a href={`${baseURL}${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer">{item.nombre_archivo}</a></p>
+                     <p>
+                        <strong>Documento:</strong> <a href={`${baseURL}${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer">{item.nombre_archivo}</a>
+                      </p>
+                      <small>Subido por: {item.autor_nombre || 'No disponible'}</small>
                       <div className="documento-acciones">
                         <span className={`estado-documento estado-${item.estado.replace('_', '-')}`}>{item.estado.replace('_', ' ')}</span>
                         

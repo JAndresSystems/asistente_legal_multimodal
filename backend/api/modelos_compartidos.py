@@ -167,6 +167,7 @@ class CuentaCreacion(SQLModel):
 class Token(SQLModel):
     access_token: str
     token_type: str
+    perfil: Optional[Any] = None
 # --- FIN DE LA MODIFICACION ---
 
 class CasoCreacion(SQLModel):
@@ -215,7 +216,7 @@ class EvidenciaLecturaSimple(SQLModel):
     nombre_archivo: str
     ruta_archivo: str
     estado: str  # <-- Campo añadido para que el frontend conozca el estado de la evidencia
-
+    autor_nombre: Optional[str] = None # Añadimos el nombre del autor
 
 
 class NotaLectura(SQLModel):

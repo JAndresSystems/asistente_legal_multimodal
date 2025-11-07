@@ -20,50 +20,58 @@ function App() {
   const { usuario, estaAutenticado, cargando, login, registro } = useAuth();
   const [vistaAuth, setVistaAuth] = useState('login');
 
-  const renderizarContenido = () => {
-    if (cargando) {
-      return <div>Cargando...</div>;
-    }
 
-    if (!estaAutenticado) {
-      if (vistaAuth === 'registro') {
-        return <VistaRegistro onRegistroSubmit={registro} onCambiarAVistaLogin={() => setVistaAuth('login')} />;
-      }
-      return <VistaLogin onLoginSubmit={login} onCambiarAVistaRegistro={() => setVistaAuth('registro')} />;
-    }
+  // Simplificamos la lógica de renderizado para eliminar condiciones de carrera.
+  
+  // 1. Primer caso: La autenticación se está cargando desde localStorage.
+  if (cargando) {
+    // Mostramos un estado de carga global para evitar parpadeos o errores.
+    return <div className="app-cargando">Cargando aplicación...</div>;
+  }
 
-    if (!usuario) {
-      return <div>Verificando permisos...</div>;
-    }
+  // 2. Segundo caso: No está autenticado.
+  if (!estaAutenticado) {
+    return (
+      <div className="aplicacion-principal">
+        <main className="app-contenido">
+          {vistaAuth === 'registro' 
+            ? <VistaRegistro onRegistroSubmit={registro} onCambiarAVistaLogin={() => setVistaAuth('login')} />
+            : <VistaLogin onLoginSubmit={login} onCambiarAVistaRegistro={() => setVistaAuth('registro')} />
+          }
+        </main>
+      </div>
+    );
+  }
 
-     if (usuario.rol === "administrador") {
-      return <LayoutAdministrador />;
-    }
+  // 3. Está autenticado. En este punto, 'usuario' DEBE existir.
+  // Renderizamos directamente basado en el rol.
+  let ContenidoDelRol;
+  switch (usuario?.rol) {
+    case 'usuario':
+      ContenidoDelRol = <LayoutUsuario />;
+      break;
+    case 'estudiante':
+      ContenidoDelRol = <LayoutEstudiante />;
+      break;
+    case 'asesor':
+      ContenidoDelRol = <LayoutAsesor />;
+      break;
+    case 'administrador':
+      ContenidoDelRol = <LayoutAdministrador />;
+      break;
+    default:
+      // Este caso solo se mostraría si el rol es inválido o el objeto usuario es nulo.
+      ContenidoDelRol = <div>Error: Rol de usuario no reconocido o perfil no cargado.</div>;
+  }
 
-    if (usuario.rol === 'asesor') {
-      return <LayoutAsesor />;
-    }
-
-    // LÓGICA DE ENRUTAMIENTO DE ROLES: SIMPLE, DIRECTA E INFALIBLE
-    if (usuario.rol === 'estudiante') {
-      return <LayoutEstudiante />;
-    }
-    
-    if (usuario.rol === 'usuario') {
-      return <LayoutUsuario />;
-    }
-
-    return <div>Rol de usuario no reconocido: {usuario.rol}</div>;
-  };
-
-  // Ahora, App.jsx solo provee el contenedor principal.
   return (
     <div className="aplicacion-principal">
       <main className="app-contenido">
-        {renderizarContenido()}
+        {ContenidoDelRol}
       </main>
     </div>
   );
+  
 }
 
 export default App;

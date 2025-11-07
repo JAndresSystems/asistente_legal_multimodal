@@ -2,9 +2,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 // 1. Importamos la nueva funcion de la API
 import { apiObtenerDashboardAsesor } from '../../../servicios/api';
+import { useAuth } from '../../../contextos/ContextoAutenticacion';
 import styles from './DashboardAsesor.module.css';
 
 const DashboardAsesor = ({ onVerExpediente }) => {
+   const { usuario } = useAuth();
   const [casosSupervisados, setCasosSupervisados] = useState([]);
   // 2. Añadimos un nuevo estado para las métricas
   const [metricas, setMetricas] = useState([]);
@@ -42,6 +44,10 @@ const DashboardAsesor = ({ onVerExpediente }) => {
 
   return (
     <div className={styles.dashboardContenedor}>
+       <div className={styles.saludoContenedor}>
+        <h2 className={styles.titulo}>Bienvenido de nuevo, {usuario?.nombre_completo}</h2>
+        <p className={styles.subtitulo}>Este es su panel de supervisión de casos.</p>
+      </div>
       <h2 className={styles.titulo}>Dashboard del Supervisor</h2>
       
       {/* 4. Añadimos el nuevo panel de métricas */}

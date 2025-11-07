@@ -405,6 +405,9 @@
 
 .linea-de-tiempo-contenedor {
   margin-top: 1.5rem;
+  max-height: 600px; /* Definimos una altura máxima */
+  overflow-y: auto; /* Añadimos scroll vertical si el contenido excede la altura */
+  padding-right: 1rem; /* Espacio para la barra de scroll */
 }
 
 .linea-de-tiempo-item {

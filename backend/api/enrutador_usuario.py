@@ -230,32 +230,65 @@ def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion),
             # --- FIN DE LA CORRECCION ---
         if asignacion.asesor:
             respuesta.asesor_asignado = asignacion.asesor.nombre_completo
+
+
+    if caso.notas:
+        notas_con_autor = []
+        for nota in sorted(caso.notas, key=lambda n: n.fecha_creacion, reverse=True):
+            nota_api = NotaLectura.model_validate(nota)
+            cuenta_autor = sesion.get(Cuenta, nota.id_cuenta_autor)
+            if cuenta_autor:
+                if cuenta_autor.rol == 'usuario' and cuenta_autor.usuario:
+                    # Para el usuario, mostramos "Tú" para sus propias notas
+                    nota_api.autor_nombre = "Tú" if cuenta_autor.id == cuenta_actual.id else cuenta_autor.usuario.nombre
+                elif cuenta_autor.rol == 'asesor' and cuenta_autor.asesor:
+                    nota_api.autor_nombre = f"Asesor: {cuenta_autor.asesor.nombre_completo}"
+                elif cuenta_autor.rol == 'estudiante' and cuenta_autor.estudiante:
+                    nota_api.autor_nombre = f"Estudiante: {cuenta_autor.estudiante.nombre_completo}"
+                elif cuenta_autor.rol == 'sistema':
+                    nota_api.autor_nombre = "Sistema"
+            notas_con_autor.append(nota_api)
+        respuesta.notas = notas_con_autor
+
+
+
     
     # Poblar URLs de evidencias
     if caso.evidencias:
-        respuesta.evidencias = [
-             EvidenciaLecturaSimple(
-                id=ev.id,
-                nombre_archivo=ev.nombre_archivo,
-                ruta_archivo=str(ev.ruta_archivo).replace("\\", "/").replace("backend/", "/"),
-                estado=ev.estado
-            ) for ev in caso.evidencias
-        ]
+        evidencias_con_autor = []
+        for ev in caso.evidencias:
+            evidencia_api = EvidenciaLecturaSimple.model_validate(ev)
+            # Reconstruimos la URL relativa para el frontend
+            evidencia_api.ruta_archivo = str(ev.ruta_archivo).replace("\\", "/").replace("backend/", "/")
+
+            if ev.subido_por_id_cuenta:
+                cuenta_autor = sesion.get(Cuenta, ev.subido_por_id_cuenta)
+                if cuenta_autor:
+                    if cuenta_autor.rol == 'usuario' and cuenta_autor.usuario:
+                        evidencia_api.autor_nombre = "Tú" if cuenta_autor.id == cuenta_actual.id else cuenta_autor.usuario.nombre
+                    elif cuenta_autor.rol == 'estudiante' and cuenta_autor.estudiante:
+                        evidencia_api.autor_nombre = f"Estudiante: {cuenta_autor.estudiante.nombre_completo}"
+            evidencias_con_autor.append(evidencia_api)
+        respuesta.evidencias = evidencias_con_autor
             
     return respuesta
 
 
 
-
+# --- endpoint para subir evidencia simple --- 
 @router.post("/{id_caso}/subir-evidencia-simple", response_model=Evidencia)
 def subir_evidencia_simple(
     id_caso: int, 
     archivo: UploadFile = File(...), 
-    sesion: Session = Depends(obtener_sesion)
+    sesion: Session = Depends(obtener_sesion),
+    
+    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
+    
 ):
+    # Validar que el caso pertenece al usuario
     caso_actual = sesion.get(Caso, id_caso)
-    if not caso_actual: 
-        raise HTTPException(status_code=404, detail="El caso no fue encontrado")
+    if not caso_actual or caso_actual.id_usuario != cuenta_actual.usuario.id: 
+        raise HTTPException(status_code=404, detail="El caso no fue encontrado o no tiene permisos.")
 
     ruta_guardado_caso = Path("backend/archivos_subidos") / str(id_caso)
     ruta_guardado_caso.mkdir(parents=True, exist_ok=True)
@@ -265,16 +298,16 @@ def subir_evidencia_simple(
     with open(ruta_archivo_final, "wb") as buffer:
         shutil.copyfileobj(archivo.file, buffer)
         
-    
-    # crear la evidencia, tambien guardamos su tipo de contenido (MIME type).
     nueva_evidencia_db = Evidencia(
         id_caso=id_caso, 
         ruta_archivo=str(ruta_archivo_final), 
         estado="subido", 
         nombre_archivo=archivo.filename,
-        tipo=archivo.content_type  
+        tipo=archivo.content_type,
+        
+        subido_por_id_cuenta=cuenta_actual.id 
+        
     )
-  
     
     sesion.add(nueva_evidencia_db)
     sesion.commit()

@@ -161,3 +161,25 @@ export const apiDescargarReportePDF = async (idCaso) => {
     return { exito: false, mensaje: "No se pudo descargar el reporte." };
   }
 };
+
+
+
+export const apiCrearNotaUsuario = async (idCaso, contenido) => {
+  console.log(`API: Usuario creando nota en el caso ${idCaso}`);
+  const cuerpoDeLaPeticion = { contenido };
+  try {
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/casos/${idCaso}/crear-nota`, {
+      method: 'POST',
+      headers: obtenerCabeceras(),
+      body: JSON.stringify(cuerpoDeLaPeticion),
+    });
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
+    }
+    return await respuesta.json();
+  } catch (error) {
+    console.error(`API: Error al crear la nota para el caso ${idCaso}:`, error);
+    throw error;
+  }
+};

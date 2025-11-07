@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 import { apiObtenerMisAsignaciones, apiAceptarAsignacion, apiRechazarAsignacion } from '../../../servicios/api';
-
+import { useAuth } from '../../../contextos/ContextoAutenticacion';
 import './DashboardEstudiante.css';
 
 function DashboardEstudiante({ onVerExpediente }) {
+   const { usuario } = useAuth();
   const [listaDeCasos, setListaDeCasos] = useState([]);
   const [estaCargando, setEstaCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -72,6 +73,10 @@ function DashboardEstudiante({ onVerExpediente }) {
 
   return (
     <div className="dashboard-estudiante-contenedor">
+      <div className="dashboard-saludo">
+        <h2>Bienvenido de nuevo, {usuario?.nombre_completo}</h2>
+        <p>A continuación se muestran los casos pendientes y los que tiene a su cargo.</p>
+      </div>
       <div className="dashboard-cabecera">
         <h1>Panel de Casos</h1>
       </div>

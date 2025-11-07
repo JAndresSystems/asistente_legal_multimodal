@@ -116,11 +116,9 @@ hr.separador-seccion {
   margin-bottom: 8px;
 }
 
-/* ... (todos los estilos anteriores) ... */
 
-/* ================================================================== */
-/* INICIO DE LA ADICION: Estilos para los enlaces de evidencia        */
-/* ================================================================== */
+
+
 
 .enlace-evidencia {
   color: #007bff;
@@ -132,7 +130,99 @@ hr.separador-seccion {
   text-decoration: underline;
 }
 
-/* ================================================================== */
-/* FIN DE LA ADICION                                                  */
-/* ================================================================== */
 
+
+/* --- Estilos para la Línea de Tiempo Unificada --- */
+.linea-de-tiempo-usuario {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  margin-top: 1rem;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.item-timeline-usuario {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  background-color: #fff;
+}
+
+.item-timeline-usuario:last-child {
+  border-bottom: none;
+}
+
+/* Estilo para las notas del propio usuario ("Tú") */
+.item-autor-usuario {
+  background-color: #f8f9fa;
+}
+
+.autor-timeline {
+  margin: 0 0 0.5rem 0;
+}
+
+.autor-timeline strong {
+  font-weight: 600;
+  color: #343a40;
+}
+
+.contenido-timeline {
+  margin: 0;
+  line-height: 1.6;
+  color: #495057;
+  white-space: pre-wrap; /* Respeta saltos de línea */
+}
+
+.fecha-timeline {
+  font-size: 0.8rem;
+  color: #6c757d;
+  text-align: right;
+  margin-top: 0.75rem;
+}
+
+/* --- Formulario para enviar notas/mensajes --- */
+.formulario-crear-nota-usuario {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #e9ecef;
+}
+
+.formulario-crear-nota-usuario h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.formulario-crear-nota-usuario textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.75rem;
+  border-radius: 5px;
+  border: 1px solid #ced4da;
+  font-family: inherit;
+  font-size: 1rem;
+  resize: vertical;
+  margin-bottom: 1rem;
+  box-sizing: border-box; /* Asegura que el padding no afecte el ancho total */
+}
+
+.formulario-crear-nota-usuario button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.formulario-crear-nota-usuario button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.mensaje-error {
+  color: #dc3545;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}

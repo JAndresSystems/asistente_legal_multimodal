@@ -1,10 +1,12 @@
 // C:\react\asistente_legal_multimodal\frontend\src\componentes\administrador\PanelAdministracion\PanelAdministracion.jsx
 
 import React from "react";
+import { useAuth } from "../../../contextos/ContextoAutenticacion";
 import { usePanelAdministracionLogic } from "./usePanelAdministracionLogic"; // Importamos nuestro Hook
 import "./PanelAdministracion.css";
 
 const PanelAdministracion = () => {
+   const { usuario } = useAuth();
   // Obtenemos todos los estados y funciones desde nuestro Hook de lógica
 const {
     listaPersonal, listaAreas, listaUsuarios, nuevoPersonal, nuevaAreaNombre,
@@ -25,6 +27,10 @@ const {
   // El componente ahora solo se encarga de renderizar el JSX
  return (
     <div className="panel-admin-contenedor">
+      <div className="admin-saludo">
+        <h1>Bienvenido, {usuario?.nombre_completo}</h1>
+        <p>Desde aquí puede gestionar el personal y la configuración del sistema.</p>
+      </div>
       <h1>Panel de Administración</h1>
       {error && <p className="mensaje-error" onClick={() => setError(null)}>Error: {error} (clic para cerrar)</p>}
 
