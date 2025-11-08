@@ -1,16 +1,25 @@
-# render.yaml - Blueprint para el Asistente Legal Multimodal (Versión Corregida)
+# render.yaml - Blueprint para el Asistente Legal Multimodal (Versión Estructuralmente Correcta)
 
-services:
-  # 1. La Base de Datos PostgreSQL
+# ================================================================
+# CAMBIO ESTRUCTURAL: Las bases de datos se definen aquí, fuera de "services".
+# ================================================================
+databases:
   - name: asistente-legal-db
-    type: postgres # <-- CORRECCIÓN: Cambiado de "psql" a "postgres"
-    psqlVersion: 15
+    databaseName: asistente_legal_db # Nombre interno de la BD
+    user: asistente_legal_user
 
-  # 2. El Broker de Mensajes Redis para Celery
+# ================================================================
+# CAMBIO ESTRUCTURAL: Los servicios de Redis también se definen aquí.
+# ================================================================
+previews:
   - name: asistente-legal-redis
     type: redis
 
-  # 3. El Backend (API con FastAPI)
+# ================================================================
+# Los servicios de la aplicación (backend, worker, frontend) van aquí.
+# ================================================================
+services:
+  # 1. El Backend (API con FastAPI)
   - name: asistente-legal-backend
     type: web
     env: python
@@ -20,13 +29,13 @@ services:
     healthCheckPath: /api/chat/healthcheck
     envVars:
       - key: DATABASE_URL
-        fromService:
-          type: postgres # <-- CORRECCIÓN: Cambiado de "psql" a "postgres"
+        # AHORA SE USA 'fromDatabase' para referenciar la BD
+        fromDatabase:
           name: asistente-legal-db
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          type: redis
+        # AHORA SE USA 'fromPreview' para referenciar Redis
+        fromPreview:
           name: asistente-legal-redis
           property: connectionString
       - key: PYTHON_VERSION
@@ -40,7 +49,7 @@ services:
       - key: RESEND_API_KEY
         sync: false
 
-  # 4. El Worker de Celery para Tareas Asíncronas
+  # 2. El Worker de Celery para Tareas Asíncronas
   - name: celery-worker
     type: worker
     env: python
@@ -49,13 +58,11 @@ services:
     startCommand: "celery -A tareas.celery_app worker --loglevel=info"
     envVars:
       - key: DATABASE_URL
-        fromService:
-          type: postgres # <-- CORRECCIÓN: Cambiado de "psql" a "postgres"
+        fromDatabase:
           name: asistente-legal-db
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          type: redis
+        fromPreview:
           name: asistente-legal-redis
           property: connectionString
       - key: PYTHON_VERSION
@@ -67,7 +74,7 @@ services:
       - key: RESEND_API_KEY
         sync: false
 
-  # 5. El Frontend (Sitio Estático con React+Vite)
+  # 3. El Frontend (Sitio Estático con React+Vite)
   - name: asistente-legal-frontend
     type: static
     rootDir: ./frontend
