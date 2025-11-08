@@ -1,27 +1,30 @@
-# render.yaml - Blueprint para Despliegue Completo (con Worker Activo)
+# render.yaml - Blueprint Adaptado a la Estructura Real del Proyecto
 
 databases:
   - name: asistente-legal-db
     databaseName: asistente_legal_db
     user: asistente_legal_user
-    plan: free # Plan gratuito para la BD
+    plan: free
 
 services:
   # Redis/KeyValue Store
   - name: asistente-legal-redis
     type: keyvalue
     ipAllowList: []
-    plan: free # Plan gratuito para Redis
+    plan: free
 
   # 1. El Backend (API con FastAPI)
   - name: asistente-legal-backend
     type: web
     runtime: python
-    rootDir: ./backend
-    buildCommand: "pip install -r requirements.txt"
+    rootDir: ./backend # Correcto: Render trabajará desde la carpeta backend
+    # =====================================================================
+    # CORRECCIÓN CLAVE: Le decimos a pip que suba un nivel (../) para encontrar el archivo.
+    # =====================================================================
+    buildCommand: "pip install -r ../requirements.txt"
     startCommand: "uvicorn main:aplicacion --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/chat/healthcheck
-    plan: free # Plan gratuito para el servicio web
+    plan: free
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -43,16 +46,17 @@ services:
       - key: RESEND_API_KEY
         sync: false
 
-  # =====================================================================
-  # WORKER DE CELERY ACTIVADO EN EL PLAN DE PAGO MÁS BAJO
-  # =====================================================================
+  # 2. El Worker de Celery para Tareas Asíncronas
   - name: celery-worker
     type: worker
     runtime: python
-    rootDir: ./backend
-    buildCommand: "pip install -r requirements.txt"
+    rootDir: ./backend # Correcto: El worker también opera desde la carpeta backend
+    # =====================================================================
+    # CORRECCIÓN CLAVE: Aplicamos la misma corrección de ruta aquí.
+    # =====================================================================
+    buildCommand: "pip install -r ../requirements.txt"
     startCommand: "celery -A tareas.celery_app worker --loglevel=info"
-    plan: starter # <-- IMPORTANTE: Activamos el plan de pago "Starter" ($7/mes)
+    plan: starter
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -71,13 +75,12 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
-  # =====================================================================
 
   # 3. El Frontend (Sitio Estático con React+Vite)
   - name: asistente-legal-frontend
     type: web
     runtime: static
-    rootDir: ./frontend
+    rootDir: ./frontend # Correcto: El frontend se construye desde su propia carpeta
     buildCommand: "npm install && npm run build"
     staticPublishPath: dist
     routes:
