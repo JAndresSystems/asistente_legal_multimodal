@@ -17,12 +17,12 @@ services:
   - name: asistente-legal-backend
     type: web
     runtime: python
-    rootDir: ./backend # Correcto: Render trabajará desde la carpeta backend
-    # =====================================================================
-    # CORRECCIÓN CLAVE: Le decimos a pip que suba un nivel (../) para encontrar el archivo.
-    # =====================================================================
+    rootDir: ./backend
     buildCommand: "pip install -r ../requirements.txt"
-    startCommand: "uvicorn main:aplicacion --host 0.0.0.0 --port $PORT"
+    # =====================================================================
+    #  Ejecutamos la app como un módulo (backend.main)
+    # =====================================================================
+    startCommand: "uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/chat/healthcheck
     plan: free
     envVars:
@@ -50,12 +50,12 @@ services:
   - name: celery-worker
     type: worker
     runtime: python
-    rootDir: ./backend # Correcto: El worker también opera desde la carpeta backend
-    # =====================================================================
-    # CORRECCIÓN CLAVE: Aplicamos la misma corrección de ruta aquí.
-    # =====================================================================
+    rootDir: ./backend
     buildCommand: "pip install -r ../requirements.txt"
-    startCommand: "celery -A tareas.celery_app worker --loglevel=info"
+    # =====================================================================
+    #  Aplicamos la misma lógica modular para Celery.
+    # =====================================================================
+    startCommand: "celery -A backend.tareas.celery_app worker --loglevel=info"
     plan: starter
     envVars:
       - key: DATABASE_URL
@@ -80,7 +80,7 @@ services:
   - name: asistente-legal-frontend
     type: web
     runtime: static
-    rootDir: ./frontend # Correcto: El frontend se construye desde su propia carpeta
+    rootDir: ./frontend
     buildCommand: "npm install && npm run build"
     staticPublishPath: dist
     routes:
