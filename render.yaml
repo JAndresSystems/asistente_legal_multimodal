@@ -1,4 +1,4 @@
-# render.yaml - Blueprint Adaptado a la Estructura Real del Proyecto
+# render.yaml
 
 databases:
   - name: asistente-legal-db
@@ -20,9 +20,9 @@ services:
     rootDir: ./backend
     buildCommand: "pip install -r ../requirements.txt"
     # =====================================================================
-    #  Ejecutamos la app como un módulo (backend.main)
+    # CORRECCIÓN FINAL: Eliminamos "backend." porque ya estamos en ese directorio.
     # =====================================================================
-    startCommand: "uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
+    startCommand: "uvicorn main:aplicacion --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/chat/healthcheck
     plan: free
     envVars:
@@ -53,9 +53,9 @@ services:
     rootDir: ./backend
     buildCommand: "pip install -r ../requirements.txt"
     # =====================================================================
-    #  Aplicamos la misma lógica modular para Celery.
+    # CORRECCIÓN FINAL: Aplicamos la misma lógica para Celery.
     # =====================================================================
-    startCommand: "celery -A backend.tareas.celery_app worker --loglevel=info"
+    startCommand: "celery -A tareas.celery_app worker --loglevel=info"
     plan: starter
     envVars:
       - key: DATABASE_URL
