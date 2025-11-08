@@ -1,4 +1,4 @@
-# render.yaml
+# render.yaml 
 
 databases:
   - name: asistente-legal-db
@@ -17,12 +17,10 @@ services:
   - name: asistente-legal-backend
     type: web
     runtime: python
-    rootDir: ./backend
-    buildCommand: "pip install -r ../requirements.txt"
-    # =====================================================================
-    # CORRECCIÓN FINAL: Eliminamos "backend." porque ya estamos en ese directorio.
-    # =====================================================================
-    startCommand: "uvicorn main:aplicacion --host 0.0.0.0 --port $PORT"
+    # Se elimina 'rootDir' para que los comandos se ejecuten desde la raíz del proyecto.
+    # Esto es NECESARIO para que las importaciones relativas y las rutas de archivos funcionen.
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/chat/healthcheck
     plan: free
     envVars:
@@ -50,12 +48,9 @@ services:
   - name: celery-worker
     type: worker
     runtime: python
-    rootDir: ./backend
-    buildCommand: "pip install -r ../requirements.txt"
-    # =====================================================================
-    # CORRECCIÓN FINAL: Aplicamos la misma lógica para Celery.
-    # =====================================================================
-    startCommand: "celery -A tareas.celery_app worker --loglevel=info"
+    # Se elimina 'rootDir' aquí también por la misma razón.
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A backend.tareas.celery_app worker --loglevel=info"
     plan: starter
     envVars:
       - key: DATABASE_URL
