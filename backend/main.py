@@ -16,14 +16,7 @@ from .api.enrutador_estudiante import router as router_estudiante
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("INFO:     Iniciando la aplicación...")
-    
-    # ---  Crear el directorio de subidas si no existe ---
-    print("SETUP-FILES: Verificando y creando el directorio para archivos subidos...")
-    os.makedirs("backend/archivos_subidos", exist_ok=True)
-    print("SETUP-FILES: Directorio 'backend/archivos_subidos' listo.")
-   
-
+    print("INFO:     Iniciando la aplicación (dentro del lifespan)...")
     base_de_datos.inicializar_base_de_datos()
     yield
     print("INFO:     Apagando la aplicación...")
@@ -35,6 +28,14 @@ aplicacion = FastAPI(
     lifespan=lifespan
 )
 
+# =====================================================================
+#  Creamos el directorio ANTES de intentar montarlo.
+# Esta es la lógica correcta porque este código se ejecuta al leer el archivo.
+# =====================================================================
+print("SETUP-FILES: Verificando y creando el directorio para archivos subidos...")
+os.makedirs("backend/archivos_subidos", exist_ok=True)
+print("SETUP-FILES: Directorio 'backend/archivos_subidos' listo.")
+
 
 aplicacion.mount("/archivos_subidos", StaticFiles(directory="backend/archivos_subidos"), name="archivos")
 
@@ -42,7 +43,7 @@ aplicacion.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "http://127.0.0.1:5173",
+        "http://12-7.0.0.1:5173", 
     ],
     allow_credentials=True,
     allow_methods=["*"],
