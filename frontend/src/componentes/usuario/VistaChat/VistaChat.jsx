@@ -28,13 +28,26 @@ const SubidorDeEvidencias = ({
   onIniciarGrabacion, 
   onDetenerGrabacion, 
   grabando, 
-  audioUrl 
+  audioUrl,
+  onEliminarArchivo // <-- 1. Recibimos la nueva prop
 }) => {
   return (
     <div className="area-subida-evidencias">
       <div className="lista-archivos-para-subir">
         {archivos.length > 0 ? (
-          archivos.map((archivo, i) => <div key={i} className="archivo-item">{archivo.name}</div>)
+          archivos.map((archivo, i) => (
+            // 2. Añadimos el botón de eliminar junto a cada archivo
+            <div key={i} className="archivo-item">
+              <span>{archivo.name}</span>
+              <button 
+                onClick={() => onEliminarArchivo(i)} 
+                className="boton-eliminar-archivo"
+                title="Eliminar archivo"
+              >
+                &times;
+              </button>
+            </div>
+          ))
         ) : ( <p>Adjunta archivos o graba un audio si es necesario.</p> )}
       </div>
       {audioUrl && ( <div className="reproductor-audio-chat"><audio src={audioUrl} controls /></div> )}
@@ -77,6 +90,7 @@ function VistaChat(props) {
     manejarClickSugerencia,
     iniciarGrabacion,
     detenerGrabacion,
+    manejarEliminarArchivo, 
     obtenerPlaceholder
   } = useChatLogic(props);
   
@@ -98,13 +112,14 @@ function VistaChat(props) {
       <div className="area-acciones-chat">
         {modoAgente === 'triaje_evidencias' && !triajeFinalizado && (
           <SubidorDeEvidencias 
-            archivos={archivosParaSubir}
-            onSeleccionArchivos={(e) => setArchivosParaSubir(prev => [...prev, ...Array.from(e.target.files)])}
-            onIniciarGrabacion={iniciarGrabacion}
-            onDetenerGrabacion={detenerGrabacion}
-            grabando={grabando}
-            audioUrl={audioUrl}
-          />
+          archivos={archivosParaSubir}
+          onSeleccionArchivos={(e) => setArchivosParaSubir(prev => [...prev, ...Array.from(e.target.files)])}
+          onIniciarGrabacion={iniciarGrabacion}
+          onDetenerGrabacion={detenerGrabacion}
+          grabando={grabando}
+          audioUrl={audioUrl}
+          onEliminarArchivo={manejarEliminarArchivo}
+        />
         )}
         
         {(modoAgente === 'recepcionista' || !triajeFinalizado) && (

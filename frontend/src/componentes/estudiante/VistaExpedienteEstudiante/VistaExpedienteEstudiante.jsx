@@ -3,9 +3,11 @@
 
 // --- INICIO DE LA MODIFICACION ---
 // MODIFICACION: Añadimos useCallback y la nueva funcion de API
+
+//En import faltaria : apiEnviarNotificacion <- para correo
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiObtenerDetalleExpediente, apiConsultarAgenteJuridico, apiGenerarDocumento, apiSubirDocumentoEstudiante, apiCrearNotaEstudiante, apiEnviarParaRevision,
-  apiDescargarReporteExpedientePDF ,apiEnviarNotificacion
+  apiDescargarReporteExpedientePDF 
   } from '../../../servicios/api';
 // --- FIN DE LA MODIFICACION ---
 import ReactMarkdown from 'react-markdown'; 
@@ -125,10 +127,10 @@ const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
 
   const [descargandoPDF, setDescargandoPDF] = useState(false);
 
-  const [asuntoNotificacion, setAsuntoNotificacion] = useState('');
-  const [mensajeNotificacion, setMensajeNotificacion] = useState('');
-  const [enviandoNotificacion, setEnviandoNotificacion] = useState(false);
-  const [errorNotificacion, setErrorNotificacion] = useState('');
+  // const [asuntoNotificacion, setAsuntoNotificacion] = useState('');
+  // const [mensajeNotificacion, setMensajeNotificacion] = useState('');
+  // const [enviandoNotificacion, setEnviandoNotificacion] = useState(false);
+  // const [errorNotificacion, setErrorNotificacion] = useState('');
 
 const handleDescargarReporte = async () => {
     setDescargandoPDF(true);
@@ -261,26 +263,26 @@ const handleGenerarDocumento = async (e) => {
   };
 
 
-  const handleEnviarNotificacion = async (e) => {
-    e.preventDefault();
-    if (!asuntoNotificacion.trim() || !mensajeNotificacion.trim()) {
-      setErrorNotificacion("El asunto y el mensaje no pueden estar vacíos.");
-      return;
-    }
-    setEnviandoNotificacion(true);
-    setErrorNotificacion('');
-    try {
-      const respuesta = await apiEnviarNotificacion(expedienteId, asuntoNotificacion, mensajeNotificacion);
-      alert(respuesta.mensaje || "Notificación enviada con éxito."); // Feedback para el estudiante
-      setAsuntoNotificacion(''); // Limpiar el formulario
-      setMensajeNotificacion('');
-      await cargarExpediente(); // Recargar para ver la nueva nota de "sistema" en la línea de tiempo
-    } catch (err) {
-      setErrorNotificacion(err.message || 'Ocurrió un error al enviar la notificación.');
-    } finally {
-      setEnviandoNotificacion(false);
-    }
-  };
+  // const handleEnviarNotificacion = async (e) => {
+  //   e.preventDefault();
+  //   if (!asuntoNotificacion.trim() || !mensajeNotificacion.trim()) {
+  //     setErrorNotificacion("El asunto y el mensaje no pueden estar vacíos.");
+  //     return;
+  //   }
+  //   setEnviandoNotificacion(true);
+  //   setErrorNotificacion('');
+  //   try {
+  //     const respuesta = await apiEnviarNotificacion(expedienteId, asuntoNotificacion, mensajeNotificacion);
+  //     alert(respuesta.mensaje || "Notificación enviada con éxito."); // Feedback para el estudiante
+  //     setAsuntoNotificacion(''); // Limpiar el formulario
+  //     setMensajeNotificacion('');
+  //     await cargarExpediente(); // Recargar para ver la nueva nota de "sistema" en la línea de tiempo
+  //   } catch (err) {
+  //     setErrorNotificacion(err.message || 'Ocurrió un error al enviar la notificación.');
+  //   } finally {
+  //     setEnviandoNotificacion(false);
+  //   }
+  // };
 
 
   if (cargando) {
@@ -426,7 +428,7 @@ const handleGenerarDocumento = async (e) => {
             {errorNota && <p className="error-texto">{errorNota}</p>}
           </form>
 
-          <form onSubmit={handleEnviarNotificacion} className="formulario-accion">
+          {/* <form onSubmit={handleEnviarNotificacion} className="formulario-accion">
             <h4>Enviar Notificación al Usuario por Email</h4>
             <input
               type="text"
@@ -446,7 +448,7 @@ const handleGenerarDocumento = async (e) => {
               {enviandoNotificacion ? 'Enviando...' : 'Enviar Email'}
             </button>
             {errorNotificacion && <p className="error-texto">{errorNotificacion}</p>}
-          </form>
+          </form> */}
 
         </div>
       </div>

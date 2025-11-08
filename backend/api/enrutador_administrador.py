@@ -15,6 +15,7 @@ from .modelos_compartidos import (
     PersonalCreacion,
     PersonalGestionLectura,
     UsuarioGestionLectura, 
+    UsuarioEdicion,
     PersonalEdicion,
     AreaEspecialidad,
     AreaLectura,
@@ -299,6 +300,49 @@ def cambiar_estado_cuenta_usuario(id_cuenta: int, sesion: Session = Depends(obte
         email=cuenta.email,
         nombre_completo=perfil.nombre,
         esta_activo=cuenta.esta_activo
+    )
+
+
+
+@router.put("/usuarios/{id_cuenta}", response_model=UsuarioGestionLectura, summary="Editar los datos de una cuenta de usuario (ciudadano)")
+def editar_usuario(id_cuenta: int, datos_edicion: UsuarioEdicion, sesion: Session = Depends(obtener_sesion), _: Cuenta = Depends(obtener_administrador_actual)):
+    """
+    Permite al administrador editar el nombre, la cédula y la contraseña de un usuario ciudadano.
+    """
+    cuenta_a_editar = sesion.get(Cuenta, id_cuenta)
+    if not cuenta_a_editar or cuenta_a_editar.rol != 'usuario':
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta de usuario no encontrada.")
+    
+    perfil_a_editar = cuenta_a_editar.usuario
+    if not perfil_a_editar:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Perfil de usuario asociado no encontrado.")
+
+    # Actualizar los datos del perfil si se proporcionaron
+    if datos_edicion.nombre is not None:
+        perfil_a_editar.nombre = datos_edicion.nombre
+    
+    if datos_edicion.cedula is not None and datos_edicion.cedula != perfil_a_editar.cedula:
+        # Validar que la nueva cédula no esté ya en uso por otro usuario
+        conflicto = sesion.exec(select(Usuario).where(Usuario.cedula == datos_edicion.cedula)).first()
+        if conflicto:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="La cédula proporcionada ya está en uso.")
+        perfil_a_editar.cedula = datos_edicion.cedula
+    
+    # Actualizar la contraseña si se proporcionó una nueva
+    if datos_edicion.contrasena:
+        cuenta_a_editar.contrasena_hash = obtener_hash_de_contrasena(datos_edicion.contrasena)
+    
+    sesion.add(cuenta_a_editar)
+    sesion.add(perfil_a_editar)
+    sesion.commit()
+    sesion.refresh(cuenta_a_editar)
+    sesion.refresh(perfil_a_editar)
+
+    return UsuarioGestionLectura(
+        id_cuenta=cuenta_a_editar.id,
+        email=cuenta_a_editar.email,
+        nombre_completo=perfil_a_editar.nombre,
+        esta_activo=cuenta_a_editar.esta_activo
     )
 
 

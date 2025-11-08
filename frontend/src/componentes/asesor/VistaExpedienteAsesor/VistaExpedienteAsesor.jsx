@@ -89,9 +89,26 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
     setEnviandoNota(true);
     setErrorNota(null);
     try {
-      await apiCrearNotaAsesor(expedienteId, nuevaNota);
+      // 1. Capturamos la nota creada que devuelve el backend.
+      const notaCreada = await apiCrearNotaAsesor(expedienteId, nuevaNota);
       setNuevaNota("");
-      await cargarExpediente();
+      
+      // 2. Actualizamos el estado local directamente, lo que es más rápido.
+      setExpediente(prev => {
+        // Añadimos el item formateado a la línea de tiempo
+        const nuevaLineaDeTiempo = [
+          ...prev.lineaDeTiempo,
+          { ...notaCreada, tipo: 'nota', fecha: new Date(notaCreada.fecha_creacion) }
+        ].sort((a, b) => new Date(a.fecha) - new Date(b.fecha)); // Re-ordenamos
+        
+        // Devolvemos el nuevo estado del expediente completo
+        return { 
+          ...prev, 
+          lineaDeTiempo: nuevaLineaDeTiempo, 
+          notas: [...prev.notas, notaCreada] 
+        };
+      });
+
     } catch (err) {
       setErrorNota(err.message || "Error al guardar la nota.");
     } finally {
@@ -230,6 +247,8 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
                   {item.tipo === 'documento' ? (
                     <>
                       <p><strong>Documento:</strong> {item.nombre_archivo}</p>
+                     
+                      <p className={styles.autorInfo}>Subido por: {item.autor_nombre || 'No disponible'}</p>
                       <a href={`http://127.0.0.1:8000${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer" className={styles.enlaceDescarga}>Descargar</a>
                       <div className={styles.documentoEstadoContenedor}>
                         <span className={`${styles.estadoDocumento} ${styles['estado-' + item.estado.replace('_', '-')]}`}>{item.estado.replace('_', ' ')}</span>
@@ -248,9 +267,10 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
                     </>
                   ) : (
                     <>
-                      <p><strong>{item.rol_autor === 'asesor' ? 'Nota de Supervisión (Asesor):' : 'Nota del Estudiante:'}</strong></p>
+                  
+                      <p><strong>Nota de {item.autor_nombre || item.rol_autor}:</strong></p>
                       <p className={styles.contenidoNota}>{item.contenido}</p>
-                      <span className={styles.fechaNota}>{new Date(item.fecha).toLocaleString()}</span>
+                      <span className={styles.fechaNota}>Añadida el {new Date(item.fecha).toLocaleString()}</span>
                     </>
                   )}
                 </div>

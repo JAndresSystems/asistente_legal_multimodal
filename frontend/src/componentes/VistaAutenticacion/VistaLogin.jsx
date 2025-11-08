@@ -7,7 +7,7 @@
  */
 import React, { useState } from 'react';
 import './Autenticacion.css'; // Reutilizamos el mismo archivo de estilos
-
+import CampoContrasena from '../compartidos/CampoContrasena';
 const VistaLogin = ({ onLoginSubmit, onCambiarAVistaRegistro }) => {
   const [email, setEmail] = useState('');
   const [contrasena, setContrasena] = useState('');
@@ -52,9 +52,8 @@ const VistaLogin = ({ onLoginSubmit, onCambiarAVistaRegistro }) => {
 
         <div className="campo-formulario">
           <label htmlFor="contrasena-login">Contraseña</label>
-          <input
+          <CampoContrasena
             id="contrasena-login"
-            type="password"
             value={contrasena}
             onChange={(e) => setContrasena(e.target.value)}
             required

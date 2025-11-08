@@ -4,6 +4,7 @@ import React from "react";
 import { useAuth } from "../../../contextos/ContextoAutenticacion";
 import { usePanelAdministracionLogic } from "./usePanelAdministracionLogic"; // Importamos nuestro Hook
 import "./PanelAdministracion.css";
+import CampoContrasena from "../../compartidos/CampoContrasena";
 
 const PanelAdministracion = () => {
    const { usuario } = useAuth();
@@ -143,7 +144,15 @@ const {
             <h3>Crear Nuevo Personal</h3>
             <form onSubmit={handleSubmit}>
               <div className="form-grupo"><label>Email:</label><input type="email" name="email" value={nuevoPersonal.email} onChange={handleInputChange} required /></div>
-              <div className="form-grupo"><label>Contraseña:</label><input type="password" name="contrasena" value={nuevoPersonal.contrasena} onChange={handleInputChange} required /></div>
+              <div className="form-grupo">
+                <label>Contraseña:</label>
+                <CampoContrasena
+                  name="contrasena"
+                  value={nuevoPersonal.contrasena}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
               <div className="form-grupo"><label>Nombre Completo:</label><input type="text" name="nombre_completo" value={nuevoPersonal.nombre_completo} onChange={handleInputChange} required /></div>
               <div className="form-grupo">
                   <label>Área de Especialidad:</label>
@@ -209,6 +218,7 @@ const {
                     <td>{usuario.email}</td>
                     <td><span className={usuario.esta_activo ? 'estado-activo' : 'estado-inactivo'}>{usuario.esta_activo ? "Activo" : "Inactivo"}</span></td>
                     <td className="celda-acciones">
+                      <button onClick={() => handleAbrirModal(usuario)} className="boton-editar">Editar</button>
                     <button onClick={() => handleCambiarEstadoUsuario(usuario.id_cuenta)} className={usuario.esta_activo ? 'boton-desactivar' : 'boton-activar'}>{usuario.esta_activo ? "Desactivar" : "Activar"}</button>
                     </td>
                 </tr>
@@ -224,15 +234,38 @@ const {
           <div className="modal-contenido">
             <h2>Editando a: {personaAEditar.nombre_completo}</h2>
             <form onSubmit={handleSubmitEdicion}>
+              
+              {/* Campo común para ambos */}
               <div className="form-grupo"><label>Nombre Completo:</label><input type="text" name="nombre_completo" value={datosFormularioEdicion.nombre_completo} onChange={handleInputChangeModal} required /></div>
+              
+              {/* Campos específicos para PERSONAL */}
+              {personaAEditar.rol && (
+                <>
+                  <div className="form-grupo">
+                    <label>Área de Especialidad:</label>
+                    <select name="id_area_especialidad" value={datosFormularioEdicion.id_area_especialidad} onChange={handleInputChangeModal}>
+                      {listaAreas.map(area => (<option key={area.id} value={area.id}>{area.nombre}</option>))}
+                    </select>
+                  </div>
+                  <div className="form-grupo"><label>Email:</label><input type="email" name="email" value={datosFormularioEdicion.email} onChange={handleInputChangeModal} required /></div>
+                </>
+              )}
+
+              {/* Campos específicos para USUARIO */}
+              {!personaAEditar.rol && (
+                 <div className="form-grupo"><label>Cédula (dejar en blanco para no cambiar):</label><input type="text" name="cedula" value={datosFormularioEdicion.cedula} onChange={handleInputChangeModal} /></div>
+              )}
+
+              {/* Campo común para ambos */}
               <div className="form-grupo">
-                <label>Área de Especialidad:</label>
-                <select name="id_area_especialidad" value={datosFormularioEdicion.id_area_especialidad} onChange={handleInputChangeModal}>
-                  {listaAreas.map(area => (<option key={area.id} value={area.id}>{area.nombre}</option>))}
-                </select>
+                <label>Nueva Contraseña (dejar en blanco para no cambiar):</label>
+                <CampoContrasena
+                  name="contrasena"
+                  value={datosFormularioEdicion.contrasena}
+                  onChange={handleInputChangeModal}
+                />
               </div>
-              <div className="form-grupo"><label>Email:</label><input type="email" name="email" value={datosFormularioEdicion.email} onChange={handleInputChangeModal} required /></div>
-              <div className="form-grupo"><label>Nueva Contraseña (dejar en blanco para no cambiar):</label><input type="password" name="contrasena" value={datosFormularioEdicion.contrasena} onChange={handleInputChangeModal} /></div>
+              
               <div className="modal-acciones">
                 <button type="submit" className="boton-guardar">Guardar Cambios</button>
                 <button type="button" onClick={handleCerrarModal}>Cancelar</button>

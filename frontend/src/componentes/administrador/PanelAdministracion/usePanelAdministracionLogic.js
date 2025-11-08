@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import {
   apiObtenerPersonal, apiCrearPersonal, apiCambiarEstadoCuenta, apiEditarPersonal, apiEliminarPersonal,
   apiObtenerAreas, apiCrearArea, apiEditarArea, apiEliminarArea,
-  apiObtenerUsuarios, apiCambiarEstadoCuentaUsuario,apiAsignarSupervisor
+  apiObtenerUsuarios, apiCambiarEstadoCuentaUsuario,apiAsignarSupervisor,apiEditarUsuario
 } from "../../../servicios/api/administrador";
 
 // Este es nuestro Hook Personalizado. Empieza con "use" por convención.
@@ -17,7 +17,7 @@ export const usePanelAdministracionLogic = () => {
   const [areaAEditar, setAreaAEditar] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [personaAEditar, setPersonaAEditar] = useState(null);
-  const [datosFormularioEdicion, setDatosFormularioEdicion] = useState({ nombre_completo: "", id_area_especialidad: "", email: "", contrasena: "" });
+  const [datosFormularioEdicion, setDatosFormularioEdicion] = useState({ nombre_completo: "", id_area_especialidad: "", email: "", contrasena: "", cedula: "" });
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [asesorSeleccionadoId, setAsesorSeleccionadoId] = useState("");
@@ -120,23 +120,32 @@ export const usePanelAdministracionLogic = () => {
   
   
   
-    const handleAbrirModal = (persona) => {
-      setPersonaAEditar(persona);
-      
-      // Buscamos el objeto 'area' completo que corresponde al nombre del área de la persona.
-      const areaActual = listaAreas.find(area => area.nombre === persona.area_especialidad);
-      // Obtenemos su ID. Si no lo encontramos, dejamos el campo vacío.
-      const idAreaActual = areaActual ? areaActual.id : "";
-  
-      setDatosFormularioEdicion({
-        nombre_completo: persona.nombre_completo,
-        // Usamos el ID que acabamos de encontrar para inicializar el formulario.
-        id_area_especialidad: idAreaActual,
-        email: persona.email,
-        contrasena: "", 
-      });
-      setModalVisible(true);
-    };
+    const handleAbrirModal = (entidad) => {
+    setPersonaAEditar(entidad);
+    // Verificamos si la entidad es personal (tiene 'rol') o usuario
+    if (entidad.rol) { // Es personal
+        const areaActual = listaAreas.find(area => area.nombre === entidad.area_especialidad);
+        const idAreaActual = areaActual ? areaActual.id : "";
+        setDatosFormularioEdicion({
+            nombre_completo: entidad.nombre_completo,
+            id_area_especialidad: idAreaActual,
+            email: entidad.email,
+            contrasena: "",
+            cedula: "", // Limpiamos por si acaso
+        });
+    } else { // Es usuario
+        // NOTA: El backend actualmente no nos devuelve la cédula en la lista.
+        // El campo aparecerá vacío, listo para ser modificado.
+        setDatosFormularioEdicion({
+            nombre_completo: entidad.nombre_completo,
+            email: entidad.email,
+            cedula: "", // El admin deberá ingresarla para modificarla
+            contrasena: "",
+            id_area_especialidad: "" // Limpiamos por si acaso
+        });
+    }
+    setModalVisible(true);
+  };
   
     const handleCerrarModal = () => {
       setModalVisible(false);
@@ -149,27 +158,40 @@ export const usePanelAdministracionLogic = () => {
     };
   
     const handleSubmitEdicion = async (e) => {
-      e.preventDefault();
-      
-      // Preparamos los datos: solo enviamos los campos que tienen valor.
-      // Si la contraseña está vacía, no se envía, y el backend no la cambiará.
-      const datosParaEnviar = { ...datosFormularioEdicion };
-      if (!datosParaEnviar.contrasena) {
-        delete datosParaEnviar.contrasena;
-      }
-  
-      try {
+    e.preventDefault();
+    
+    // Preparamos los datos, eliminando campos vacíos que no se deben enviar
+    const datosParaEnviar = { ...datosFormularioEdicion };
+    if (!datosParaEnviar.contrasena) delete datosParaEnviar.contrasena;
+
+    try {
         setError(null);
-        const perfilActualizado = await apiEditarPersonal(personaAEditar.id_cuenta, datosParaEnviar);
-        setListaPersonal(listaPersonal.map(p => (p.id_cuenta === personaAEditar.id_cuenta ? perfilActualizado : p)));
-        alert("Personal actualizado exitosamente.");
+        // Si la persona a editar tiene un ROL, es personal del sistema
+        if (personaAEditar.rol) {
+            delete datosParaEnviar.cedula; // No se envía cédula para el personal
+            const perfilActualizado = await apiEditarPersonal(personaAEditar.id_cuenta, datosParaEnviar);
+            setListaPersonal(listaPersonal.map(p => (p.id_cuenta === personaAEditar.id_cuenta ? perfilActualizado : p)));
+            alert("Personal actualizado exitosamente.");
+        } else { // Si no tiene ROL, es un usuario ciudadano
+            const datosUsuario = {
+                nombre: datosFormularioEdicion.nombre_completo,
+                cedula: datosFormularioEdicion.cedula,
+                contrasena: datosFormularioEdicion.contrasena
+            }
+            // Limpiamos campos vacíos para no enviar data innecesaria
+            if (!datosUsuario.cedula) delete datosUsuario.cedula;
+            if (!datosUsuario.contrasena) delete datosUsuario.contrasena;
+
+            const usuarioActualizado = await apiEditarUsuario(personaAEditar.id_cuenta, datosUsuario);
+            setListaUsuarios(listaUsuarios.map(u => (u.id_cuenta === personaAEditar.id_cuenta ? usuarioActualizado : u)));
+            alert("Usuario actualizado exitosamente.");
+        }
         handleCerrarModal();
-      } catch (error) {
-        // Idealmente, mostraríamos este error dentro del modal
+    } catch (error) {
         alert(`Error al actualizar: ${error.message}`);
         setError(error.message);
-      }
-    };
+    }
+  };
   
     const handleEliminar = async (idCuenta) => {
       if (!confirm("¡ADVERTENCIA!\n¿Está seguro de que desea ELIMINAR permanentemente esta cuenta?\nEsta acción no se puede deshacer.")) {
@@ -310,7 +332,7 @@ export const usePanelAdministracionLogic = () => {
   };
 
 
- return {
+return {
     listaPersonal, listaAreas, listaUsuarios, nuevoPersonal, nuevaAreaNombre,
     setNuevaAreaNombre, areaAEditar, setAreaAEditar, modalVisible, personaAEditar,
     datosFormularioEdicion, cargando, error, setError,
@@ -318,12 +340,8 @@ export const usePanelAdministracionLogic = () => {
     handleCerrarModal, handleInputChangeModal, handleSubmitEdicion,
     handleEliminar, handleCrearArea, handleEliminarArea, handleIniciarEdicionArea,
     handleCancelarEdicionArea, handleGuardarEdicionArea, handleCambiarEstadoUsuario,
-    // --- 4. EXPORTAMOS LO NUEVO ---
-    asesorSeleccionadoId,
-    estudiantesSeleccionadosIds,
-    handleAsesorChange,
-    handleEstudianteCheckboxChange,
-    handleGuardarAsignacion,
+    asesorSeleccionadoId, estudiantesSeleccionadosIds, handleAsesorChange,
+    handleEstudianteCheckboxChange, handleGuardarAsignacion,
   };
 };
 

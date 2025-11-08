@@ -361,6 +361,17 @@ class UsuarioGestionLectura(SQLModel):
     esta_activo: bool
 
 
+class UsuarioEdicion(SQLModel):
+    """
+    Modelo para validar los datos que envía el administrador para editar
+    una cuenta de usuario (ciudadano). Todos los campos son opcionales.
+    """
+    nombre: Optional[str] = None
+    cedula: Optional[str] = None
+    contrasena: Optional[str] = None
+
+
+
 class PersonalEdicion(SQLModel):
     """
     Modelo para validar los datos que envia el administrador para editar

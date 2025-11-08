@@ -7,6 +7,7 @@
  */
 import React, { useState } from 'react';
 import './Autenticacion.css'; // Crearemos este archivo de estilos a continuacion
+import CampoContrasena from '../compartidos/CampoContrasena';
 
 const VistaRegistro = ({ onRegistroSubmit, onCambiarAVistaLogin }) => {
   const [nombre, setNombre] = useState('');
@@ -78,16 +79,15 @@ const manejarRegistro = async (e) => {
         </div>
 
         <div className="campo-formulario">
-          <label htmlFor="contrasena">Contraseña</label>
-          <input
-            id="contrasena"
-            type="password"
-            value={contrasena}
-            onChange={(e) => setContrasena(e.target.value)}
-            required
-            disabled={estaProcesando}
-          />
-        </div>
+            <label htmlFor="contrasena">Contraseña</label>
+            <CampoContrasena
+              id="contrasena"
+              value={contrasena}
+              onChange={(e) => setContrasena(e.target.value)}
+              required
+              disabled={estaProcesando}
+            />
+          </div>
 
         <button type="submit" disabled={estaProcesando} className="boton-principal">
           {estaProcesando ? 'Registrando...' : 'Crear Cuenta'}

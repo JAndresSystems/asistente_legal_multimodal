@@ -139,6 +139,24 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
     }
     setEstaProcesando(false);
   };
+
+
+
+  /**
+   * Elimina un archivo de la lista de archivos para subir.
+   * @param {number} indiceAEliminar - El índice del archivo a eliminar en el array 'archivosParaSubir'.
+   */
+  const manejarEliminarArchivo = (indiceAEliminar) => {
+    // Si el archivo a eliminar es un audio grabado, también limpiamos la URL del audio.
+    const archivo = archivosParaSubir[indiceAEliminar];
+    if (archivo.name.startsWith('grabacion-') && audioUrl) {
+      setAudioUrl(null);
+    }
+    
+    setArchivosParaSubir(anteriores => 
+      anteriores.filter((_, indice) => indice !== indiceAEliminar)
+    );
+  };
   
   const manejarClickSugerencia = (texto) => { manejarEnvioUnificado(texto); };
 
@@ -198,6 +216,7 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
     textareaRef,
     manejarEnvioUnificado,
     manejarClickSugerencia,
+    manejarEliminarArchivo,
     iniciarGrabacion,
     detenerGrabacion,
     obtenerPlaceholder

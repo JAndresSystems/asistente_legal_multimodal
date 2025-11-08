@@ -252,6 +252,30 @@ export const apiCambiarEstadoCuentaUsuario = async (idCuenta) => {
 
 
 
+
+/**
+ * Llama al endpoint para actualizar los datos de una cuenta de usuario (ciudadano).
+ * @param {number} idCuenta - El ID de la cuenta a modificar.
+ * @param {Object} datosEdicion - Un objeto con los campos a actualizar (nombre, cedula, contrasena).
+ * @returns {Promise<Object>} Una promesa que se resuelve con los datos actualizados del usuario.
+ */
+export const apiEditarUsuario = async (idCuenta, datosEdicion) => {
+  const respuesta = await fetch(
+    `${URL_BASE_BACKEND}/api/administrador/usuarios/${idCuenta}`,
+    {
+      method: "PUT",
+      headers: obtenerCabeceras(),
+      body: JSON.stringify(datosEdicion),
+    }
+  );
+
+  if (!respuesta.ok) {
+    const error = await respuesta.json();
+    throw new Error(error.detail || "Error al editar la cuenta del usuario.");
+  }
+  return respuesta.json();
+};
+
 /**
  * Llama al endpoint para asignar o actualizar la lista de estudiantes supervisados por un asesor.
  * @param {Object} asignacion - El objeto con los datos de la asignación.
