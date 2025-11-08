@@ -24,7 +24,10 @@ redis==5.0.4
 langchain==0.2.5
 langchain-core==0.2.8
 langchain-google-genai==1.0.6
-google-generativeai==0.7.1
+# =====================================================================
+# CORRECCIÓN CLAVE: Ajustamos la versión para resolver el conflicto.
+# =====================================================================
+google-generativeai==0.5.4
 langgraph==0.1.1
 chromadb==0.5.3
 pypdf==4.2.0
