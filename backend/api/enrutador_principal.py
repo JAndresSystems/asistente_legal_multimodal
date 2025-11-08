@@ -1,11 +1,14 @@
 # C:\react\asistente_legal_multimodal\backend\api\enrutador_principal.py
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends,status 
 from sqlmodel import Session
 
 # Importaciones mínimas necesarias para las funciones que quedan
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import PreguntaChat, RespuestaChat, Evidencia
 from ..agentes.agente_atencion import grafo_atencion_compilado
+
+
+
 
 
 
@@ -46,6 +49,13 @@ def obtener_estado_de_evidencia(id_evidencia: int, sesion: Session = Depends(obt
     return evidencia
 
 
+
+@router_chat.get("/healthcheck", status_code=status.HTTP_200_OK)
+def health_check():
+    """
+    Endpoint simple para que Render verifique que el servicio está vivo.
+    """
+    return {"status": "ok"}
 
 
 

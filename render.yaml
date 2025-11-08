@@ -1,0 +1,82 @@
+# render.yaml - Blueprint para el Asistente Legal Multimodal
+
+services:
+  # 1. La Base de Datos PostgreSQL
+  - name: asistente-legal-db
+    type: psql
+    psqlVersion: 15
+
+  # 2. El Broker de Mensajes Redis para Celery
+  - name: asistente-legal-redis
+    type: redis
+
+  # 3. El Backend (API con FastAPI)
+  - name: asistente-legal-backend
+    type: web
+    env: python
+    rootDir: ./backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:aplicacion --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /api/chat/healthcheck # Añadiremos este endpoint para que Render sepa si la API está viva
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: psql
+          name: asistente-legal-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: asistente-legal-redis
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.11.5
+      - key: CORS_ORIGINS # IMPORTANTE: Lo llenaremos en el Paso 5
+        value: "" 
+      - key: GOOGLE_API_KEY
+        sync: false # Lo añadiremos manualmente en el dashboard de Render
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+
+  # 4. El Worker de Celery para Tareas Asíncronas
+  - name: celery-worker
+    type: worker
+    env: python
+    rootDir: ./backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A tareas.celery_app worker --loglevel=info"
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: psql
+          name: asistente-legal-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: asistente-legal-redis
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.11.5
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+
+  # 5. El Frontend (Sitio Estático con React+Vite)
+  - name: asistente-legal-frontend
+    type: static
+    rootDir: ./frontend
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_URL_BASE_BACKEND # IMPORTANTE: Lo llenaremos en el Paso 5
+        value: ""

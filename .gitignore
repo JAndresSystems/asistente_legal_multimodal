@@ -43,7 +43,7 @@ yarn-error.log*
 # ¡CORREGIDO! Ignoramos la carpeta de la raíz Y la que está dentro del backend.
 /archivos_subidos/
 ./archivos_subidos/
-/backend/archivos_subidos/
+backend/archivos_subidos/
 
 
 # =============================================================================
@@ -61,4 +61,11 @@ Thumbs.db
 .idea/
 
 # Archivos de configuración de seguridad
-backend\seguridad\jwt_manager.py
+#backend\seguridad\jwt_manager.py
+
+# Archivo de secretos del Backend
+backend/.env
+
+# Dependencias de Python
+backend/__pycache__/
+backend/venv/

@@ -5,7 +5,6 @@ from typing import List,Dict
 
 
 
-
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import (
     Cuenta,
