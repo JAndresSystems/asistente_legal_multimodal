@@ -1,9 +1,9 @@
-# render.yaml - Blueprint para el Asistente Legal Multimodal
+# render.yaml - Blueprint para el Asistente Legal Multimodal (Versión Corregida)
 
 services:
   # 1. La Base de Datos PostgreSQL
   - name: asistente-legal-db
-    type: psql
+    type: postgres # <-- CORRECCIÓN: Cambiado de "psql" a "postgres"
     psqlVersion: 15
 
   # 2. El Broker de Mensajes Redis para Celery
@@ -17,11 +17,11 @@ services:
     rootDir: ./backend
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn main:aplicacion --host 0.0.0.0 --port $PORT"
-    healthCheckPath: /api/chat/healthcheck # Añadiremos este endpoint para que Render sepa si la API está viva
+    healthCheckPath: /api/chat/healthcheck
     envVars:
       - key: DATABASE_URL
         fromService:
-          type: psql
+          type: postgres # <-- CORRECCIÓN: Cambiado de "psql" a "postgres"
           name: asistente-legal-db
           property: connectionString
       - key: REDIS_URL
@@ -31,10 +31,10 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: 3.11.5
-      - key: CORS_ORIGINS # IMPORTANTE: Lo llenaremos en el Paso 5
+      - key: CORS_ORIGINS
         value: "" 
       - key: GOOGLE_API_KEY
-        sync: false # Lo añadiremos manualmente en el dashboard de Render
+        sync: false
       - key: JWT_SECRET_KEY
         sync: false
       - key: RESEND_API_KEY
@@ -50,7 +50,7 @@ services:
     envVars:
       - key: DATABASE_URL
         fromService:
-          type: psql
+          type: postgres # <-- CORRECCIÓN: Cambiado de "psql" a "postgres"
           name: asistente-legal-db
           property: connectionString
       - key: REDIS_URL
@@ -78,5 +78,5 @@ services:
         source: /*
         destination: /index.html
     envVars:
-      - key: VITE_URL_BASE_BACKEND # IMPORTANTE: Lo llenaremos en el Paso 5
+      - key: VITE_URL_BASE_BACKEND
         value: ""
