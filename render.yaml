@@ -36,7 +36,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.5
       - key: CORS_ORIGINS
-        value: "" 
+        value: "https://{{ .Service.asistente-legal-frontend.Hostname }},http://localhost:5173,http://127.0.0.1:5173"  # URL dinámica del frontend + orígenes locales para desarrollo
       - key: GOOGLE_API_KEY
         sync: false
       - key: JWT_SECRET_KEY
@@ -84,4 +84,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_URL_BASE_BACKEND
-        value: ""
+        value: "https://{{ .Service.asistente-legal-backend.Hostname }}"  # URL dinámica del backend (sin / al final; ajústalo en el código si es necesario)
