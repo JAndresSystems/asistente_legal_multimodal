@@ -1,36 +1,33 @@
-# render.yaml - Blueprint para el Asistente Legal Multimodal (Versión Estructuralmente Correcta)
-# ================================================================
-# CAMBIO ESTRUCTURAL: Las bases de datos se definen aquí, fuera de "services".
-# ================================================================
+# render.yaml - Blueprint para Despliegue Completo (con Worker Activo)
+
 databases:
   - name: asistente-legal-db
-    databaseName: asistente_legal_db # Nombre interno de la BD
+    databaseName: asistente_legal_db
     user: asistente_legal_user
-# ================================================================
-# Los servicios de la aplicación (backend, worker, frontend) van aquí.
-# Redis/KeyValue se mueve a 'services' con tipo correcto.
-# ================================================================
+    plan: free # Plan gratuito para la BD
+
 services:
-  # Redis/KeyValue Store (movid de 'previews' a aquí)
+  # Redis/KeyValue Store
   - name: asistente-legal-redis
     type: keyvalue
-    ipAllowList: []  # Bloquea acceso externo; ajusta según necesites (e.g., ['0.0.0.0/0'] para acceso total)
+    ipAllowList: []
+    plan: free # Plan gratuito para Redis
+
   # 1. El Backend (API con FastAPI)
   - name: asistente-legal-backend
     type: web
-    runtime: python  # O usa 'env: python' si prefieres el campo deprecated
+    runtime: python
     rootDir: ./backend
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn main:aplicacion --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/chat/healthcheck
+    plan: free # Plan gratuito para el servicio web
     envVars:
       - key: DATABASE_URL
-        # AHORA SE USA 'fromDatabase' para referenciar la BD
         fromDatabase:
           name: asistente-legal-db
           property: connectionString
       - key: REDIS_URL
-        # USA 'fromService' para referenciar KeyValue/Redis (no 'fromPreview')
         fromService:
           name: asistente-legal-redis
           type: keyvalue
@@ -45,13 +42,17 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
-  # 2. El Worker de Celery para Tareas Asíncronas
+
+  # =====================================================================
+  # WORKER DE CELERY ACTIVADO EN EL PLAN DE PAGO MÁS BAJO
+  # =====================================================================
   - name: celery-worker
     type: worker
-    runtime: python  # O usa 'env: python'
+    runtime: python
     rootDir: ./backend
     buildCommand: "pip install -r requirements.txt"
     startCommand: "celery -A tareas.celery_app worker --loglevel=info"
+    plan: starter # <-- IMPORTANTE: Activamos el plan de pago "Starter" ($7/mes)
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -70,10 +71,12 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+  # =====================================================================
+
   # 3. El Frontend (Sitio Estático con React+Vite)
   - name: asistente-legal-frontend
-    type: web  # Corregido: usa 'web' en lugar de 'static'
-    runtime: static  # Especifica 'static' aquí para sitios estáticos
+    type: web
+    runtime: static
     rootDir: ./frontend
     buildCommand: "npm install && npm run build"
     staticPublishPath: dist
