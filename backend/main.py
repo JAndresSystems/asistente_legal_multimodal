@@ -1,14 +1,11 @@
-# backend/main.py
-
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import os 
 
 from . import base_de_datos
 
-# --- INICIO DE LA MODIFICACIÓN ---
-# Importamos los routers desde sus nuevos módulos
 from .api.enrutador_autenticacion import router_auth
 from .api.enrutador_principal import router_chat, router_evidencias
 from .api.enrutador_agentes import router_agentes
@@ -20,6 +17,13 @@ from .api.enrutador_estudiante import router as router_estudiante
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("INFO:     Iniciando la aplicación...")
+    
+    # ---  Crear el directorio de subidas si no existe ---
+    print("SETUP-FILES: Verificando y creando el directorio para archivos subidos...")
+    os.makedirs("backend/archivos_subidos", exist_ok=True)
+    print("SETUP-FILES: Directorio 'backend/archivos_subidos' listo.")
+   
+
     base_de_datos.inicializar_base_de_datos()
     yield
     print("INFO:     Apagando la aplicación...")
@@ -30,6 +34,7 @@ aplicacion = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
 
 aplicacion.mount("/archivos_subidos", StaticFiles(directory="backend/archivos_subidos"), name="archivos")
 
