@@ -84,4 +84,6 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_URL_BASE_BACKEND
-        value: "https://{{ .Service.asistente-legal-backend.Hostname }}"  # URL dinámica del backend (sin / al final; ajústalo en el código si es necesario)
+        # CORREGIDO: Se usa el hostname público REAL del backend en Render.
+        # Esto asegura que Vite resuelva la variable correctamente durante el build.
+        value: "https://asistente-legal-backend-71ft.onrender.com"
