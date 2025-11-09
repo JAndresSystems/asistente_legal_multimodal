@@ -1,6 +1,6 @@
 # ========================================================
 # Archivo de Requerimientos para Asistente Legal Multimodal
-# Versiones fijadas para un despliegue estable en Render
+# Versión final con ChromaDB fijado para resolver error de schema
 # ========================================================
 
 # --- Framework Principal ---
@@ -24,12 +24,12 @@ redis==5.0.4
 langchain==0.2.5
 langchain-core==0.2.8
 langchain-google-genai==1.0.6
-# =====================================================================
-# CORRECCIÓN CLAVE: Ajustamos la versión para resolver el conflicto.
-# =====================================================================
 google-generativeai==0.5.4
 langgraph==0.1.1
-chromadb==0.4.24
+# =====================================================================
+# CORRECCIÓN CLAVE: Fijamos la versión de ChromaDB a una más moderna y estable.
+# =====================================================================
+chromadb==0.5.3
 pypdf==4.2.0
 
 # --- Utilidades ---
