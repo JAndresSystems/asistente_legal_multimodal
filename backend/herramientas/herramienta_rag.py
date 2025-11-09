@@ -33,8 +33,22 @@ def buscar_en_base_de_conocimiento(consulta: str, n_resultados: int = 5) -> List
             n_results=n_resultados
         )
         
+        print(f"--- [HERRAMIENTA RAG] Resultados raw de ChromaDB: {resultados}") # Línea de debug opcional, puedes quitarla luego
+        
         # 4. Extraemos y devolvemos solo el texto de los documentos encontrados.
-        documentos_encontrados = resultados['documents'][0] if resultados['documents'] else []
+        # CORRECCIÓN: Verificamos si 'documents' es una lista y si tiene elementos antes de acceder a [0].
+        # ChromaDB puede devolver {'documents': [], 'metadatas': [], ...} si no hay resultados,
+        # o {'documents': [['doc1', 'doc2']], ...} si hay resultados.
+        documentos_encontrados = []
+        if isinstance(resultados, dict) and 'documents' in resultados:
+            docs_lista = resultados['documents']
+            if docs_lista and len(docs_lista) > 0 and isinstance(docs_lista[0], list):
+                 # Asumiendo que docs_lista[0] contiene los documentos reales
+                 documentos_encontrados = docs_lista[0] # Accedemos al primer (y único) subconjunto de resultados
+            # Si docs_lista está vacío o no es una lista de listas, documentos_encontrados sigue siendo []
+        else:
+            # Si resultados no es un dict o no tiene 'documents', devolvemos lista vacía
+            print("--- [HERRAMIENTA RAG] Advertencia: La respuesta de ChromaDB no tiene el formato esperado.")
         
         print(f"--- [HERRAMIENTA RAG] Se encontraron {len(documentos_encontrados)} fragmentos relevantes.")
         
