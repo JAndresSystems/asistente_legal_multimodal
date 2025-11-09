@@ -43,11 +43,38 @@ def obtener_almacen_de_vectores():
     # 3. Obtener (o crear si no existe) nuestra colección de vectores.
     coleccion = cliente_chroma.get_or_create_collection(name=NOMBRE_DE_LA_COLECCION)
 
+    # --- INICIO DE LA NUEVA LOGICA: Ingesta inicial si la colección está vacía ---
+    conteo_docs = coleccion.count()
+    print(f">>> Colección '{NOMBRE_DE_LA_COLECCION}' contiene {conteo_docs} documentos.")
+    if conteo_docs == 0:
+        print(">>> La colección está vacía. Iniciando proceso de ingestión automática...")
+        try:
+            # Importar el script de ingestión de forma local
+            # Se hace dentro del if para no importarlo si no es necesario
+            from .scripts import ingerir_documentos # Usamos import relativo
+            # Llamamos a la función principal del script
+            ingerir_documentos.main()
+            print(">>> Proceso de ingestión automática completado.")
+            # Volvemos a obtener la colección después de la ingestión
+            # por si acaso el proceso de ingestión la manipuló de forma diferente
+            coleccion = cliente_chroma.get_or_create_collection(name=NOMBRE_DE_LA_COLECCION)
+            print(f">>> Tras la ingestión, la colección '{NOMBRE_DE_LA_COLECCION}' contiene {coleccion.count()} documentos.")
+        except ImportError as e:
+            print(f">>> ERROR: No se pudo importar el script de ingestión: {e}")
+            print(">>> Asegúrese de que el archivo 'backend/scripts/ingestar_documentos.py' y la función 'main()' existan.")
+            raise
+        except Exception as e:
+            print(f">>> ERROR durante la ingestión automática: {e}")
+            raise # Relanzamos la excepción para que el backend falle si la ingestión falla critica y necesariamente
+    else:
+        print(f">>> Colección '{NOMBRE_DE_LA_COLECCION}' ya tiene datos. Saltando ingestión inicial.")
+    # --- FIN DE LA NUEVA LOGICA ---
+
     print(">>> INICIALIZACIÓN COMPLETADA.")
 
     _singleton_instances["vector_store"] = {
         "cliente": cliente_chroma,
-        "coleccion": coleccion,
+        "coleccion": coleccion, # Devolvemos la colección, ya sea vacía o llena
     }
     return _singleton_instances["vector_store"]
 
