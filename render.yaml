@@ -20,7 +20,7 @@ services:
     # Se elimina 'rootDir' para que los comandos se ejecuten desde la raíz del proyecto.
     # Esto es NECESARIO para que las importaciones relativas y las rutas de archivos funcionen.
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
+    startCommand: "rm -rf chroma_db_data && uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/chat/healthcheck
     plan: free
     envVars:
