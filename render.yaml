@@ -1,4 +1,4 @@
-# render.yaml 
+# render.yaml - Versión Final que combina las URLs hardcodeadas y la ingesta en el Build
 
 databases:
   - name: asistente-legal-db
@@ -17,10 +17,15 @@ services:
   - name: asistente-legal-backend
     type: web
     runtime: python
-    # Se elimina 'rootDir' para que los comandos se ejecuten desde la raíz del proyecto.
-    # Esto es NECESARIO para que las importaciones relativas y las rutas de archivos funcionen.
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "rm -rf chroma_db_data && uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
+    # =====================================================================
+    # CORRECCIÓN #1: La ingesta de la base de datos vectorial se mueve aquí.
+    # Esto se ejecuta UNA SOLA VEZ por despliegue.
+    # =====================================================================
+    buildCommand: "pip install -r requirements.txt && python -m backend.scripts.ingestar_documentos"
+    # =====================================================================
+    # CORRECCIÓN #2: El startCommand ahora solo arranca el servidor. Ya no borra nada.
+    # =====================================================================
+    startCommand: "uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/chat/healthcheck
     plan: free
     envVars:
@@ -35,10 +40,9 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: 3.11.5
+      # SU CORRECCIÓN (Correcta): Las URLs se definen directamente aquí.
       - key: CORS_ORIGINS
-        # CORREGIDO: Se usa el hostname público REAL del frontend en Render, sin espacios.
-        # Esto asegura que FastAPI reciba la URL correcta para CORS.
-        value: "http://localhost:5173,http://127.0.0.1:5173,https://asistente-legal-frontend-8n9i.onrender.com" # <-- Espacios eliminados
+        value: "http://localhost:5173,http://127.0.0.1:5173,https://asistente-legal-frontend-8n9i.onrender.com"
       - key: GOOGLE_API_KEY
         sync: false
       - key: JWT_SECRET_KEY
@@ -50,8 +54,8 @@ services:
   - name: celery-worker
     type: worker
     runtime: python
-    # Se elimina 'rootDir' aquí también por la misma razón.
-    buildCommand: "pip install -r requirements.txt"
+    # El worker también necesita el buildCommand para tener el mismo entorno.
+    buildCommand: "pip install -r requirements.txt && python -m backend.scripts.ingestar_documentos"
     startCommand: "celery -A backend.tareas.celery_app worker --loglevel=info"
     plan: starter
     envVars:
@@ -85,7 +89,6 @@ services:
         source: /*
         destination: /index.html
     envVars:
+      # SU CORRECCIÓN (Correcta): La URL del backend se define directamente aquí.
       - key: VITE_URL_BASE_BACKEND
-        # CORREGIDO: Se usa el hostname público REAL del backend en Render, sin espacios.
-        # Esto asegura que Vite resuelva la variable correctamente durante el build.
-        value: "https://asistente-legal-backend-71ft.onrender.com" # <-- Espacios eliminados
+        value: "https://asistente-legal-backend-71ft.onrender.com"
