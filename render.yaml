@@ -39,12 +39,9 @@ services:
     # Tambien ejecutamos la ingestión inicial aquí, justo antes de uvicorn.
     # Usamos '&&' para que los comandos se ejecuten en secuencia.
     # Primero eliminamos la carpeta persistente.
-    # Luego, ejecutamos el script de ingestión si es necesario (esto se hará dentro de la aplicación o con un script separado si es muy largo).
+    # Luego, ejecutamos el script de ingestión SIEMPRE (esto debería ser seguro ahora que es autónomo).
     # Finalmente, iniciamos uvicorn.
-    # OPCIÓN 1: Ejecutar ingestión aquí (más limpio para Render, pero puede alargar el tiempo de inicio si hay muchos docs).
-    # startCommand: "rm -rf chroma_db_data && python -m backend.scripts.ingestar_documentos && uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
-    # OPCIÓN 2: Eliminar carpeta y dejar que la aplicación se encargue de la ingestión en su lifespan (como hiciste antes).
-    startCommand: "rm -rf chroma_db_data && uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT" # Esta es la opción que elegiste anteriormente
+    startCommand: "rm -rf chroma_db_data && python -m backend.scripts.ingestar_documentos && uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/chat/healthcheck
     plan: free
     envVars:
@@ -64,6 +61,7 @@ services:
       # CORRECCIÓN #4: Usar la URL dinámica del frontend de Render
       - key: CORS_ORIGINS
         # El valor ahora es una cadena con URLs separadas por comas
+        # Usamos la plantilla de Render para obtener la URL del frontend
         value: "https://{{ .Service.asistente-legal-frontend.Hostname }},http://localhost:5173,http://127.0.0.1:5173" # URL dinámica del frontend + locales para desarrollo
 
   # 2. El Worker de Celery para Tareas Asíncronas
@@ -73,10 +71,13 @@ services:
     # Se elimina 'rootDir' aquí también por la misma razón.
     buildCommand: "pip install -r requirements.txt"
     # CORRECCIÓN #2 para Worker: Asegurarse de eliminar la carpeta de persistencia ANTES de iniciar el worker (si el worker también usa ChromaDB).
-    # Tambien ejecutamos la ingestión inicial aquí si el worker la necesita (menos común).
+    # Tambien ejecutamos la ingestión inicial aquí SIEMPRE (si el worker la necesita, aunque es menos común).
     # startCommand: "rm -rf chroma_db_data && python -m backend.scripts.ingestar_documentos && celery -A backend.tareas.celery_app worker --loglevel=info"
     # OPCIÓN 2: Eliminar carpeta y dejar que el worker inicie normalmente (si no usa ChromaDB directamente o lo inicializa como el backend).
-    startCommand: "rm -rf chroma_db_data && celery -A backend.tareas.celery_app worker --loglevel=info"
+    # Dado que el worker también podría necesitar acceder a la base de datos vectorial si procesa tareas que la usan,
+    # es seguro eliminar la carpeta aquí tambien, pero el worker no debería intentar usarla antes de que el backend la llene.
+    # Para evitar problemas, no eliminamos la carpeta ni ejecutamos ingestión en el worker a menos que sea absolutamente necesario.
+    startCommand: "celery -A backend.tareas.celery_app worker --loglevel=info"
     plan: starter
     envVars:
       # CORRECCIÓN #3: Referenciamos el grupo de secretos aquí también.
@@ -107,4 +108,8 @@ services:
     envVars:
       - key: VITE_URL_BASE_BACKEND
         # CORRECCIÓN #5: Usar la URL dinámica del backend de Render
-        value: "https://{{ .Service.asistente-legal-backend.Hostname }}" # URL dinámica del backend
+        # Render NO resuelve plantillas .Service... en envVars de servicios 'static' durante el build.
+        # Por lo tanto, DEBEMOS usar la URL FÍSICA real del backend aquí.
+        # Reemplaza 'asistente-legal-backend-71ft.onrender.com' con la URL REAL de TU backend en Render.
+        # Puedes encontrarla en la página de tu servicio backend en Render.
+        value: "https://asistente-legal-backend-71ft.onrender.com" # URL FÍSICA del backend en Render
