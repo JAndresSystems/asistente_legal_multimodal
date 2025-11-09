@@ -104,18 +104,22 @@ def main():
     """
     print("\n--- INICIANDO PROCESO DE INGESTA DE DOCUMENTOS (Script Autonomo) ---")
 
-    # 1. Inicializar ChromaDB localmente para este script
+    # 1. Asegurarse de que el directorio persistente exista
+    # (Aunque el backend lo borra, el script también puede crearlo por si acaso)
+    os.makedirs(DIRECTORIO_PERSISTENTE_LOCAL, exist_ok=True)
+
+    # 2. Inicializar ChromaDB localmente para este script
     cliente_chroma_local = chromadb.PersistentClient(path=DIRECTORIO_PERSISTENTE_LOCAL)
     coleccion_local = cliente_chroma_local.get_or_create_collection(name=NOMBRE_DE_LA_COLECCION_LOCAL)
     print(f">>> Conectado a la colección '{NOMBRE_DE_LA_COLECCION_LOCAL}' para ingestión.")
 
-    # 2. Cargar y leer todos los documentos de la base de conocimiento
+    # 3. Cargar y leer todos los documentos de la base de conocimiento
     documentos_leidos = cargar_documentos_local(DIRECTORIO_BASE_CONOCIMIENTO_LOCAL)
 
-    # 3. Dividir los documentos en fragmentos manejables
+    # 4. Dividir los documentos en fragmentos manejables
     fragmentos = dividir_texto_en_fragmentos_local(documentos_leidos)
 
-    # 4. Procesar y guardar en ChromaDB en lotes para eficiencia
+    # 5. Procesar y guardar en ChromaDB en lotes para eficiencia
     print("\nGenerando embeddings y guardando en ChromaDB local... (esto puede tardar unos minutos)")
     batch_size = 100
     total_fragmentos = len(fragmentos)
@@ -131,6 +135,9 @@ def main():
         embeddings_lote = [generar_embedding_local(texto) for texto in textos_lote]
 
         # Añadimos el lote a la colección LOCAL de ChromaDB
+        # CORRECCIÓN: Asegurarnos de que las longitudes de las listas coincidan
+        assert len(ids) == len(embeddings_lote) == len(textos_lote) == len(metadatas_lote), \
+            f"Longitudes no coinciden: ids:{len(ids)}, emb:{len(embeddings_lote)}, txt:{len(textos_lote)}, meta:{len(metadatas_lote)}"
         coleccion_local.add(
             embeddings=embeddings_lote,
             documents=textos_lote,
