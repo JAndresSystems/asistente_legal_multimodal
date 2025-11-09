@@ -69,7 +69,8 @@ def obtener_almacen_de_vectores():
             print(">>> Proceso de ingestión automática completado.")
             # Volvemos a obtener la colección después de la ingestión
             # por si acaso el proceso de ingestión la manipuló de forma diferente
-            coleccion = cliente_chroma.get_or_create_collection(name=NOMBRE_DE_LA_COLECCION)
+            # NOTA: Usamos el cliente_chroma ya existente para obtener la colección recién actualizada
+            coleccion = cliente_chroma.get_collection(name=NOMBRE_DE_LA_COLECCION) # Usamos get_collection en lugar de get_or_create_collection si sabemos que existe
             print(f">>> Tras la ingestión, la colección '{NOMBRE_DE_LA_COLECCION}' contiene {coleccion.count()} documentos.")
         except ImportError as e:
             print(f">>> ERROR: No se pudo importar o ejecutar el script de ingestión: {e}")
