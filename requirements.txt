@@ -1,6 +1,6 @@
 # ========================================================
 # Archivo de Requerimientos para Asistente Legal Multimodal
-# Versión final con pysqlite3-binary para compatibilidad en Render
+# Versión final con pysqlite3-binary CORRECTO para compatibilidad en Render
 # ========================================================
 
 # --- Framework Principal ---
@@ -29,10 +29,9 @@ langgraph==0.1.1
 chromadb==0.5.3
 pypdf==4.2.0
 # =====================================================================
-# CORRECCIÓN CLAVE: Forzamos la instalación de una versión compatible de SQLite
-# para que ChromaDB funcione correctamente en el entorno de Render.
+# CORRECCIÓN CLAVE: Usamos una versión de pysqlite3-binary que SÍ existe.
 # =====================================================================
-pysqlite3-binary==0.5.16.0
+pysqlite3-binary==0.5.4
 
 # --- Utilidades ---
 python-docx==1.1.2
