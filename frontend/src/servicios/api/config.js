@@ -1,10 +1,13 @@
-//C:\react\asistente_legal_multimodal\frontend\src\servicios\api\config.js
+// C:\react\asistente_legal_multimodal\frontend\src\servicios\api\config.js
 
 // ==============================================================================
 // Configuracion Compartida
 // ==============================================================================
 
-export const URL_BASE_BACKEND = "http://127.0.0.1:8000";
+// Usamos la variable de entorno VITE_URL_BASE_BACKEND.
+// Si no está definida (por ejemplo, en desarrollo local sin .env),
+// usamos 'http://127.0.0.1:8000' como fallback para desarrollo local.
+export const URL_BASE_BACKEND = import.meta.env.VITE_URL_BASE_BACKEND || 'http://127.0.0.1:8000';
 
 let authToken = null;
 
