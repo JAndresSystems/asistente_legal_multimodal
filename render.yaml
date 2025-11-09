@@ -36,7 +36,9 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.5
       - key: CORS_ORIGINS
-        value: "https://{{ .Service.asistente-legal-frontend.Hostname }},http://localhost:5173,http://127.0.0.1:5173"  # URL dinámica del frontend + orígenes locales para desarrollo
+        # CORREGIDO: Se usa el hostname público REAL del frontend en Render.
+        # Esto asegura que FastAPI reciba la URL correcta para CORS.
+        value: "https://asistente-legal-frontend-8n9i.onrender.com,http://localhost:5173,http://127.0.0.1:5173"
       - key: GOOGLE_API_KEY
         sync: false
       - key: JWT_SECRET_KEY
