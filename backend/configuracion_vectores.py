@@ -51,9 +51,9 @@ def obtener_almacen_de_vectores():
         try:
             # Importar el script de ingestión de forma local
             # Se hace dentro del if para no importarlo si no es necesario
-            from .scripts import ingerir_documentos # Usamos import relativo
-            # Llamamos a la función principal del script
-            ingerir_documentos.main()
+            from . import scripts # Importamos el modulo scripts
+            # Llamamos a la función main() del script
+            scripts.ingestar_documentos.main()
             print(">>> Proceso de ingestión automática completado.")
             # Volvemos a obtener la colección después de la ingestión
             # por si acaso el proceso de ingestión la manipuló de forma diferente
