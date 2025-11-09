@@ -1,8 +1,9 @@
+# C:\react\asistente_legal_multimodal\backend\main.py
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-import os 
+import os # Asegúrate de importar os
 
 from . import base_de_datos
 
@@ -36,18 +37,27 @@ print("SETUP-FILES: Verificando y creando el directorio para archivos subidos...
 os.makedirs("backend/archivos_subidos", exist_ok=True)
 print("SETUP-FILES: Directorio 'backend/archivos_subidos' listo.")
 
-
 aplicacion.mount("/archivos_subidos", StaticFiles(directory="backend/archivos_subidos"), name="archivos")
+
+# --- Configuración de CORS ---
+# Lee la variable de entorno CORS_ORIGINS
+origenes_cors_raw = os.getenv("CORS_ORIGINS", "")
+# Divídela por comas si está definida
+if origenes_cors_raw:
+    # Elimina espacios en blanco alrededor de cada origen
+    origenes_permitidos = [orig.strip() for orig in origenes_cors_raw.split(",")]
+else:
+    # Fallback por si la variable no está definida (solo desarrollo local)
+    origenes_permitidos = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+print(f"DEBUG: Orígenes CORS configurados: {origenes_permitidos}") # Línea de debug opcional, puedes quitarla luego
 
 aplicacion.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://12-7.0.0.1:5173", 
-    ],
+    allow_origins=origenes_permitidos, # Usamos la lista de orígenes leída
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"], # O restringe a ["GET", "POST", "PUT", "DELETE"] si lo prefieres
+    allow_headers=["*"], # O restringe si lo prefieres
 )
 
 print("INFO: Registrando enrutadores de la API...")
