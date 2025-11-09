@@ -74,3 +74,4 @@ print("-> Enrutadores registrados exitosamente.")
 @aplicacion.get("/", tags=["Root"])
 def leer_raiz():
     return {"mensaje": "Bienvenido a la API del Asistente Legal Multimodal."}
+
