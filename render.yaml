@@ -36,7 +36,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.5
       - key: CORS_ORIGINS
-        # CORREGIDO: Se usa el hostname público REAL del frontend en Render.
+        # CORREGIDO: Se usa el hostname público REAL del frontend en Render, sin espacios.
         # Esto asegura que FastAPI reciba la URL correcta para CORS.
         value: "https://asistente-legal-frontend-8n9i.onrender.com,http://localhost:5173,http://127.0.0.1:5173"
       - key: GOOGLE_API_KEY
@@ -86,6 +86,6 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_URL_BASE_BACKEND
-        # CORREGIDO: Se usa el hostname público REAL del backend en Render.
+        # CORREGIDO: Se usa el hostname público REAL del backend en Render, sin espacios.
         # Esto asegura que Vite resuelva la variable correctamente durante el build.
-        value: "https://asistente-legal-backend-71ft.onrender.com"
+        value: "https://asistente-legal-backend-71ft.onrender.com" # Asegúrate de que este hostname sea correcto
