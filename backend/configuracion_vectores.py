@@ -4,6 +4,7 @@ import chromadb
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
+import importlib.util # Añadimos esta linea para importar dinamicamente
 
 # --- CARGA DE VARIABLES DE ENTORNO ---
 load_dotenv()
@@ -49,19 +50,33 @@ def obtener_almacen_de_vectores():
     if conteo_docs == 0:
         print(">>> La colección está vacía. Iniciando proceso de ingestión automática...")
         try:
-            # Importar el script de ingestión de forma local
-            # Se hace dentro del if para no importarlo si no es necesario
-            from . import scripts # Importamos el modulo scripts
-            # Llamamos a la función main() del script
-            scripts.ingestar_documentos.main()
+            # Importar y ejecutar el script de ingestión dinámicamente
+            # Construimos la ruta absoluta al archivo de ingestión
+            ruta_script_ingesta = os.path.abspath(os.path.join(os.path.dirname(__file__), "scripts", "ingestar_documentos.py"))
+            print(f">>> Intentando importar script de ingestión desde: {ruta_script_ingesta}")
+
+            # Cargamos el modulo dinamicamente
+            spec = importlib.util.spec_from_file_location("ingestar_documentos", ruta_script_ingesta)
+            if spec is None or spec.loader is None:
+                raise ImportError(f"No se pudo crear un spec o loader para {ruta_script_ingesta}")
+            modulo_ingesta = importlib.util.module_from_spec(spec)
+            # Ejecutamos el archivo como un modulo
+            spec.loader.exec_module(modulo_ingesta)
+
+            # Llamamos a la función main() del modulo importado
+            modulo_ingesta.main()
+
             print(">>> Proceso de ingestión automática completado.")
             # Volvemos a obtener la colección después de la ingestión
             # por si acaso el proceso de ingestión la manipuló de forma diferente
             coleccion = cliente_chroma.get_or_create_collection(name=NOMBRE_DE_LA_COLECCION)
             print(f">>> Tras la ingestión, la colección '{NOMBRE_DE_LA_COLECCION}' contiene {coleccion.count()} documentos.")
         except ImportError as e:
-            print(f">>> ERROR: No se pudo importar el script de ingestión: {e}")
+            print(f">>> ERROR: No se pudo importar o ejecutar el script de ingestión: {e}")
             print(">>> Asegúrese de que el archivo 'backend/scripts/ingestar_documentos.py' y la función 'main()' existan.")
+            raise
+        except AttributeError as e:
+            print(f">>> ERROR: La función 'main' no se encontró en el script de ingestión: {e}")
             raise
         except Exception as e:
             print(f">>> ERROR durante la ingestión automática: {e}")
