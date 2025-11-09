@@ -1,55 +1,52 @@
 # backend/scripts/ingestar_documentos.py
 
 import os
-import chromadb
-from chromadb.config import Settings
-import google.generativeai as genai
-from pypdf import PdfReader # Asegúrate de tener este instalado: pip install pypdf
-from langchain.text_splitter import RecursiveCharacterTextSplitter # Asegúrate de tener este instalado: pip install langchain
-from dotenv import load_dotenv # Asegúrate de tener este instalado: pip install python-dotenv
+import chromadb # Importar ChromaDB directamente
+import google.generativeai as genai # Importar la API de Google directamente
+from pypdf import PdfReader # Importar PdfReader correctamente
+from langchain.text_splitter import RecursiveCharacterTextSplitter # Importar el splitter de LangChain
+from dotenv import load_dotenv # Importar para cargar variables de entorno localmente
 
 # --- CARGA DE VARIABLES DE ENTORNO ---
-# Cargamos .env desde el directorio de scripts, asumiendo que está en la raíz del backend
-dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
-load_dotenv(dotenv_path)
+load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 if not GOOGLE_API_KEY:
-    raise ValueError("La variable de entorno GOOGLE_API_KEY no ha sido configurada en el script de ingestión.")
+    raise ValueError("La variable de entorno GOOGLE_API_KEY no ha sido configurada para el script de ingestión.")
 
-# --- CONFIGURACION LOCAL DEL SCRIPT ---
-# Usamos las mismas constantes para asegurar consistencia
+# --- CONSTANTES LOCALES PARA EL SCRIPT ---
+# Asegúrate de que coincidan con las usadas por el backend
 DIRECTORIO_PERSISTENTE_LOCAL = "chroma_db_data" # Debe coincidir con el del backend
-NOMBRE_COLECCION_LOCAL = "normativa_colombiana" # Debe coincidir con el del backend
-NOMBRE_MODELO_EMBEDDINGS_LOCAL = "models/embedding-001" # Nombre del modelo de Google
+NOMBRE_DE_LA_COLECCION_LOCAL = "normativa_colombiana" # Debe coincidir con el del backend
+# --- INICIO DE LA CORRECCION: Guardamos el nombre del modelo como string ---
+NOMBRE_MODELO_EMBEDDINGS_LOCAL = "models/embedding-001" # Debe coincidir con el del backend
+# --- FIN DE LA CORRECCION ---
+DIRECTORIO_BASE_CONOCIMIENTO_LOCAL = "backend/datos/base_de_conocimiento_juridico" # Ruta a tus archivos
 
-# --- INICIALIZACION LOCAL DE COMPONENTES ---
-# 1. Inicializar la API de Google localmente
+# --- CONFIGURACION DE LA API DE GOOGLE (LOCAL AL SCRIPT) ---
 genai.configure(api_key=GOOGLE_API_KEY)
-
-# 2. Inicializar el cliente de ChromaDB localmente
-cliente_chroma_local = chromadb.PersistentClient(path=DIRECTORIO_PERSISTENTE_LOCAL)
-
-# 3. Obtener (o crear si no existe) la colección local
-coleccion_local = cliente_chroma_local.get_or_create_collection(name=NOMBRE_COLECCION_LOCAL)
 
 def generar_embedding_local(texto: str):
     """
-    Genera un embedding usando la API de Google GenAI.
-    Esta función es local al script de ingestión.
+    Genera un embedding usando la API de Google Generative AI.
+    Esta funcion es local al script de ingestión.
     """
+    # --- INICIO DE LA CORRECCION ---
+    # La función embed_content es de alto nivel, no necesita el objeto del modelo,
+    # solo su nombre en formato string.
     resultado = genai.embed_content(
-        model=NOMBRE_MODELO_EMBEDDINGS_LOCAL, # Usamos la constante local
+        model=NOMBRE_MODELO_EMBEDDINGS_LOCAL, # Pasamos el string directamente
         content=texto,
-        task_type="RETRIEVAL_DOCUMENT"
+        task_type="RETRIEVAL_DOCUMENT" # Asegúrate del tipo de tarea correcto
     )
     return resultado['embedding']
+    # --- FIN DE LA CORRECCION ---
 
 def cargar_documentos_local(directorio: str) -> list[dict]:
     """
     Recorre el directorio, lee archivos .txt y .pdf, y devuelve una lista
     de diccionarios, cada uno con el contenido y la fuente del archivo.
-    Esta función es local al script de ingestión.
+    Esta funcion es local al script de ingestión.
     """
     documentos = []
     print(f"Buscando documentos en: {directorio}")
@@ -59,7 +56,7 @@ def cargar_documentos_local(directorio: str) -> list[dict]:
             contenido = ""
             if file.endswith(".pdf"):
                 try:
-                    reader = PdfReader(ruta_completa)
+                    reader = PdfReader(ruta_completa) # Usar PdfReader
                     for page in reader.pages:
                         contenido += page.extract_text() or ""
                     print(f"  -> [PDF] Leído: {file}")
@@ -74,14 +71,14 @@ def cargar_documentos_local(directorio: str) -> list[dict]:
                     print(f"  -> [ERROR] No se pudo leer el TXT {file}: {e}")
 
             if contenido:
-                documentos.append({"contenido": contenido, "fuente": file})
+                documentos.append({"contenido": contenido, "fuente": file}) # Añadir a la lista global 'documentos'
     return documentos
 
 def dividir_texto_en_fragmentos_local(documentos: list[dict]) -> list[dict]:
     """
     Toma la lista de documentos y los divide en fragmentos más pequeños (chunks)
     con un ligero solapamiento para no perder contexto.
-    Esta función es local al script de ingestión.
+    Esta funcion es local al script de ingestión.
     """
     # Esta herramienta de Langchain es experta en dividir texto de forma inteligente.
     text_splitter = RecursiveCharacterTextSplitter(
@@ -91,7 +88,7 @@ def dividir_texto_en_fragmentos_local(documentos: list[dict]) -> list[dict]:
     )
     fragmentos = []
     for doc in documentos:
-        chunks = text_splitter.split_text(doc["contenido"])
+        chunks = text_splitter.split_text(doc["contenido"]) # Usar split_text
         for i, chunk_text in enumerate(chunks):
             fragmentos.append({
                 "texto": chunk_text,
@@ -103,20 +100,23 @@ def dividir_texto_en_fragmentos_local(documentos: list[dict]) -> list[dict]:
 def main():
     """
     Función principal que orquesta todo el proceso de ingesta.
-    Esta función NO debe importar ni llamar a ninguna funcion que use 'obtener_almacen_de_vectores'.
+    Esta función NO debe importar ni llamar a ninguna funcion que use 'obtener_almacen_de_vectores' del backend principal.
     """
     print("\n--- INICIANDO PROCESO DE INGESTA DE DOCUMENTOS (Script Autonomo) ---")
 
-    # 1. Cargar y leer todos los documentos de la base de conocimiento
-    # Usamos la constante definida en este mismo archivo o una relativa si se prefiere
-    directorio_base_conocimiento = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "datos", "base_de_conocimiento_juridico")
-    documentos_leidos = cargar_documentos_local(directorio_base_conocimiento)
+    # 1. Inicializar ChromaDB localmente para este script
+    cliente_chroma_local = chromadb.PersistentClient(path=DIRECTORIO_PERSISTENTE_LOCAL)
+    coleccion_local = cliente_chroma_local.get_or_create_collection(name=NOMBRE_DE_LA_COLECCION_LOCAL)
+    print(f">>> Conectado a la colección '{NOMBRE_DE_LA_COLECCION_LOCAL}' para ingestión.")
 
-    # 2. Dividir los documentos en fragmentos manejables
+    # 2. Cargar y leer todos los documentos de la base de conocimiento
+    documentos_leidos = cargar_documentos_local(DIRECTORIO_BASE_CONOCIMIENTO_LOCAL)
+
+    # 3. Dividir los documentos en fragmentos manejables
     fragmentos = dividir_texto_en_fragmentos_local(documentos_leidos)
 
-    # 3. Procesar y guardar en ChromaDB en lotes para eficiencia
-    print("\nGenerando embeddings y guardando en ChromaDB... (esto puede tardar unos minutos)")
+    # 4. Procesar y guardar en ChromaDB en lotes para eficiencia
+    print("\nGenerando embeddings y guardando en ChromaDB local... (esto puede tardar unos minutos)")
     batch_size = 100
     total_fragmentos = len(fragmentos)
 
