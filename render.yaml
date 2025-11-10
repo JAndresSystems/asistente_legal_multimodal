@@ -22,12 +22,12 @@ databases:
     plan: free
 
 # --- SERVICIOS ---
-services:
-  # Redis (Key-Value Store)
-  - name: asistente-legal-redis
-    type: keyvalue
-    ipAllowList: []
-    plan: free
+# services:
+#   # Redis (Key-Value Store)
+#   - name: asistente-legal-redis
+#     type: keyvalue
+#     ipAllowList: []
+#     plan: free
 
   # 1. Backend (FastAPI + Uvicorn)
   - name: asistente-legal-backend
@@ -55,27 +55,27 @@ services:
       - key: CORS_ORIGINS
         value: "https://asistente-legal-frontend-8n9i.onrender.com,http://localhost:5173,http://127.0.0.1:5173"
 
-  # 2. Worker de Celery (Tareas Asíncronas)
-  - name: celery-worker
-    type: worker
-    runtime: python
-    buildCommand: "pip install -r requirements.txt"
-    # Opcional: limpia ChromaDB también aquí si el worker la usa
-    startCommand: "rm -rf chroma_db_data && celery -A backend.tareas.celery_app worker --loglevel=info"
-    plan: starter
-    envVars:
-      - fromGroup: secrets
-      - key: DATABASE_URL
-        fromDatabase:
-          name: asistente-legal-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: asistente-legal-redis
-          type: keyvalue
-          property: connectionString
-      - key: PYTHON_VERSION
-        value: 3.11.5
+  # # 2. Worker de Celery (Tareas Asíncronas)
+  # - name: celery-worker
+  #   type: worker
+  #   runtime: python
+  #   buildCommand: "pip install -r requirements.txt"
+  #   # Opcional: limpia ChromaDB también aquí si el worker la usa
+  #   startCommand: "rm -rf chroma_db_data && celery -A backend.tareas.celery_app worker --loglevel=info"
+  #   plan: starter
+  #   envVars:
+  #     - fromGroup: secrets
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: asistente-legal-db
+  #         property: connectionString
+  #     - key: REDIS_URL
+  #       fromService:
+  #         name: asistente-legal-redis
+  #         type: keyvalue
+  #         property: connectionString
+  #     - key: PYTHON_VERSION
+  #       value: 3.11.5
 
   # 3. Frontend (React + Vite)
   - name: asistente-legal-frontend

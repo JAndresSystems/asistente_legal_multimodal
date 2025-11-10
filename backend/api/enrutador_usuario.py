@@ -351,21 +351,38 @@ def analizar_caso_completo(
             "texto_adicional_usuario": solicitud.texto_adicional_usuario,
         }
 
-        # Invocamos a los agentes
+        # Invocamos a los agentes (síncrono)
         estado_final = grafo_compilado.invoke(estado_inicial)
         print("DEBUG: El grafo de LangGraph completo su ejecucion.")
 
         # ==============================================================================
         # INICIO DE LA COPIA: Construimos un diccionario y lo convertimos a JSON
+        # AHORA MANEJA CASOS DONDE EL FLUJO TERMINA ANTES (p. ej. en rechazo).
         # ==============================================================================
-        reporte_dict = {
-            "TRIEJE": estado_final.get('resultado_triaje'),
-            "COMPETENCIA": estado_final.get('resultado_determinador_competencias'),
-            "ASIGNACION": estado_final.get('resultado_repartidor'),
-            "ANALISIS_DOCUMENTO": estado_final.get('resultado_analisis_documento'),
-            "ANALISIS_AUDIO": estado_final.get('resultado_analisis_audio'),
-            "ANALISIS_JURIDICO": estado_final.get('resultado_agente_juridico'),
-        }
+        reporte_dict = {}
+
+        # Verificamos si cada clave existe en el estado_final antes de asignarla
+        # y construimos el reporte_dict dinámicamente
+        claves_posibles = [
+            "resultado_triaje",
+            "resultado_determinador_competencias",
+            "resultado_repartidor",
+            "resultado_analisis_documento",
+            "resultado_analisis_audio",
+            "resultado_agente_juridico",
+            "solicitud_agente_juridico", # Por si acaso
+            "solicitud_agente_documentos", # Por si acaso
+            "resultado_agente_generador_documentos" # Por si acaso
+        ]
+
+        for clave in claves_posibles:
+            if clave in estado_final:
+                # Convertimos el nombre clave al formato que espera el frontend/reportes
+                # Ej: "resultado_triaje" -> "TRIEJE"
+                nombre_reporte = clave.upper().replace("RESULTADO_", "").replace("_", "")
+                if nombre_reporte == "TRIAGE": # Corrección ortográfica común
+                    nombre_reporte = "TRIEJE"
+                reporte_dict[nombre_reporte] = estado_final[clave]
 
         # Filtramos las claves cuyo valor sea None para un reporte más limpio
         reporte_dict_limpio = {k: v for k, v in reporte_dict.items() if v is not None}
@@ -376,14 +393,12 @@ def analizar_caso_completo(
         # FIN DE LA COPIA
         # ==============================================================================
 
-        # Actualizamos el estado del caso basado en el resultado de los agentes
-        resultado_triaje = estado_final.get('resultado_triaje', {})
-        if resultado_triaje.get('admisible') is False:
-            caso_actual.estado = EstadoCaso.RECHAZADO
-        elif estado_final.get('resultado_repartidor'):
-            # Si el repartidor corrió, el estado correcto es 'pendiente_aceptacion',
-            # que ya fue establecido por el nodo. Aquí lo confirmamos.
-            caso_actual.estado = EstadoCaso.PENDIENTE_ACEPTACION
+        # El estado del caso (RECHAZADO, PENDIENTE_ACEPTACION, etc.) ya fue actualizado
+        # por el nodo correspondiente dentro del grafo (por ejemplo, nodo_preparar_respuesta_rechazo).
+        # No es necesario actualizarlo aquí manualmente basado en estado_final,
+        # ya que el grafo lo hizo internamente y se guardó en la BD en ese momento.
+        # Recargamos el objeto caso_actual para asegurar que tenemos el estado final correcto.
+        sesion.refresh(caso_actual) # <-- Crucial para obtener el estado actualizado desde la DB
 
         sesion.add(caso_actual)
         sesion.commit()
@@ -392,33 +407,29 @@ def analizar_caso_completo(
         # Devolvemos el estado final para que el frontend lo maneje
         return estado_final
 
-    # --- INICIO DE LA MODIFICACIÓN ---
-    # Capturar el error específico de LangGraph/Google Generative AI relacionado con archivos
     except Exception as e:
         error_msg = str(e)
         print(f"DEBUG: ERROR CRITICO en la ejecución SÍNCRONA para caso {id_caso}: {error_msg}")
 
         # Opcional: Intentar guardar el error en la base de datos para que el usuario lo vea
-        # Si el caso se creó, intentamos actualizarlo con el error
         if caso_actual:
             try:
                 caso_actual.reporte_consolidado = json.dumps({"error": error_msg})
-                caso_actual.estado = EstadoCaso.CERRADO # O un nuevo estado "con_error"
+                # Si el grafo no lo cambió de estado (por ejemplo, si falló antes de llegar a un nodo decisivo)
+                # y no está ya rechazado, lo marcamos como cerrado con error.
+                if caso_actual.estado not in [EstadoCaso.RECHAZADO, EstadoCaso.CERRADO]:
+                    caso_actual.estado = EstadoCaso.CERRADO
                 sesion.add(caso_actual)
                 sesion.commit()
                 print(f"DEBUG: Error guardado en la base de datos para el Caso {id_caso}.")
             except Exception as db_error:
                 print(f"DEBUG: Error al guardar el error en la base de datos: {db_error}")
-                # Si falla al guardar, seguimos con el raise HTTP
 
-        # Verificamos si el error es el específico de "media"
+        # Manejar el error específico de archivos si es necesario, como hiciste antes
         if "Unrecognized message part type: media" in error_msg:
-             # Este error es muy específico de la librería y el tipo de archivo
              raise HTTPException(status_code=500, detail=f"Error al procesar el archivo enviado: {error_msg}. Es posible que el formato no sea compatible o el archivo esté dañado.")
         else:
-            # Otro error genérico
             raise HTTPException(status_code=500, detail=f"Error interno al procesar el análisis: {error_msg}")
-
 
     
 
