@@ -8,6 +8,7 @@ from typing import List
 import json
 from celery.result import AsyncResult
 from ..tareas import celery_app
+from ..agentes.orquestador_del_grafo import grafo_compilado
 
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import (
@@ -328,8 +329,8 @@ def analizar_caso_completo(
     cuenta_actual: Cuenta = Depends(obtener_cuenta_actual) # Asegura que solo el dueño del caso lo pueda analizar
 ):
     """
-    Inicia la tarea de análisis en segundo plano (Celery).
-    Devuelve inmediatamente un ID de tarea para que el frontend haga polling.
+    Inicia la tarea de análisis y ESPERA a que se complete (síncrono).
+    Esta es la lógica original de 'procesar_evidencia_tarea', pero ejecutada en el hilo web.
     """
     # Validar que el caso pertenece al usuario logueado
     caso_actual = sesion.get(Caso, id_caso)
@@ -339,48 +340,105 @@ def analizar_caso_completo(
     if not caso_actual.evidencias:
         raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
 
-    # Se inicia la tarea en segundo plano...
-    tarea_resultado = procesar_evidencia_tarea.delay(id_caso, solicitud.texto_adicional_usuario)
-    id_tarea = tarea_resultado.id # <-- Este es el ID de la tarea
+    # --- INICIO DE LA COPIA DE LOGICA DE LA TAREA ---
+    print(f"DEBUG: Iniciando análisis SÍNCRONO para el CASO ID: {id_caso} en hilo web.")
+    try:
+        # Preparamos la entrada para el grafo de LangGraph
+        rutas_archivos = [ev.ruta_archivo for ev in caso_actual.evidencias]
+        estado_inicial = {
+            "id_caso": id_caso,
+            "rutas_archivos_evidencia": rutas_archivos,
+            "texto_adicional_usuario": solicitud.texto_adicional_usuario,
+        }
 
-    # Devolver ID de la tarea inmediatamente
-    return {"mensaje": "Análisis iniciado", "id_tarea": id_tarea}
+        # Invocamos a los agentes
+        print(f"DEBUG: El agente analizara un total de {len(rutas_archivos)} evidencia(s).")
+        estado_final = grafo_compilado.invoke(estado_inicial)
+        print("DEBUG: El grafo de LangGraph completo su ejecucion.")
+
+        # ==============================================================================
+        # INICIO DE LA COPIA: Construimos un diccionario y lo convertimos a JSON
+        # ==============================================================================
+        reporte_dict = {
+            "TRIEJE": estado_final.get('resultado_triaje'),
+            "COMPETENCIA": estado_final.get('resultado_determinador_competencias'),
+            "ASIGNACION": estado_final.get('resultado_repartidor'),
+            "ANALISIS_DOCUMENTO": estado_final.get('resultado_analisis_documento'),
+            "ANALISIS_AUDIO": estado_final.get('resultado_analisis_audio'),
+            "ANALISIS_JURIDICO": estado_final.get('resultado_agente_juridico'),
+        }
+        
+        # Filtramos las claves cuyo valor sea None para un reporte más limpio
+        reporte_dict_limpio = {k: v for k, v in reporte_dict.items() if v is not None}
+        
+        # Convertimos el diccionario a un string JSON con formato legible
+        caso_actual.reporte_consolidado = json.dumps(reporte_dict_limpio, indent=2, ensure_ascii=False)
+        # ==============================================================================
+        # FIN DE LA COPIA
+        # ==============================================================================
+        
+        # Actualizamos el estado del caso basado en el resultado de los agentes
+        resultado_triaje = estado_final.get('resultado_triaje', {})
+        if resultado_triaje.get('admisible') is False:
+            caso_actual.estado = EstadoCaso.RECHAZADO
+        elif estado_final.get('resultado_repartidor'):
+            # Si el repartidor corrió, el estado correcto es 'pendiente_aceptacion',
+            # que ya fue establecido por el nodo. Aquí lo confirmamos.
+            caso_actual.estado = EstadoCaso.PENDIENTE_ACEPTACION
+        
+        sesion.add(caso_actual)
+        sesion.commit()
+        print(f"DEBUG: Reporte consolidado y estado actualizados en el Caso {id_caso} (hilo web).")
+        
+        # Devolvemos el estado final para que el frontend lo maneje
+        return estado_final
+
+    except Exception as e:
+        print(f"DEBUG: ERROR CRITICO en la ejecución SÍNCRONA para caso {id_caso}: {e}")
+        # Opcional: Guardar error en el caso también en modo síncrono
+        # caso_actual.reporte_consolidado = json.dumps({"error": str(e)})
+        # caso_actual.estado = EstadoCaso.CERRADO # O un nuevo estado "con_error"
+        # sesion.add(caso_actual)
+        # sesion.commit()
+        raise HTTPException(status_code=500, detail=f"Error interno al procesar el análisis: {e}")
+    # --- FIN DE LA COPIA DE LOGICA DE LA TAREA ---
+
 
     
 
 # Asegúrate de que esta función esté dentro del mismo 'router' que las demás.
 
-@router.get("/{id_caso}/estado-analisis/{id_tarea}")
-def consultar_estado_analisis(
-    id_caso: int,
-    id_tarea: str,
-    sesion: Session = Depends(obtener_sesion),
-    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual) # Asegura que solo el dueño del caso pueda consultar
-):
-    """
-    Consulta el estado de una tarea de análisis de Celery.
-    """
-    # Validar que el caso pertenece al usuario logueado
-    caso = sesion.get(Caso, id_caso)
-    if not caso or caso.id_usuario != cuenta_actual.usuario.id:
-        raise HTTPException(status_code=404, detail="Caso no encontrado o sin permisos.")
+# @router.get("/{id_caso}/estado-analisis/{id_tarea}")
+# def consultar_estado_analisis(
+#     id_caso: int,
+#     id_tarea: str,
+#     sesion: Session = Depends(obtener_sesion),
+#     cuenta_actual: Cuenta = Depends(obtener_cuenta_actual) # Asegura que solo el dueño del caso pueda consultar
+# ):
+#     """
+#     Consulta el estado de una tarea de análisis de Celery.
+#     """
+#     # Validar que el caso pertenece al usuario logueado
+#     caso = sesion.get(Caso, id_caso)
+#     if not caso or caso.id_usuario != cuenta_actual.usuario.id:
+#         raise HTTPException(status_code=404, detail="Caso no encontrado o sin permisos.")
 
-    # Obtener el estado de la tarea de Celery
-    resultado_tarea = AsyncResult(id_tarea, app=celery_app)
+#     # Obtener el estado de la tarea de Celery
+#     resultado_tarea = AsyncResult(id_tarea, app=celery_app)
 
-    if resultado_tarea.state == 'PENDING':
-        return {"estado": "en_progreso", "mensaje": "La tarea está pendiente de inicio."}
-    elif resultado_tarea.state == 'PROGRESS':
-        # Opcional: Si Celery reporta progreso, puedes devolverlo aquí
-        return {"estado": "en_progreso", "mensaje": "Analizando evidencias..."}
-    elif resultado_tarea.state == 'SUCCESS':
-        # La tarea terminó exitosamente. Devolvemos el caso actualizado desde la BD.
-        # Asegúrate de que la tarea haya guardado el resultado en la base de datos.
-        caso_actualizado = sesion.get(Caso, id_caso)
-        # Opcional: Puedes devolver solo el estado del caso o el objeto completo
-        return {"estado": "completado", "caso": caso_actualizado}
-    else: # FAILURE u otros estados
-        return {"estado": "error", "mensaje": str(resultado_tarea.info)}
+#     if resultado_tarea.state == 'PENDING':
+#         return {"estado": "en_progreso", "mensaje": "La tarea está pendiente de inicio."}
+#     elif resultado_tarea.state == 'PROGRESS':
+#         # Opcional: Si Celery reporta progreso, puedes devolverlo aquí
+#         return {"estado": "en_progreso", "mensaje": "Analizando evidencias..."}
+#     elif resultado_tarea.state == 'SUCCESS':
+#         # La tarea terminó exitosamente. Devolvemos el caso actualizado desde la BD.
+#         # Asegúrate de que la tarea haya guardado el resultado en la base de datos.
+#         caso_actualizado = sesion.get(Caso, id_caso)
+#         # Opcional: Puedes devolver solo el estado del caso o el objeto completo
+#         return {"estado": "completado", "caso": caso_actualizado}
+#     else: # FAILURE u otros estados
+#         return {"estado": "error", "mensaje": str(resultado_tarea.info)}
 
 
 

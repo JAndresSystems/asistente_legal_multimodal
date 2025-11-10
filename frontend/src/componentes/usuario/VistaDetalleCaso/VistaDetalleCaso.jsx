@@ -1,12 +1,12 @@
 // frontend/src/componentes/usuario/VistaDetalleCaso/VistaDetalleCaso.jsx
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback /*, useRef */ } from 'react'; // Quitar useRef
 import { 
   obtenerDetallesCaso, 
   apiDescargarReportePDF, 
   apiCrearNotaUsuario,
   analizarCaso, // Importamos la función que inicia el análisis
-  apiConsultarEstadoAnalisis // Importamos la nueva función
+  // apiConsultarEstadoAnalisis // Quitar esta importación
 } from '../../../servicios/api';
 import FormularioSubirEvidencia from '../FormularioSubirEvidencia/FormularioSubirEvidencia';
 import VisorReporte from '../VisorReporte/VisorReporte';
@@ -22,10 +22,9 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
   const [errorNota, setErrorNota] = useState('');
 
   // --- INICIO DE LA MODIFICACIÓN ---
-  const [isAnalizando, setIsAnalizando] = useState(false); // Nuevo estado para mostrar spinner
+  const [isAnalizando, setIsAnalizando] = useState(false); // Mantener estado para mostrar spinner
   const [analisisError, setAnalisisError] = useState(null);
-  // const [tareaId, setTareaId] = useState(null); // REMOVIDO: No se usaba
-  const analisisIntervalRef = useRef(null); // Referencia para el intervalo
+  // Quitar las otras variables de estado y useRef relacionadas con polling
   // --- FIN DE LA MODIFICACIÓN ---
 
   const cargarDatosDelCaso = useCallback(async () => {
@@ -51,60 +50,32 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
   }, [cargarDatosDelCaso]);
 
   // --- INICIO DE LA MODIFICACIÓN ---
-  // Función para iniciar el análisis
+  // Función para iniciar el análisis (SÍNCRONO)
   const handleIniciarAnalisis = async () => {
     setIsAnalizando(true);
     setAnalisisError(null);
     try {
-      // Paso 1: Iniciar la tarea de análisis
-      const resultadoInicio = await analizarCaso(casoId); // Llama a la nueva función
-      console.log("API: Análisis iniciado. ID de tarea:", resultadoInicio.id_tarea);
-      // setTareaId(resultadoInicio.id_tarea); // REMOVIDO: No se usaba
+      // Llama directamente a analizarCaso y espera el resultado
+      // Aquí esperamos que la API responda con el estado del caso actualizado o un error
+      const resultadoAnalisis = await analizarCaso(casoId); // Llama a la función
+      console.log("API: Análisis SÍNCRONO completado. Resultado:", resultadoAnalisis);
 
-      // Paso 2: Iniciar polling para verificar el estado
-      // Declaramos 'idTareaActual' en el scope de esta función para usarlo en el intervalo
-      const idTareaActual = resultadoInicio.id_tarea;
-      analisisIntervalRef.current = setInterval(async () => {
-        try {
-          const estado = await apiConsultarEstadoAnalisis(casoId, idTareaActual); // Usamos 'idTareaActual'
-          console.log("API: Estado actual del análisis:", estado.estado);
+      // Opcional: Actualizar el estado local del caso si la API lo devuelve
+      // setCaso(resultadoAnalisis.caso); // Ajusta según el formato real de la respuesta
 
-          if (estado.estado === 'completado') {
-            // El análisis terminó. Actualiza el estado del caso.
-            setCaso(estado.caso); // Asume que el backend devuelve el caso actualizado
-            setIsAnalizando(false);
-            setAnalisisError(null); // Limpiar error si hubo uno previamente
-            clearInterval(analisisIntervalRef.current);
-          } else if (estado.estado === 'error') {
-            // Hubo un error en la tarea.
-            setAnalisisError(estado.mensaje || "Ocurrió un error desconocido en la tarea de análisis.");
-            setIsAnalizando(false);
-            clearInterval(analisisIntervalRef.current);
-          }
-          // Si el estado es 'en_progreso', el intervalo seguirá ejecutándose.
-        } catch (error) {
-          console.error("Error al consultar el estado del análisis:", error);
-          setAnalisisError("Ocurrió un error al consultar el estado del análisis.");
-          setIsAnalizando(false);
-          clearInterval(analisisIntervalRef.current);
-        }
-      }, 5000); // Polling cada 5 segundos
+      // Recargar los datos del caso para reflejar los cambios
+      await cargarDatosDelCaso();
 
     } catch (error) {
-      console.error("Error al iniciar el análisis:", error);
-      setAnalisisError(error.message || "Ocurrió un error al iniciar el análisis.");
+      console.error("Error al iniciar el análisis síncrono:", error);
+      // Manejar el error del 504 o cualquier otro error de la API
+      setAnalisisError(error.message || "Ocurrió un error al iniciar el análisis. Es posible que el servidor tarde en responder o se quede sin recursos.");
+    } finally {
       setIsAnalizando(false);
     }
   };
 
-  // Limpiar el intervalo cuando el componente se desmonte o cuando se detenga
-  useEffect(() => {
-    return () => {
-      if (analisisIntervalRef.current) {
-        clearInterval(analisisIntervalRef.current);
-      }
-    };
-  }, []);
+  // Quitar el useEffect de limpieza del intervalo
   // --- FIN DE LA MODIFICACIÓN ---
 
   const handleCrearNota = async (e) => {
@@ -179,7 +150,7 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
       </div>
 
       {/* --- INICIO DE LA MODIFICACIÓN --- */}
-      {isAnalizando && <p className="mensaje-proceso">Por favor, espere mientras se procesa su caso...</p>}
+      {isAnalizando && <p className="mensaje-proceso">Por favor, espere mientras se procesa su caso... (Esto puede tardar varios minutos)</p>}
       {analisisError && <p className="mensaje-error">{analisisError}</p>}
       {/* --- FIN DE LA MODIFICACIÓN --- */}
 
