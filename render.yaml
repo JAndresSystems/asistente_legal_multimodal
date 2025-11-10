@@ -35,16 +35,11 @@ services:
     # Se elimina 'rootDir' para que los comandos se ejecuten desde la raíz del proyecto.
     # Esto es NECESARIO para que las importaciones relativas y las rutas de archivos funcionen.
     buildCommand: "pip install -r requirements.txt"
-    # CAMBIO: Quita 'rm -rf' para no borrar datos; ingestión es condicional en código.
-    # Ejecuta ingestión si DB vacía, luego uvicorn.
+    # CAMBIO: Quita 'rm -rf' para no borrar datos innecesariamente; ingestión es condicional en código.
+    # Si DB vacía, se reingesta; de lo contrario, salta.
     startCommand: "python -m backend.scripts.ingestar_documentos && uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/chat/healthcheck
     plan: free
-    # Agrega disk para persistencia de ChromaDB (mount en /chroma_db_data)
-    disks:
-      - name: chroma-data
-        mountPath: /chroma_db_data
-        sizeGB: 1  # Tamaño inicial; ajusta si necesitas más
     envVars:
       # CORRECCIÓN #3: Referenciamos el grupo de secretos.
       - fromGroup: secrets
@@ -59,7 +54,7 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: 3.11.5
-      # CAMBIO: Usa URLs fijas para CORS (plantilla no resuelve; ajusta con tu URL real de frontend)
+      # CAMBIO: Usa URLs fijas para CORS (plantilla no resuelve consistentemente; ajusta con tu URL real de frontend)
       - key: CORS_ORIGINS
         value: "https://asistente-legal-frontend-8n9i.onrender.com,http://localhost:5173,http://127.0.0.1:5173"
 
@@ -69,7 +64,7 @@ services:
     runtime: python
     # Se elimina 'rootDir' aquí también por la misma razón.
     buildCommand: "pip install -r requirements.txt"
-    # CAMBIO: No borra datos; worker usa la misma DB persistente.
+    # CAMBIO: No borra datos; worker usa la misma DB (ephemeral en free, pero reingesta si necesario).
     startCommand: "celery -A backend.tareas.celery_app worker --loglevel=info"
     plan: starter
     envVars:
@@ -100,5 +95,5 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_URL_BASE_BACKEND
-        # CAMBIO: URL fija del backend (ajusta si cambia)
+        # CAMBIO: URL fija del backend (ajusta si cambia el dominio).
         value: "https://asistente-legal-backend-71ft.onrender.com"
