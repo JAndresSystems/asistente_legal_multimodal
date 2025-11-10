@@ -34,7 +34,7 @@ services:
     type: web
     runtime: python
     buildCommand: "pip install -r requirements.txt"
-    # LIMPIAMOS CHROMA_DB EN CADA DEPLOY PARA EVITAR ERRORES DE ESQUEMA (free tier)
+    # Limpia ChromaDB en cada deploy para evitar errores de esquema (free tier)
     startCommand: "rm -rf chroma_db_data && python -m backend.scripts.ingestar_documentos && uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/chat/healthcheck
     plan: free
