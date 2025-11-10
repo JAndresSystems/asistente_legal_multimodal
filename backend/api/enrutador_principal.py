@@ -13,7 +13,7 @@ except Exception as e:
     raise  # Relanza para depurar en logs
 
 # Definimos los routers que SÍ pertenecen a este archivo general
-router_chat = APIRouter(prefix="/api/chat", tags=["Chat de Atencion"])
+router_chat = APIRouter(tags=["Chat de Atencion"])
 router_evidencias = APIRouter(prefix="/api/evidencias", tags=["Gestión de Evidencias"])
 
 # --- ENDPOINT DEL CHAT DE ATENCION ---
