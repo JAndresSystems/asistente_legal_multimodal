@@ -51,7 +51,7 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     Si el usuario indica explícitamente que NO tiene más documentos (ej. "no tengo mas"), DEBES detener el ciclo de preguntas. Establece "informacion_suficiente" como "true" y añade una advertencia en tu "justificacion".
     
     --- REGLA DE FLEXIBILIDAD Y BUENA FE (NUEVO Y MUY IMPORTANTE) ---
-    Tu objetivo es pedir los documentos faltantes UNA SOLA VEZ. Después de que hayas hecho una pregunta pidiendo documentos (ej. pidiendo el informe de tránsito), si en la siguiente interacción el usuario sube CUALQUIER archivo (PDF, PNG, JPG), DEBES ASUMIR que ha intentado cumplir tu petición. NO vuelvas a pedir el mismo documento. Considera que con eso es suficiente para esta etapa, marca "informacion_suficiente" como "true" y permite que el caso avance.
+    Tu objetivo es pedir los documentos faltantes UNA SOLA VEZ. Después de que hayas hecho una pregunta pidiendo documentos (ej. pidiendo el informe de tránsito), si en la siguiente interacción el usuario sube CUALQUIER archivo (PDF, PNG, JPG), DEBES ASUMIR que ha intentado cumplir tu petición. No vuelvas a pedir el mismo documento. Considera que con eso es suficiente para esta etapa, marca "informacion_suficiente" como "true" y permite que el caso avance.
 
     {'''--- INICIO DE LA MODIFICACIÓN ---'''}
     --- INSTRUCCION CRITICA DE JUSTIFICACION ---
@@ -78,18 +78,36 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
       
       "hechos_clave": "string (Resumen de los hechos)",
       "informacion_suficiente": boolean,
-      "pregunta_para_usuario": "string (SOLO si 'informacion_suficiente' es false. De lo contrario, déjalo vacío '')"
+      "pregunta_para_usuario": "string (SOLO si 'informacion_suficiente' es false. De lo contrario, déjalo vacío '')
     }}
     """
     
     print("--- [AGENTE TRIAJE] Invocando LLM para analisis de admisibilidad...")
-    resultado_analisis = analizar_evidencia_con_gemini(
-        archivos_locales=rutas_archivos,
-        prompt_usuario=prompt_completo
-    )
-    print(f"--- [AGENTE TRIAJE] Analisis completado. Resultado: {resultado_analisis}")
-    return {"resultado_triaje": resultado_analisis}
-
+    try:
+        resultado_analisis = analizar_evidencia_con_gemini(
+            archivos_locales=rutas_archivos, # <-- Aquí es donde puede fallar con "media"
+            prompt_usuario=prompt_completo
+        )
+        print(f"--- [AGENTE TRIAJE] Analisis completado. Resultado: {resultado_analisis}")
+        # Devuelve el resultado obtenido del LLM, asumiendo que es un dict válido.
+        # Si el LLM falla (por el error de media o por no devolver JSON), se captura abajo.
+        return {"resultado_triaje": resultado_analisis}
+    except Exception as e_gemini:
+        # Captura cualquier error proveniente de la herramienta de LLM (como "media", JSON inválido, etc.)
+        error_msg = str(e_gemini)
+        print(f"--- [AGENTE TRIAJE] ERROR CRITICO al invocar LLM: {error_msg}")
+        
+        # Devolvemos un resultado de triaje ESTÁNDAR que indica un fallo y que el caso NO ES ADMISIBLE
+        # debido a un problema con la evidencia. Esto evita el error de LangGraph.
+        resultado_error = {
+            "admisible": False,
+            "justificacion": f"Error técnico al procesar la evidencia adjunta: {error_msg}. Es posible que el formato del archivo no sea compatible o esté dañado. Por favor, revise el archivo o consulte con un administrador.",
+            "hechos_clave": "No se pudieron extraer hechos debido al error de procesamiento.",
+            "informacion_suficiente": True, # Marcamos como suficiente porque no podemos pedir más con este error.
+            "pregunta_para_usuario": ""
+        }
+        print(f"--- [AGENTE TRIAJE] Devolviendo resultado de error estandarizado: {resultado_error}")
+        return {"resultado_triaje": resultado_error}
 
 
 def nodo_solicitar_informacion_adicional(estado: EstadoDelGrafo) -> Dict[str, Any]:
