@@ -6,6 +6,8 @@ from pathlib import Path
 from sqlmodel import Session, select
 from typing import List
 import json
+from celery.result import AsyncResult
+from ..tareas import celery_app
 
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import (
@@ -319,27 +321,66 @@ def subir_evidencia_simple(
 
 
 @router.post("/{id_caso}/analizar")
-def analizar_caso_completo(id_caso: int, solicitud: SolicitudAnalisis, sesion: Session = Depends(obtener_sesion)):
+def analizar_caso_completo(
+    id_caso: int,
+    solicitud: SolicitudAnalisis,
+    sesion: Session = Depends(obtener_sesion),
+    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual) # Asegura que solo el dueño del caso lo pueda analizar
+):
     """
-    Inicia la tarea de análisis y ESPERA a que se complete.
-    Esta es la lógica correcta para el flujo interactivo del Agente de Triaje.
+    Inicia la tarea de análisis en segundo plano (Celery).
+    Devuelve inmediatamente un ID de tarea para que el frontend haga polling.
     """
+    # Validar que el caso pertenece al usuario logueado
     caso_actual = sesion.get(Caso, id_caso)
-    if not caso_actual or not caso_actual.evidencias: 
+    if not caso_actual or caso_actual.id_usuario != cuenta_actual.usuario.id:
+        raise HTTPException(status_code=404, detail="Caso no encontrado o sin permisos.")
+
+    if not caso_actual.evidencias:
         raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
-    
+
     # Se inicia la tarea en segundo plano...
     tarea_resultado = procesar_evidencia_tarea.delay(id_caso, solicitud.texto_adicional_usuario)
-    
-    try:
-        # ...y el servidor ESPERA aquí hasta que la tarea termine o falle por timeout.
-        estado_final = tarea_resultado.get(timeout=180) # Timeout de 3 minutos
-        return estado_final
-    except Exception as e:
-        # Si la tarea tarda más de 3 minutos, se lanza el error 504.
-        raise HTTPException(status_code=504, detail=f"El analisis del caso tardo demasiado en responder: {e}")
+    id_tarea = tarea_resultado.id # <-- Este es el ID de la tarea
+
+    # Devolver ID de la tarea inmediatamente
+    return {"mensaje": "Análisis iniciado", "id_tarea": id_tarea}
+
     
 
+# Asegúrate de que esta función esté dentro del mismo 'router' que las demás.
+
+@router.get("/{id_caso}/estado-analisis/{id_tarea}")
+def consultar_estado_analisis(
+    id_caso: int,
+    id_tarea: str,
+    sesion: Session = Depends(obtener_sesion),
+    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual) # Asegura que solo el dueño del caso pueda consultar
+):
+    """
+    Consulta el estado de una tarea de análisis de Celery.
+    """
+    # Validar que el caso pertenece al usuario logueado
+    caso = sesion.get(Caso, id_caso)
+    if not caso or caso.id_usuario != cuenta_actual.usuario.id:
+        raise HTTPException(status_code=404, detail="Caso no encontrado o sin permisos.")
+
+    # Obtener el estado de la tarea de Celery
+    resultado_tarea = AsyncResult(id_tarea, app=celery_app)
+
+    if resultado_tarea.state == 'PENDING':
+        return {"estado": "en_progreso", "mensaje": "La tarea está pendiente de inicio."}
+    elif resultado_tarea.state == 'PROGRESS':
+        # Opcional: Si Celery reporta progreso, puedes devolverlo aquí
+        return {"estado": "en_progreso", "mensaje": "Analizando evidencias..."}
+    elif resultado_tarea.state == 'SUCCESS':
+        # La tarea terminó exitosamente. Devolvemos el caso actualizado desde la BD.
+        # Asegúrate de que la tarea haya guardado el resultado en la base de datos.
+        caso_actualizado = sesion.get(Caso, id_caso)
+        # Opcional: Puedes devolver solo el estado del caso o el objeto completo
+        return {"estado": "completado", "caso": caso_actualizado}
+    else: # FAILURE u otros estados
+        return {"estado": "error", "mensaje": str(resultado_tarea.info)}
 
 
 
