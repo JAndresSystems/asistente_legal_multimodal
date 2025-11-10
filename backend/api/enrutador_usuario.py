@@ -332,28 +332,52 @@ def analizar_caso_completo(
     Inicia la tarea de análisis y ESPERA a que se complete (síncrono).
     Esta es la lógica original de 'procesar_evidencia_tarea', pero ejecutada en el hilo web.
     """
+    print(f"--- DEBUG INICIO ANALISIS ---")
     print(f"DEBUG: Iniciando análisis SÍNCRONO para el CASO ID: {id_caso} en hilo web.")
-    # Validar que el caso pertenece al usuario logueado
-    caso_actual = sesion.get(Caso, id_caso)
-    if not caso_actual or caso_actual.id_usuario != cuenta_actual.usuario.id:
-        raise HTTPException(status_code=404, detail="Caso no encontrado o sin permisos.")
-
-    if not caso_actual.evidencias:
-        raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
+    print(f"DEBUG: ID de cuenta actual: {cuenta_actual.id}")
+    print(f"DEBUG: Rol de cuenta actual: {cuenta_actual.rol}")
 
     try:
+        # Validar que el caso pertenece al usuario logueado
+        print(f"DEBUG: Obteniendo caso con ID {id_caso} de la base de datos...")
+        caso_actual = sesion.get(Caso, id_caso) # <--- LINEA A
+        print(f"DEBUG: Caso obtenido: {caso_actual}") # Verifica si es None
+        if not caso_actual:
+            print(f"DEBUG: ERROR - Caso con ID {id_caso} no encontrado en la base de datos.")
+            raise HTTPException(status_code=404, detail="Caso no encontrado.")
+
+        print(f"DEBUG: ID usuario del caso: {caso_actual.id_usuario}")
+        print(f"DEBUG: ID usuario de la cuenta actual: {cuenta_actual.usuario.id}")
+
+        if caso_actual.id_usuario != cuenta_actual.usuario.id:
+            print(f"DEBUG: ERROR - Permiso denegado. El caso no pertenece al usuario logueado.")
+            raise HTTPException(status_code=403, detail="Permiso denegado. El caso no pertenece al usuario logueado.")
+
+        print(f"DEBUG: Validación de pertenencia completada con éxito.")
+
+        if not caso_actual.evidencias:
+            print(f"DEBUG: ERROR - El caso {id_caso} no tiene evidencias adjuntas.")
+            raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
+
+        print(f"DEBUG: El caso tiene {len(caso_actual.evidencias)} evidencia(s).")
+
         # Preparamos la entrada para el grafo de LangGraph
-        rutas_archivos = [ev.ruta_archivo for ev in caso_actual.evidencias]
-        print(f"DEBUG: El agente analizara un total de {len(rutas_archivos)} evidencia(s).")
+        print(f"DEBUG: Extrayendo rutas de archivos de evidencia...")
+        rutas_archivos = [ev.ruta_archivo for ev in caso_actual.evidencias] # <--- LINEA B
+        print(f"DEBUG: Rutas de archivos extraídas: {rutas_archivos}")
+        print(f"DEBUG: El agente analizara un total de {len(rutas_archivos)} evidencia(s).") # <--- LINEA C
+
         estado_inicial = {
             "id_caso": id_caso,
             "rutas_archivos_evidencia": rutas_archivos,
             "texto_adicional_usuario": solicitud.texto_adicional_usuario,
         }
+        print(f"DEBUG: Estado inicial para el grafo: {estado_inicial}")
 
         # Invocamos a los agentes (síncrono)
-        estado_final = grafo_compilado.invoke(estado_inicial)
-        print("DEBUG: El grafo de LangGraph completo su ejecucion.")
+        print(f"DEBUG: Invocando el grafo de LangGraph...")
+        estado_final = grafo_compilado.invoke(estado_inicial) # <--- LINEA D
+        print("DEBUG: El grafo de LangGraph completo su ejecucion.") # <--- LINEA E
 
         # ==============================================================================
         # INICIO DE LA COPIA: Construimos un diccionario y lo convertimos a JSON
@@ -396,7 +420,7 @@ def analizar_caso_completo(
         # El estado del caso (RECHAZADO, PENDIENTE_ACEPTACION, etc.) ya fue actualizado
         # por el nodo correspondiente dentro del grafo (por ejemplo, nodo_preparar_respuesta_rechazo).
         # No es necesario actualizarlo aquí manualmente basado en estado_final,
-        # ya que el grafo lo hizo internamente y se guardó en la BD en ese momento.
+        # ya que el grafo lo hizo internamente y se guardó en la base de datos en ese momento.
         # Recargamos el objeto caso_actual para asegurar que tenemos el estado final correcto.
         sesion.refresh(caso_actual) # <-- Crucial para obtener el estado actualizado desde la DB
 
@@ -405,14 +429,21 @@ def analizar_caso_completo(
         print(f"DEBUG: Reporte consolidado y estado actualizados en el Caso {id_caso} (hilo web).")
 
         # Devolvemos el estado final para que el frontend lo maneje
+        print(f"--- DEBUG FIN ANALISIS OK ---")
         return estado_final
 
-    except Exception as e:
+    except HTTPException:
+        # Si es una excepción de HTTP ya manejada (como 404, 403, 400), la dejamos pasar.
+        print(f"DEBUG: Excepción HTTP manejada: {e}")
+        raise # Re-lanzarla para que FastAPI la maneje correctamente
+    except Exception as e: # <--- LINEA E
         error_msg = str(e)
-        print(f"DEBUG: ERROR CRITICO en la ejecución SÍNCRONA para caso {id_caso}: {error_msg}")
+        print(f"DEBUG: ERROR CRITICO en la ejecución SÍNCRONA para caso {id_caso}: {error_msg}") # <--- LINEA F
+        print(f"DEBUG: Tipo del error: {type(e).__name__}")
 
         # Opcional: Intentar guardar el error en la base de datos para que el usuario lo vea
-        if caso_actual:
+        # *SI* caso_actual fue definido antes del error que causó la excepción
+        if 'caso_actual' in locals() and caso_actual: # <-- Verificar si caso_actual existe en este scope
             try:
                 caso_actual.reporte_consolidado = json.dumps({"error": error_msg})
                 # Si el grafo no lo cambió de estado (por ejemplo, si falló antes de llegar a un nodo decisivo)
@@ -424,6 +455,9 @@ def analizar_caso_completo(
                 print(f"DEBUG: Error guardado en la base de datos para el Caso {id_caso}.")
             except Exception as db_error:
                 print(f"DEBUG: Error al guardar el error en la base de datos: {db_error}")
+        else:
+            # Si caso_actual no fue definido, no podemos guardarlo. Loggearlo.
+            print(f"DEBUG: Caso {id_caso} no se pudo cargar o validar, imposible guardar error en la BD.")
 
         # Manejar el error específico de archivos si es necesario, como hiciste antes
         if "Unrecognized message part type: media" in error_msg:
