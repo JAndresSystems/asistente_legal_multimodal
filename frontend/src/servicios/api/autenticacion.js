@@ -43,11 +43,11 @@ export const apiLogin = async (email, contrasena) => {
   formData.append('password', contrasena);
 
   try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: formData,
-    });
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData,
+  });
 
     if (!respuesta.ok) {
       const errorData = await respuesta.json();
