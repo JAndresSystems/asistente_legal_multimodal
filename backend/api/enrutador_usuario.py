@@ -332,6 +332,7 @@ def analizar_caso_completo(
     Inicia la tarea de análisis y ESPERA a que se complete (síncrono).
     Esta es la lógica original de 'procesar_evidencia_tarea', pero ejecutada en el hilo web.
     """
+    print(f"DEBUG: Iniciando análisis SÍNCRONO para el CASO ID: {id_caso} en hilo web.")
     # Validar que el caso pertenece al usuario logueado
     caso_actual = sesion.get(Caso, id_caso)
     if not caso_actual or caso_actual.id_usuario != cuenta_actual.usuario.id:
@@ -340,11 +341,10 @@ def analizar_caso_completo(
     if not caso_actual.evidencias:
         raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
 
-    # --- INICIO DE LA COPIA DE LOGICA DE LA TAREA ---
-    print(f"DEBUG: Iniciando análisis SÍNCRONO para el CASO ID: {id_caso} en hilo web.")
     try:
         # Preparamos la entrada para el grafo de LangGraph
         rutas_archivos = [ev.ruta_archivo for ev in caso_actual.evidencias]
+        print(f"DEBUG: El agente analizara un total de {len(rutas_archivos)} evidencia(s).")
         estado_inicial = {
             "id_caso": id_caso,
             "rutas_archivos_evidencia": rutas_archivos,
@@ -352,7 +352,6 @@ def analizar_caso_completo(
         }
 
         # Invocamos a los agentes
-        print(f"DEBUG: El agente analizara un total de {len(rutas_archivos)} evidencia(s).")
         estado_final = grafo_compilado.invoke(estado_inicial)
         print("DEBUG: El grafo de LangGraph completo su ejecucion.")
 
@@ -367,16 +366,16 @@ def analizar_caso_completo(
             "ANALISIS_AUDIO": estado_final.get('resultado_analisis_audio'),
             "ANALISIS_JURIDICO": estado_final.get('resultado_agente_juridico'),
         }
-        
+
         # Filtramos las claves cuyo valor sea None para un reporte más limpio
         reporte_dict_limpio = {k: v for k, v in reporte_dict.items() if v is not None}
-        
+
         # Convertimos el diccionario a un string JSON con formato legible
         caso_actual.reporte_consolidado = json.dumps(reporte_dict_limpio, indent=2, ensure_ascii=False)
         # ==============================================================================
         # FIN DE LA COPIA
         # ==============================================================================
-        
+
         # Actualizamos el estado del caso basado en el resultado de los agentes
         resultado_triaje = estado_final.get('resultado_triaje', {})
         if resultado_triaje.get('admisible') is False:
@@ -385,23 +384,40 @@ def analizar_caso_completo(
             # Si el repartidor corrió, el estado correcto es 'pendiente_aceptacion',
             # que ya fue establecido por el nodo. Aquí lo confirmamos.
             caso_actual.estado = EstadoCaso.PENDIENTE_ACEPTACION
-        
+
         sesion.add(caso_actual)
         sesion.commit()
         print(f"DEBUG: Reporte consolidado y estado actualizados en el Caso {id_caso} (hilo web).")
-        
+
         # Devolvemos el estado final para que el frontend lo maneje
         return estado_final
 
+    # --- INICIO DE LA MODIFICACIÓN ---
+    # Capturar el error específico de LangGraph/Google Generative AI relacionado con archivos
     except Exception as e:
-        print(f"DEBUG: ERROR CRITICO en la ejecución SÍNCRONA para caso {id_caso}: {e}")
-        # Opcional: Guardar error en el caso también en modo síncrono
-        # caso_actual.reporte_consolidado = json.dumps({"error": str(e)})
-        # caso_actual.estado = EstadoCaso.CERRADO # O un nuevo estado "con_error"
-        # sesion.add(caso_actual)
-        # sesion.commit()
-        raise HTTPException(status_code=500, detail=f"Error interno al procesar el análisis: {e}")
-    # --- FIN DE LA COPIA DE LOGICA DE LA TAREA ---
+        error_msg = str(e)
+        print(f"DEBUG: ERROR CRITICO en la ejecución SÍNCRONA para caso {id_caso}: {error_msg}")
+
+        # Opcional: Intentar guardar el error en la base de datos para que el usuario lo vea
+        # Si el caso se creó, intentamos actualizarlo con el error
+        if caso_actual:
+            try:
+                caso_actual.reporte_consolidado = json.dumps({"error": error_msg})
+                caso_actual.estado = EstadoCaso.CERRADO # O un nuevo estado "con_error"
+                sesion.add(caso_actual)
+                sesion.commit()
+                print(f"DEBUG: Error guardado en la base de datos para el Caso {id_caso}.")
+            except Exception as db_error:
+                print(f"DEBUG: Error al guardar el error en la base de datos: {db_error}")
+                # Si falla al guardar, seguimos con el raise HTTP
+
+        # Verificamos si el error es el específico de "media"
+        if "Unrecognized message part type: media" in error_msg:
+             # Este error es muy específico de la librería y el tipo de archivo
+             raise HTTPException(status_code=500, detail=f"Error al procesar el archivo enviado: {error_msg}. Es posible que el formato no sea compatible o el archivo esté dañado.")
+        else:
+            # Otro error genérico
+            raise HTTPException(status_code=500, detail=f"Error interno al procesar el análisis: {error_msg}")
 
 
     
