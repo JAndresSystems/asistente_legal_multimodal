@@ -1,4 +1,5 @@
-#C:\react\asistente_legal_multimodal\backend\herramientas\herramientas_lenguaje.py
+# backend/herramientas/herramientas_lenguaje.py
+
 import os
 import json
 from dotenv import load_dotenv
@@ -42,8 +43,25 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
         return {"error": "El modelo de lenguaje no está disponible."}
         
     try:
-        # Usamos el nuevo nombre del parametro en la llamada a la funcion auxiliar
-        contenido_listo = preparar_entrada_multimodal(prompt_usuario, archivos_locales)
+        # CORRECCIÓN: Validación pre: Si es PDF, extrae texto para evitar 'media' error en Gemini
+        # Usa PyPDF2 para extraer texto puro; evita enviar PDF crudo si posible.
+        from pypdf import PdfReader  # Asegúrate de importar si no está en el archivo
+        contenido_listo = [prompt_usuario]  # Inicia con prompt
+        for archivo in archivos_locales:
+            if archivo.endswith('.pdf'):
+                try:
+                    reader = PdfReader(archivo)
+                    texto_extraido = ''.join(page.extract_text() or "" for page in reader.pages)
+                    if texto_extraido:
+                        contenido_listo.append(texto_extraido)
+                    else:
+                        raise ValueError("No se pudo extraer texto del PDF.")
+                except Exception as pdf_e:
+                    return {"error": f"Error al extraer texto de PDF: {pdf_e}"}
+            else:
+                # Para otros archivos, usa la función original
+                contenido_listo.extend(preparar_entrada_multimodal("", [archivo])[1:])  # Agrega solo el archivo
+        
         mensaje = HumanMessage(content=contenido_listo)
         
         print(f"      TOOL-SYSTEM: -> Invocando a Gemini 2.5 Flash (esperando JSON) con {len(archivos_locales)} archivo(s)...")
@@ -51,14 +69,14 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
         texto_respuesta = respuesta.content.strip()
         
         if texto_respuesta.startswith("```json"):
-            texto_respuesta = texto_respuesta[7:-3]
+            texto_respuesta = texto_respuesta[7:-3].strip()
             
-        return json.loads(texto_respuesta)
+        # CORRECCIÓN: Más robustez en parseo JSON (maneja posibles escapes o errores)
+        try:
+            return json.loads(texto_respuesta)
+        except json.JSONDecodeError as json_e:
+            return {"error": f"JSON inválido: {json_e}", "respuesta_original": texto_respuesta}
         
-    except json.JSONDecodeError:
-        error_msg = f"Error: El modelo no devolvió un JSON válido. Respuesta: {texto_respuesta[:200]}"
-        print(f"      ERROR-CRITICO: {error_msg}")
-        return {"error": error_msg, "respuesta_original": texto_respuesta}
     except Exception as e:
         error_msg = f"Error crítico durante el análisis JSON con Gemini: {e}"
         print(f"      ERROR-CRITICO: {error_msg}")
