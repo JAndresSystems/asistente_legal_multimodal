@@ -48,7 +48,8 @@ try:
     # Importar enrutadores específicos de roles
     from .api.enrutador_usuario import router as router_usuario
     from .api.enrutador_estudiante import router as router_estudiante
-    from .api.enrutador_asesor import router as router_asesor
+    # CORRECCIÓN AQUÍ: Importamos 'router_asesor' desde enrutador_asesor, no 'router'
+    from .api.enrutador_asesor import router_asesor as router_asesor
     from .api.enrutador_administrador import router as router_administrador
 
     # Importar enrutadores generales
@@ -70,9 +71,9 @@ try:
     # Registrar enrutadores específicos de roles
     # El prefijo (e.g., /api/casos, /api/expedientes, /api/asesor, /api/administrador)
     # está definido DENTRO de cada archivo de enrutador correspondiente.
-    aplicacion.include_router(router_usuario)  # -> Monta sus rutas bajo /api/casos
-    aplicacion.include_router(router_estudiante) # -> Monta sus rutas bajo /api/expedientes (por ejemplo)
-    aplicacion.include_router(router_asesor)     # -> Monta sus rutas bajo /api/asesor (por ejemplo)
+    aplicacion.include_router(router_usuario)      # -> Monta sus rutas bajo /api/casos
+    aplicacion.include_router(router_estudiante)   # -> Monta sus rutas bajo /api/expedientes
+    aplicacion.include_router(router_asesor)       # -> Monta sus rutas bajo /api/asesor
     aplicacion.include_router(router_administrador) # -> Monta sus rutas bajo /api/administrador
 
     print("-> Enrutadores registrados exitosamente.")
