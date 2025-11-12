@@ -24,22 +24,20 @@ except Exception as e:
 
 
 # ==============================================================================
-# Herramienta de Analisis Multimodal con Salida Estructurada (JSON)
+# Herramienta de Analisis Multimodal mejorada
 # ==============================================================================
 def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[str]) -> Dict[str, Any]:
-    """Analiza evidencia multimodal (texto, imágenes, PDFs) y maneja audio mediante transcripción.
-    Devuelve un objeto JSON con el análisis estructurado."""
+    """Analiza evidencia multimodal con manejo robusto de errores y extracción de texto para PDFs."""
     if not llm_multimodal:
         return {"error": "El modelo de lenguaje no está disponible."}
     
     try:
-        # 1. Preparar contenido multimodal inicial con el prompt
+        # Preparar contenido inicial con el prompt
         contenido_para_analisis = [{"type": "text", "text": prompt_usuario}]
         archivos_procesados = []
         errores_procesamiento = []
         texto_transcrito_audio = ""
         
-        # 2. Procesar cada archivo según su tipo
         for ruta_archivo in archivos_locales:
             tipo_mime, _ = mimetypes.guess_type(ruta_archivo)
             nombre_archivo = os.path.basename(ruta_archivo)
@@ -48,29 +46,31 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
                 errores_procesamiento.append(f"Archivo no reconocido: {nombre_archivo}")
                 continue
                 
-            # Manejar PDFs: EXTRAER TEXTO primero (CORRECCIÓN CRÍTICA)
+            # Manejo ESPECÍFICO para PDFs - EXTRAER TEXTO
             if tipo_mime == 'application/pdf':
-                print(f"📄 Procesando PDF: {nombre_archivo} - Extrayendo texto primero...")
+                print(f"📄 Procesando PDF: {nombre_archivo}")
                 try:
+                    # EXTRAER TEXTO DEL PDF
                     reader = PdfReader(ruta_archivo)
                     texto_pdf = ""
                     for page in reader.pages:
-                        texto_extraido = page.extract_text()
-                        if texto_extraido:
+                        texto_extraido = page.extract_text() or ""
+                        if texto_extraido.strip():
                             texto_pdf += texto_extraido + "\n\n"
                     
                     if texto_pdf.strip():
-                        contenido_para_analisis.append(f"--- CONTENIDO PDF {nombre_archivo} ---\n{texto_pdf}")
+                        contenido_para_analisis.append(f"--- CONTENIDO DEL PDF {nombre_archivo} ---\n{texto_pdf}")
                         archivos_procesados.append(f"✅ PDF procesado: {nombre_archivo}")
-                        print(f"✅ Texto extraído exitosamente de {nombre_archivo}")
+                        print(f"✅ Texto extraído exitosamente de {nombre_archivo} ({len(texto_pdf)} caracteres)")
                     else:
                         errores_procesamiento.append(f"No se pudo extraer texto del PDF: {nombre_archivo}")
                         print(f"❌ No se pudo extraer texto del PDF: {nombre_archivo}")
                 except Exception as pdf_e:
-                    errores_procesamiento.append(f"Error al procesar PDF {nombre_archivo}: {str(pdf_e)}")
-                    print(f"❌ Error procesando PDF {nombre_archivo}: {str(pdf_e)}")
+                    error_msg = f"Error al procesar PDF {nombre_archivo}: {str(pdf_e)}"
+                    errores_procesamiento.append(error_msg)
+                    print(f"❌ {error_msg}")
             
-            # Manejar imágenes: enviar directamente a Gemini
+            # Manejo para IMÁGENES - enviar directamente
             elif tipo_mime.startswith('image/'):
                 print(f"🖼️ Procesando imagen: {nombre_archivo}")
                 try:
@@ -82,9 +82,9 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
                     errores_procesamiento.append(f"Error procesando imagen {nombre_archivo}: {str(img_e)}")
                     print(f"❌ Error procesando imagen {nombre_archivo}: {str(img_e)}")
             
-            # Manejar audio: transcripción primero, luego enviar texto a Gemini
+            # Manejo para AUDIO - transcribir localmente
             elif tipo_mime.startswith('audio/'):
-                print(f"🎵 Detectado archivo de audio para transcripción: {nombre_archivo}")
+                print(f"🎵 Procesando audio: {nombre_archivo}")
                 try:
                     texto_transcrito = transcribir_audio_local(ruta_archivo)
                     if texto_transcrito:
@@ -95,9 +95,9 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
                 except Exception as e:
                     errores_procesamiento.append(f"Error transcribiendo {nombre_archivo}: {str(e)}")
             
-            # Manejar videos: extraer audio y transcribir
+            # Manejo para VIDEO - extraer audio y transcribir
             elif tipo_mime.startswith('video/'):
-                print(f"🎬 Detectado archivo de video para extracción de audio: {nombre_archivo}")
+                print(f"🎬 Procesando video: {nombre_archivo}")
                 try:
                     texto_transcrito = extraer_y_transcribir_video(ruta_archivo)
                     if texto_transcrito:
@@ -111,12 +111,13 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
             else:
                 errores_procesamiento.append(f"Formato no compatible: {nombre_archivo} ({tipo_mime})")
         
-        # 3. Añadir transcripciones de audio/video al contenido si existen
+        # Añadir transcripciones de audio/video si existen
         if texto_transcrito_audio:
             contenido_para_analisis.append({"type": "text", "text": texto_transcrito_audio})
         
-        # 4. Si no hay contenido multimodal válido después del procesamiento
+        # Si no hay contenido válido después del procesamiento
         if len(contenido_para_analisis) == 1 and (errores_procesamiento or not archivos_procesados):
+            print("⚠️ No se pudo procesar ningún archivo válido")
             return {
                 "error": "sin_contenido_valido",
                 "archivos_procesados": archivos_procesados,
@@ -124,37 +125,48 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
                 "mensaje": "No se pudo procesar ningún archivo válido. Por favor, suba archivos PDF, JPG, PNG o describa su caso por escrito.",
                 "resultado_triaje": {
                     "admisible": False,
-                    "justificacion": "Error en el procesamiento de archivos",
-                    "hechos_clave": "No se pudieron extraer hechos",
+                    "justificacion": "Error en el procesamiento de archivos. Por favor, verifique los formatos de los archivos subidos.",
+                    "hechos_clave": "No se pudieron extraer hechos debido a errores de procesamiento",
                     "informacion_suficiente": True
                 }
             }
         
-        # 5. Invocar a Gemini con el contenido preparado
-        mensaje = HumanMessage(content=contenido_para_analisis)
+        # Invocar a Gemini con el contenido preparado
         print(f"✨ Invocando Gemini con {len(contenido_para_analisis)} elementos para análisis")
-        
+        mensaje = HumanMessage(content=contenido_para_analisis)
         respuesta = llm_multimodal.invoke([mensaje])
         texto_respuesta = respuesta.content.strip()
         
-        # 6. Limpiar y parsear la respuesta JSON
+        # Limpiar y parsear la respuesta JSON
         if texto_respuesta.startswith("```json"):
             texto_respuesta = texto_respuesta[7:-3].strip()
         
         try:
             resultado = json.loads(texto_respuesta)
+            # Asegurar que haya un resultado_triaje válido
+            if "resultado_triaje" not in resultado:
+                resultado["resultado_triaje"] = {
+                    "admisible": False,
+                    "justificacion": "Respuesta no estructurada correctamente desde IA",
+                    "hechos_clave": "Error en el formato de respuesta",
+                    "informacion_suficiente": True
+                }
+            
             # Añadir información de procesamiento
             if archivos_procesados or errores_procesamiento:
                 resultado["metadatos_procesamiento"] = {
                     "archivos_procesados": archivos_procesados,
                     "errores": errores_procesamiento
                 }
+            
             return resultado
-        except json.JSONDecodeError:
-            # Si falla el parseo JSON, devolver un resultado estructurado con el error
+        except json.JSONDecodeError as json_e:
+            error_msg = f"Error parsing JSON: {str(json_e)}"
+            print(f"❌ {error_msg}")
             return {
                 "error": "respuesta_invalida",
                 "mensaje": "Gemini no devolvió una respuesta en formato JSON válido",
+                "detalle": str(json_e),
                 "respuesta_original": texto_respuesta[:200] + "..." if len(texto_respuesta) > 200 else texto_respuesta,
                 "archivos_procesados": archivos_procesados,
                 "errores": errores_procesamiento,
@@ -169,12 +181,11 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
     except Exception as e:
         error_msg = f"Error crítico durante el análisis multimodal: {str(e)}"
         print(f"❌ {error_msg}")
-        # Devolver un resultado con todos los campos necesarios para LangGraph
+        # Siempre devolver un resultado con resultado_triaje para evitar errores en LangGraph
         return {
             "error": "error_critico",
             "mensaje": "Error interno al procesar los archivos. Por favor, intente nuevamente o describa su caso por escrito.",
-            "detalle": error_msg,
-            "solucion": "Para archivos de audio/video, asegúrese de que estén en formato compatible o describa su caso por escrito.",
+            "detalle": str(e),
             "resultado_triaje": {
                 "admisible": False,
                 "justificacion": "Error en el formato de respuesta del sistema de IA. Por favor, contacte al administrador.",
@@ -183,9 +194,7 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
             }
         }
 
-# ==============================================================================
-# Funciones auxiliares para transcripción de audio/video
-# ==============================================================================
+# Funciones auxiliares para transcripción (mantener las existentes)
 def transcribir_audio_local(ruta_audio: str) -> str:
     """Transcribe un archivo de audio local usando SpeechRecognition."""
     try:
@@ -233,16 +242,7 @@ def extraer_y_transcribir_video(ruta_video: str) -> str:
 # Herramienta de Generacion de Texto Plano
 # ==============================================================================
 def generar_respuesta_texto(prompt: str) -> str:
-    """Toma un prompt de texto y devuelve la respuesta del LLM como un string 
-    de texto plano. Ideal para tareas de síntesis o conversacionales, como el 
-    Agente de Atencion.
-    
-    Args:
-        prompt (str): El prompt o la pregunta a realizar al modelo.
-        
-    Returns:
-        (str): La respuesta del modelo como una cadena de texto.
-    """
+    """Toma un prompt de texto y devuelve la respuesta del LLM como un string de texto plano."""
     if not llm_multimodal:
         return "Error: El modelo de lenguaje no está disponible."
         
