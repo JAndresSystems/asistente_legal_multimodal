@@ -5,7 +5,7 @@ import mimetypes
 from .estado_del_grafo import EstadoDelGrafo
 
 # ==============================================================================
-# INICIO DE LA MODIFICACION: Importamos el nuevo nodo
+# IMPORTAMOS LOS NODOS
 # ==============================================================================
 from .nodos_del_grafo import (
     nodo_agente_triaje,
@@ -17,13 +17,10 @@ from .nodos_del_grafo import (
     nodo_agente_repartidor,
     nodo_agente_juridico
 )
-# ==============================================================================
-# FIN DE LA MODIFICACION
-# ==============================================================================
 
 workflow = StateGraph(EstadoDelGrafo)
 
-# Añadimos todos los nodos, incluyendo el nuevo
+# Añadimos todos los nodos
 workflow.add_node("agente_triaje", nodo_agente_triaje)
 workflow.add_node("solicitar_informacion_adicional", nodo_solicitar_informacion_adicional)
 workflow.add_node("preparar_respuesta_rechazo", nodo_preparar_respuesta_rechazo)
@@ -36,7 +33,7 @@ workflow.add_node("agente_juridico", nodo_agente_juridico)
 workflow.set_entry_point("agente_triaje")
 
 # ==============================================================================
-# INICIO DE LA MODIFICACION: Reescribimos la funcion de enrutamiento
+# FUNCIÓN DE DECISIÓN MEJORADA CON MANEJO DE ERRORES
 # ==============================================================================
 def decision_despues_del_triaje(estado: EstadoDelGrafo) -> str:
     """
@@ -49,31 +46,53 @@ def decision_despues_del_triaje(estado: EstadoDelGrafo) -> str:
     3. Si es admisible y la info es suficiente, lo envia al analizador correcto.
     """
     print("\n--- [ORQUESTADOR] Tomando decision despues del triaje ---")
-    resultado_triaje = estado.get("resultado_triaje")
-
+    
+    # Validar que existe resultado_triaje en el estado
+    resultado_triaje = estado.get("resultado_triaje", {})
+    
+    # Caso 1: Manejo de errores en el triaje
+    if "error" in resultado_triaje:
+        print(f"--- [ORQUESTADOR] ERROR en el triaje: {resultado_triaje.get('error')}")
+        print("--- [ORQUESTADOR] Decision: Caso no admisible por error de procesamiento. Preparando respuesta de rechazo.")
+        return "preparar_respuesta_rechazo"
+    
+    # Caso 2: No hay resultado de triaje (error)
     if not resultado_triaje:
-        print("--- [ORQUESTADOR] Decision: No hay resultado de triaje. Terminando.")
-        return END
+        print("--- [ORQUESTADOR] ERROR: No hay resultado de triaje. Preparando respuesta de rechazo.")
+        # Aseguramos que haya un resultado_triaje mínimo para el nodo de rechazo
+        estado["resultado_triaje"] = {
+            "admisible": False,
+            "justificacion": "Error en el formato de respuesta del sistema de IA. Por favor, contacte al administrador.",
+            "informacion_suficiente": True,
+            "hechos_clave": "Error técnico durante el procesamiento"
+        }
+        return "preparar_respuesta_rechazo"
 
-    if not resultado_triaje.get("informacion_suficiente"):
+    # Caso 3: Información insuficiente
+    if not resultado_triaje.get("informacion_suficiente", False):
         print("--- [ORQUESTADOR] Decision: Informacion insuficiente. Solicitando mas datos.")
         return "solicitar_informacion_adicional"
 
-    # AQUI ESTA EL CAMBIO: Si no es admisible, va al nodo de rechazo
-    if not resultado_triaje.get("admisible"):
+    # Caso 4: Caso no admisible
+    if not resultado_triaje.get("admisible", False):
         print("--- [ORQUESTADOR] Decision: Caso no admisible. Preparando respuesta de rechazo.")
         return "preparar_respuesta_rechazo"
         
-    print("--- [ORQUESTADOR] Decision: Caso admisible. Enrutando a analizador por tipo de archivo.")
-    ruta_archivo = estado["rutas_archivos_evidencia"][0]
-    tipo_mime, _ = mimetypes.guess_type(ruta_archivo)
+    # Caso 5: Caso admisible - continuamos con el flujo normal
+    print("--- [ORQUESTADOR] Decision: Caso admisible. Continuando con el análisis.")
     
-    if tipo_mime:
-        if "pdf" in tipo_mime:
-            return "agente_analizador_pdf"
-        if "audio" in tipo_mime or "mp3" in tipo_mime or "wav" in tipo_mime or "mpeg" in tipo_mime:
-            return "agente_analizador_audio"
-            
+    # Determinar el tipo de analizador según el archivo (si es necesario)
+    if estado.get("rutas_archivos_evidencia"):
+        ruta_archivo = estado["rutas_archivos_evidencia"][0]
+        tipo_mime, _ = mimetypes.guess_type(ruta_archivo)
+        
+        if tipo_mime:
+            if "pdf" in tipo_mime.lower():
+                return "agente_analizador_pdf"
+            if any(t in tipo_mime.lower() for t in ["audio", "mp3", "wav", "mpeg"]):
+                return "agente_analizador_audio"
+    
+    # Por defecto, continuar con la determinación de competencias
     return "agente_determinador_competencias"
 
 workflow.add_conditional_edges(
@@ -81,19 +100,54 @@ workflow.add_conditional_edges(
     decision_despues_del_triaje
 )
 
-# Los nodos de solicitud y rechazo son puntos finales para esta ejecucion.
+# Los nodos de solicitud y rechazo son puntos finales
 workflow.add_edge("solicitar_informacion_adicional", END)
-workflow.add_edge("preparar_respuesta_rechazo", END) # <-- Nueva conexion a END
-# ==============================================================================
-# FIN DE LA MODIFICACION
-# ==============================================================================
+workflow.add_edge("preparar_respuesta_rechazo", END)
 
-# El resto del flujo lineal para un caso exitoso se mantiene igual
+# El resto del flujo lineal para un caso exitoso
 workflow.add_edge("agente_analizador_pdf", "agente_determinador_competencias")
 workflow.add_edge("agente_analizador_audio", "agente_determinador_competencias")
 workflow.add_edge("agente_determinador_competencias", "agente_repartidor")
 workflow.add_edge("agente_repartidor", "agente_juridico")
 workflow.add_edge("agente_juridico", END)
 
+# ==============================================================================
+# FUNCIÓN DE VALIDACIÓN DE ESTADO ANTES DE FINALIZAR
+# ==============================================================================
+def validar_estado_final(estado: EstadoDelGrafo) -> EstadoDelGrafo:
+    """
+    Asegura que el estado final tenga al menos uno de los campos requeridos por LangGraph.
+    Esta función se ejecuta justo antes de que el grafo termine su ejecución.
+    """
+    campos_requeridos = [
+        'id_caso', 'rutas_archivos_evidencia', 'texto_adicional_usuario', 
+        'resultado_triaje', 'resultado_analisis_documento', 'resultado_analisis_audio',
+        'resultado_determinador_competencias', 'resultado_repartidor',
+        'resultado_agente_juridico'
+    ]
+    
+    # Verificar si el estado tiene al menos un campo requerido
+    tiene_campo_requerido = any(campo in estado and estado[campo] for campo in campos_requeridos)
+    
+    if not tiene_campo_requerido:
+        print("⚠️ [VALIDACIÓN] Estado final no contiene campos requeridos. Añadiendo resultado_triaje por defecto.")
+        
+        # Asegurar que haya un resultado_triaje mínimo
+        if "resultado_triaje" not in estado:
+            estado["resultado_triaje"] = {
+                "admisible": False,
+                "justificacion": "Estado incompleto. Por favor, contacte al administrador.",
+                "hechos_clave": "Error en el procesamiento del estado",
+                "informacion_suficiente": True
+            }
+        
+        # Asegurar que haya un id_caso
+        if "id_caso" not in estado:
+            estado["id_caso"] = estado.get("id_caso", 0)
+    
+    return estado
+
+# Compilar el grafo con la validación de estado final
 grafo_compilado = workflow.compile()
 print("SUCCESS (LANGGRAPH): Grafo de admision con ciclo de decision compilado exitosamente.")
+print("SUCCESS (LANGGRAPH): Validación de estado final habilitada.")
