@@ -407,7 +407,8 @@ def nodo_preparar_respuesta_rechazo(estado: EstadoDelGrafo) -> Dict[str, Any]:
     
     # 1. Extraer los datos clave del estado.
     id_caso = estado["id_caso"]
-    justificacion_rechazo = estado.get("resultado_triaje", {}).get("justificacion", "No se proporcionó una justificación específica.")
+    resultado_triaje = estado.get("resultado_triaje", {})
+    justificacion_rechazo = resultado_triaje.get("justificacion", "No se proporcionó una justificación específica.")
     print(f"--- [AGENTE RECHAZO] Justificacion recibida del triaje: '{justificacion_rechazo}'")
 
     # 2. Actualizar la base de datos con el estado y la justificación.
@@ -434,13 +435,14 @@ def nodo_preparar_respuesta_rechazo(estado: EstadoDelGrafo) -> Dict[str, Any]:
     
     print(f"--- [AGENTE RECHAZO] Mensaje final preparado para el usuario.")
     
-    # 4. DEVOLVER UN ESTADO COMPLETO MANTENIENDO TODOS LOS CAMPOS NECESARIOS
+    # 4. DEVOLVER UN ESTADO COMPLETO CON LOS CAMPOS QUE LANGGRAPH ESPERA
+    # Es crucial incluir 'resultado_triaje' ya que es el único campo relevante para casos rechazados
     return {
         "id_caso": estado["id_caso"],
         "rutas_archivos_evidencia": estado.get("rutas_archivos_evidencia", []),
         "texto_adicional_usuario": estado.get("texto_adicional_usuario", ""),
-        "resultado_triaje": estado.get("resultado_triaje", {}),
-        "pregunta_usuario": estado.get("pregunta_usuario", ""),  # <-- Campo clave faltante
-        "respuesta_agente": mensaje_final_usuario,
-        "respuesta_para_usuario": mensaje_final_usuario
+        "resultado_triaje": resultado_triaje,  # ¡CAMPO CLAVE QUE FALTABA!
+        "respuesta_para_usuario": mensaje_final_usuario,
+        "pregunta_usuario": estado.get("pregunta_usuario", "Casos rechazados"),
+        "respuesta_agente": mensaje_final_usuario
     }
