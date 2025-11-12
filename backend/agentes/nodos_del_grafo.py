@@ -402,47 +402,83 @@ def nodo_preparar_respuesta_rechazo(estado: EstadoDelGrafo) -> Dict[str, Any]:
     admisible. Sus funciones son:
     1. Persistir el resultado del rechazo en la base de datos.
     2. Construir un mensaje final, claro y empático para el usuario.
+    3. Devolver un estado COMPLETO y válido para LangGraph.
+    
+    IMPORTANTE: Este nodo DEBE devolver todos los campos necesarios para que
+    LangGraph pueda continuar el flujo sin errores de estado inválido.
     """
     print("\n--- [AGENTE RECHAZO] Iniciando ejecucion del nodo ---")
     
-    # 1. Extraer los datos clave del estado.
-    id_caso = estado["id_caso"]
+    # 1. Extraer los datos clave del estado de forma segura
+    id_caso = estado.get("id_caso")
+    if not id_caso:
+        print("--- [AGENTE RECHAZO] ERROR CRITICO: No se encontró el ID del caso en el estado.")
+        return {
+            "id_caso": 0,
+            "resultado_triaje": {"admisible": False, "justificacion": "Error interno: caso no identificado"},
+            "pregunta_usuario": estado.get("pregunta_usuario", "Análisis de caso"),
+            "respuesta_para_usuario": "Error interno al procesar su caso. Por favor, contacte al administrador.",
+            "respuesta_agente": "Error interno al procesar su caso."
+        }
+    
+    # Obtener resultado_triaje de forma segura
     resultado_triaje = estado.get("resultado_triaje", {})
+    if not isinstance(resultado_triaje, dict):
+        resultado_triaje = {"admisible": False, "justificacion": "Error en el procesamiento del triaje"}
+    
+    # 2. Obtener justificación de forma robusta
     justificacion_rechazo = resultado_triaje.get("justificacion", "No se proporcionó una justificación específica.")
+    if not justificacion_rechazo or justificacion_rechazo.strip() == "":
+        justificacion_rechazo = "El caso no cumple con los criterios de admisibilidad del consultorio jurídico."
+    
     print(f"--- [AGENTE RECHAZO] Justificacion recibida del triaje: '{justificacion_rechazo}'")
 
-    # 2. Actualizar la base de datos con el estado y la justificación.
+    # 3. Actualizar la base de datos con el estado y la justificación
     try:
         with Session(motor) as sesion_db:
             caso_a_actualizar = sesion_db.get(Caso, id_caso)
             if caso_a_actualizar:
                 caso_a_actualizar.estado = EstadoCaso.RECHAZADO
-                caso_a_actualizar.justificacion_rechazo = justificacion_rechazo
+                caso_a_actualizar.justificacion_rechazo = justificacion_rechazo[:500]  # Limitar longitud
                 sesion_db.add(caso_a_actualizar)
                 sesion_db.commit()
+                sesion_db.refresh(caso_a_actualizar)
                 print(f"--- [AGENTE RECHAZO] (DB): Caso {id_caso} actualizado a '{EstadoCaso.RECHAZADO.value}' con justificación.")
             else:
                 print(f"--- [AGENTE RECHAZO] (DB) ADVERTENCIA: No se encontró el caso {id_caso} para actualizar.")
     except Exception as e:
         print(f"--- [AGENTE RECHAZO] (DB) ERROR: Fallo al actualizar la base de datos: {e}")
+        # No lanzamos excepción aquí para no interrumpir el flujo del grafo
 
-    # 3. Construir el mensaje final para el usuario usando una plantilla.
+    # 4. Construir el mensaje final para el usuario usando una plantilla clara
     mensaje_final_usuario = (
         "Hemos evaluado la información de su caso y, lamentablemente, no cumple con los criterios "
-        "de competencia definidos para nuestro consultorio jurídico. La razón es la siguiente: "
-        f"'{justificacion_rechazo}'. Le agradecemos su tiempo y por contactarnos."
+        "de admisibilidad definidos para nuestro consultorio jurídico gratuito. "
+        f"Razón específica: {justificacion_rechazo}"
     )
     
-    print(f"--- [AGENTE RECHAZO] Mensaje final preparado para el usuario.")
+    # 5. Asegurar que el mensaje no sea demasiado largo para evitar problemas de tokenización
+    if len(mensaje_final_usuario) > 1000:
+        mensaje_final_usuario = mensaje_final_usuario[:950] + "..."
     
-    # 4. DEVOLVER UN ESTADO COMPLETO CON LOS CAMPOS QUE LANGGRAPH ESPERA
-    # Es crucial incluir 'resultado_triaje' ya que es el único campo relevante para casos rechazados
+    print(f"--- [AGENTE RECHAZO] Mensaje final preparado para el usuario.")
+
+    # 6. DEVOLVER UN ESTADO COMPLETO Y VÁLIDO PARA LANGGRAPH
+    #    Este es el cambio CRUCIAL que soluciona el InvalidUpdateError
     return {
-        "id_caso": estado["id_caso"],
+        "id_caso": id_caso,
         "rutas_archivos_evidencia": estado.get("rutas_archivos_evidencia", []),
         "texto_adicional_usuario": estado.get("texto_adicional_usuario", ""),
-        "resultado_triaje": resultado_triaje,  # ¡CAMPO CLAVE QUE FALTABA!
+        "pregunta_usuario": estado.get("pregunta_usuario", "Análisis de caso"),  # Campo crítico que faltaba
+        "resultado_triaje": resultado_triaje,
+        "resultado_determinador_competencias": estado.get("resultado_determinador_competencias", {}),
+        "resultado_repartidor": estado.get("resultado_repartidor", {}),
+        "resultado_analisis_documento": estado.get("resultado_analisis_documento", {}),
+        "resultado_analisis_audio": estado.get("resultado_analisis_audio", {}),
+        "resultado_agente_juridico": estado.get("resultado_agente_juridico", {}),
+        "resultado_agente_generador_documentos": estado.get("resultado_agente_generador_documentos", {}),
         "respuesta_para_usuario": mensaje_final_usuario,
-        "pregunta_usuario": estado.get("pregunta_usuario", "Casos rechazados"),
-        "respuesta_agente": mensaje_final_usuario
+        "respuesta_agente": mensaje_final_usuario,
+        "solicitud_agente_juridico": estado.get("solicitud_agente_juridico", ""),
+        "solicitud_agente_documentos": estado.get("solicitud_agente_documentos", "")
     }
