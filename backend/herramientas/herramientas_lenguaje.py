@@ -2,6 +2,7 @@
 
 import os
 import json
+import base64
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
@@ -32,112 +33,90 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
         return {"error": "El modelo de lenguaje no está disponible."}
     
     try:
-        # 1. Validación y clasificación de archivos antes de procesar
-        archivos_procesables = []
+        # 1. Validar y procesar archivos antes de enviar a Gemini
+        contenido_para_analisis = [prompt_usuario]
         archivos_no_procesables = []
-        texto_extraido = ""
         
         for archivo in archivos_locales:
-            # Validar tipo MIME
             tipo_mime, _ = mimetypes.guess_type(archivo)
             
             if not tipo_mime:
-                archivos_no_procesables.append({
-                    "archivo": archivo,
-                    "razon": "Tipo de archivo no reconocido"
-                })
+                archivos_no_procesables.append(f"Archivo no reconocido: {os.path.basename(archivo)}")
                 continue
             
-            # Clasificar por tipo de procesamiento
-            if tipo_mime.startswith('application/pdf'):
+            # Manejar PDFs: extraer texto en lugar de enviar el archivo binario
+            if tipo_mime == 'application/pdf':
                 try:
-                    # Extracción de texto para PDFs
                     reader = PdfReader(archivo)
-                    contenido_pdf = ''.join(page.extract_text() or "" for page in reader.pages)
-                    if contenido_pdf.strip():
-                        texto_extraido += f"\n\n--- CONTENIDO PDF: {os.path.basename(archivo)} ---\n{contenido_pdf}"
+                    texto_pdf = ""
+                    for page in reader.pages:
+                        texto_extraido = page.extract_text()
+                        if texto_extraido:
+                            texto_pdf += texto_extraido + "\n\n"
+                    
+                    if texto_pdf.strip():
+                        contenido_para_analisis.append(f"--- CONTENIDO DEL PDF {os.path.basename(archivo)} ---\n{texto_pdf}")
                     else:
-                        archivos_no_procesables.append({
-                            "archivo": archivo,
-                            "razon": "No se pudo extraer texto del PDF"
-                        })
+                        archivos_no_procesables.append(f"No se pudo extraer texto del PDF: {os.path.basename(archivo)}")
                 except Exception as pdf_e:
-                    archivos_no_procesables.append({
-                        "archivo": archivo,
-                        "razon": f"Error al procesar PDF: {str(pdf_e)}"
-                    })
+                    archivos_no_procesables.append(f"Error al procesar PDF {os.path.basename(archivo)}: {str(pdf_e)}")
             
+            # Manejar imágenes: enviar directamente a Gemini
             elif tipo_mime.startswith('image/'):
-                # Imágenes se procesan directamente con Gemini
-                archivos_procesables.append(archivo)
+                try:
+                    # Preparar el archivo de imagen para Gemini
+                    with open(archivo, "rb") as f:
+                        datos_imagen = f.read()
+                    
+                    # Añadir imagen al contenido
+                    contenido_para_analisis.append({
+                        "type": "media",
+                        "mime_type": tipo_mime,
+                        "data": base64.b64encode(datos_imagen).decode('utf-8')
+                    })
+                except Exception as img_e:
+                    archivos_no_procesables.append(f"Error al procesar imagen {os.path.basename(archivo)}: {str(img_e)}")
             
-            elif tipo_mime.startswith('audio/') or tipo_mime.startswith('video/'):
-                # Archivos multimedia no compatibles directamente
-                archivos_no_procesables.append({
-                    "archivo": archivo,
-                    "razon": "Formato de audio/video no compatible. Por favor transcribe el contenido como texto."
-                })
-            
+            # Rechazar otros formatos con mensaje claro
             else:
-                archivos_no_procesables.append({
-                    "archivo": archivo,
-                    "razon": f"Formato no compatible: {tipo_mime}"
-                })
+                archivos_no_procesables.append(f"Formato no compatible: {os.path.basename(archivo)} (tipo: {tipo_mime})")
 
-        # 2. Construir el prompt final con contenido procesable
-        contenido_para_gemini = [prompt_usuario]
+        # 2. Invocar a Gemini con el contenido procesado
+        mensaje = HumanMessage(content=contenido_para_analisis)
+        print(f"✨ Enviando a Gemini con {len(contenido_para_analisis)} elementos para análisis")
         
-        if texto_extraido:
-            contenido_para_gemini.append(texto_extraido)
-        
-        # Solo añadir imágenes si hay
-        if archivos_procesables:
-            contenido_para_gemini.extend(preparar_entrada_multimodal("", archivos_procesables)[1:])
-
-        mensaje = HumanMessage(content=contenido_para_gemini)
-        
-        print(f"      TOOL-SYSTEM: -> Invocando Gemini 2.5 Flash con {len(archivos_procesables)} archivos procesables...")
         respuesta = llm_multimodal.invoke([mensaje])
         texto_respuesta = respuesta.content.strip()
         
-        # Limpiar formato JSON si es necesario
+        # 3. Procesar respuesta JSON
         if texto_respuesta.startswith("```json"):
             texto_respuesta = texto_respuesta[7:-3].strip()
         
-        # Parsear respuesta JSON
         try:
             resultado = json.loads(texto_respuesta)
             
-            # Añadir información sobre archivos no procesables
+            # Añadir advertencias si hay archivos no procesables
             if archivos_no_procesables:
                 if "advertencias" not in resultado:
                     resultado["advertencias"] = []
-                
-                for archivo in archivos_no_procesables:
-                    resultado["advertencias"].append(
-                        f"Archivo no procesado: {os.path.basename(archivo['archivo'])} - {archivo['razon']}"
-                    )
+                resultado["advertencias"].extend(archivos_no_procesables)
             
             return resultado
             
         except json.JSONDecodeError as json_e:
             return {
-                "error": f"JSON inválido en respuesta de Gemini: {str(json_e)}",
-                "respuesta_original": texto_respuesta,
-                "archivos_no_procesables": archivos_no_procesables
+                "error": "Respuesta no válida de Gemini",
+                "detalle": str(json_e),
+                "respuesta_original": texto_respuesta[:200] + "..." if len(texto_respuesta) > 200 else texto_respuesta
             }
     
     except Exception as e:
-        error_msg = f"Error crítico durante el análisis multimodal: {str(e)}"
-        print(f"      ERROR-CRITICO: {error_msg}")
-        
+        error_msg = f"Error crítico durante el análisis: {str(e)}"
+        print(f"❌ {error_msg}")
         return {
-            "error": error_msg,
-            "tipo_error": "error_multimodal",
-            "mensaje_usuario": (
-                "Error al procesar archivos multimedia. Por favor, asegúrese de subir solo archivos "
-                "en formato PDF, JPG o PNG. Los archivos de audio deben ser transcritos como texto."
-            )
+            "error": "Error interno al procesar los archivos",
+            "mensaje_usuario": "Por favor, asegúrese de subir archivos en formato PDF, JPG o PNG. Los archivos deben estar en buen estado y no dañados.",
+            "detalle_tecnico": error_msg
         }
 
 # ==============================================================================

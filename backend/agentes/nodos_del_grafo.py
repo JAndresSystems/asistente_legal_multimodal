@@ -20,11 +20,11 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     rutas_archivos = estado["rutas_archivos_evidencia"]
     print(f"--- [AGENTE TRIAJE] Analizando evidencias: {rutas_archivos}")
     texto_adicional = estado.get("texto_adicional_usuario", "")
-    print(f"--- [AGENTE TRIAJE] Analizando {len(rutas_archivos)} archivos y texto adicional: '{texto_adicional[:50]}...'")
+    print(f"--- [AGENTE TRIAJE] Analizando {len(rutas_archivos)} archivo(s) y texto adicional: '{texto_adicional[:50]}...'")
 
     try:
-        # --- MODIFICACION: La llamada ahora es más simple y directa ---
-        consulta_contexto = "Reglas de admisibilidad, competencia, beneficiarios y cuantías de los consultorios jurídicos según la Ley 2113. También, qué documentos son esenciales para casos de familia, laboral o civil."
+        # Obtener contexto legal relevante
+        consulta_contexto = "Reglas de admisibilidad, competencia, beneficiarios y cuantías de los consultorios jurídicos según la Ley 2113. También, qué documentos son esenciales para casos de familia, laboral o civil. Exclusiones claras: casos comerciales, casos penales."
         lista_contexto = buscar_en_base_de_conocimiento(consulta=consulta_contexto)
         contexto_completo = "\n\n---\n\n".join(lista_contexto)
         print(f"--- [AGENTE TRIAJE] Contexto legal y documental recuperado de RAG vectorial.")
@@ -40,70 +40,82 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     --- FIN DEL CONTEXTO ---
 
     --- EVIDENCIA A ANALIZAR ---
-    1.  Archivos Adjuntos: {len(rutas_archivos)} archivo(s) proporcionado(s).
+    1.  Archivos Adjuntos: {len(rutas_archivos)} archivo(s) proporcionado(s) (contenidos ya extraídos y disponibles para análisis).
     2.  Texto Adicional del Usuario: "{texto_adicional}"
     --- FIN DE LA EVIDENCIA ---
 
     --- REGLA DE INTERPRETACION JURIDICA ---
     La excepción prevalece sobre la regla general. El Artículo 9 tiene un límite de 50 SMLMV, pero exceptúa los casos de "tránsito". Un caso de accidente de tránsito con reclamación de 50 SMLMV ES ADMISIBLE.
 
+    --- REGLAS DE EXCLUSIÓN CORREGIDAS ---
+    1.  CASOS COMERCIALES: RECHAZA únicamente disputas entre empresas sobre contratos comerciales, facturas, cuentas por cobrar, etc.
+    2.  CASOS PENALES: RECHAZA casos que requieran defensa penal o investigación criminal.
+    3.  CASOS DE TRÁNSITO: ACEPTA casos de accidentes de tránsito con lesiones personales y reclamación de perjuicios, incluso si involucran empresas de servicio público.
+
+    --- CRITERIOS DE ADMISIBILIDAD CLAROS ---
+    - ACCIDENTES DE TRÁNSITO CON LESIONES: Son ADMISIBLES si el usuario es víctima de lesiones personales.
+    - EMPRESAS DE SERVICIO PÚBLICO: No convierte automáticamente el caso en comercial si el usuario busca indemnización por daños personales.
+    - CUANTÍA: Para casos de tránsito, la cuantía máxima es 50 SMLMV, pero se evalúa por el valor de los perjuicios, no por el valor del vehículo.
+
     --- ESTRATEGIA DE SALIDA ---
     Si el usuario indica explícitamente que NO tiene más documentos (ej. "no tengo mas"), DEBES detener el ciclo de preguntas. Establece "informacion_suficiente" como "true" y añade una advertencia en tu "justificacion".
     
-    --- REGLA DE FLEXIBILIDAD Y BUENA FE (NUEVO Y MUY IMPORTANTE) ---
+    --- REGLA DE FLEXIBILIDAD Y BUENA FE ---
     Tu objetivo es pedir los documentos faltantes UNA SOLA VEZ. Después de que hayas hecho una pregunta pidiendo documentos (ej. pidiendo el informe de tránsito), si en la siguiente interacción el usuario sube CUALQUIER archivo (PDF, PNG, JPG), DEBES ASUMIR que ha intentado cumplir tu petición. No vuelvas a pedir el mismo documento. Considera que con eso es suficiente para esta etapa, marca "informacion_suficiente" como "true" y permite que el caso avance.
 
-    {'''--- INICIO DE LA MODIFICACIÓN ---'''}
     --- INSTRUCCION CRITICA DE JUSTIFICACION ---
     Si y solo si decides que `admisible` es `false`, es OBLIGATORIO que tu `justificacion` contenga una cita textual del `CONTEXTO LEGAL` que respalda tu decisión. Tu explicación debe ser clara y conectar el hecho del caso con la norma.
-    (Ejemplo: "El caso no es admisible por superar la cuantía. Fundamento: '...la competencia por cuantía de los consultorios jurídicos no podrá superar los 50 SMLMV...'").
+    (Ejemplo CORREGIDO para accidentes de tránsito: "El caso ES ADMISIBLE por tratarse de un accidente de tránsito con lesiones personales. Fundamento: '...la competencia por cuantía de los consultorios jurídicos no podrá superar los 50 SMLMV, excepto para casos de tránsito...'").
 
     REGLAS DE DECISION:
-    1.  EVALUA ADMISIBILIDAD: ¿El caso es admisible?
+    1.  EVALUA ADMISIBILIDAD: ¿El caso es admisible según las reglas CORREGIDAS?
     2.  VERIFICA SUFICIENCIA: ¿Tienes los documentos esenciales? Si no, aplica las REGLAS DE SOLICITUD. Si ya pediste y el usuario subió algo, aplica la REGLA DE FLEXIBILIDAD.
-    {'''--- FIN DE LA MODIFICACIÓN ---'''}
 
-    --- REGLAS DE EXCLUSION INQUEBRABLES ---
-    1.  CASOS COMERCIALES: RECHAZA cualquier disputa comercial.
-    
-    REGLAS DE SOLICITUD (Aplica solo la primera vez que falten documentos):
+    --- REGLAS DE SOLICITUD ---
     1.  PIDE MAXIMO 2 DOCUMENTOS: Si faltan documentos, pide solo los 2 más importantes y sé específico (ej. "informe de tránsito y epicrisis médica").
 
     TAREA:
     Analiza la evidencia y el texto. Devuelve un objeto JSON con la siguiente estructura:
     {{
       "admisible": boolean,
-      
-      "justificacion": "string (Si `admisible` es false, DEBE citar el contexto legal como se instruyó)",
-      
-      "hechos_clave": "string (Resumen de los hechos)",
+      "justificacion": "string (Si `admisible` es false, DEBE citar el contexto legal como se instruyó. Si es true, explica brevemente por qué)",
+      "hechos_clave": "string (Resumen de los hechos en 1-2 oraciones)",
       "informacion_suficiente": boolean,
-      "pregunta_para_usuario": "string (SOLO si 'informacion_suficiente' es false. De lo contrario, déjalo vacío '')
+      "pregunta_para_usuario": "string (SOLO si 'informacion_suficiente' es false. De lo contrario, déjalo vacío '')"
     }}
     """
     
     print("--- [AGENTE TRIAJE] Invocando LLM para analisis de admisibilidad...")
     try:
         resultado_analisis = analizar_evidencia_con_gemini(
-            archivos_locales=rutas_archivos, # <-- Aquí es donde puede fallar con "media"
+            archivos_locales=rutas_archivos,
             prompt_usuario=prompt_completo
         )
         print(f"--- [AGENTE TRIAJE] Analisis completado. Resultado: {resultado_analisis}")
-        # Devuelve el resultado obtenido del LLM, asumiendo que es un dict válido.
-        # Si el LLM falla (por el error de media o por no devolver JSON), se captura abajo.
+        
+        # Validación adicional del resultado
+        if not isinstance(resultado_analisis, dict):
+            raise ValueError("El resultado de Gemini no es un diccionario válido")
+        
+        if "admisible" not in resultado_analisis:
+            resultado_analisis["admisible"] = False
+            resultado_analisis["justificacion"] = "Error en el formato de respuesta del sistema de IA. Por favor, contacte al administrador."
+            resultado_analisis["hechos_clave"] = "No se pudieron extraer hechos debido a error de sistema."
+            resultado_analisis["informacion_suficiente"] = True
+            resultado_analisis["pregunta_para_usuario"] = ""
+        
         return {"resultado_triaje": resultado_analisis}
     except Exception as e_gemini:
-        # Captura cualquier error proveniente de la herramienta de LLM (como "media", JSON inválido, etc.)
+        # Captura cualquier error proveniente de la herramienta de LLM
         error_msg = str(e_gemini)
         print(f"--- [AGENTE TRIAJE] ERROR CRITICO al invocar LLM: {error_msg}")
         
-        # Devolvemos un resultado de triaje ESTÁNDAR que indica un fallo y que el caso NO ES ADMISIBLE
-        # debido a un problema con la evidencia. Esto evita el error de LangGraph.
+        # Devolvemos un resultado de triaje ESTÁNDAR que indica un fallo
         resultado_error = {
             "admisible": False,
-            "justificacion": f"Error técnico al procesar la evidencia adjunta: {error_msg}. Es posible que el formato del archivo no sea compatible o esté dañado. Por favor, revise el archivo o consulte con un administrador.",
+            "justificacion": f"Error técnico al procesar la evidencia: {error_msg}. Por favor, revise los archivos subidos o consulte con un administrador.",
             "hechos_clave": "No se pudieron extraer hechos debido al error de procesamiento.",
-            "informacion_suficiente": True, # Marcamos como suficiente porque no podemos pedir más con este error.
+            "informacion_suficiente": True,
             "pregunta_para_usuario": ""
         }
         print(f"--- [AGENTE TRIAJE] Devolviendo resultado de error estandarizado: {resultado_error}")
