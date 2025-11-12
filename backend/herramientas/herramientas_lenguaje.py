@@ -24,7 +24,81 @@ except Exception as e:
 
 
 # ==============================================================================
-# Herramienta de Analisis Multimodal mejorada
+# Función de Extracción de Texto de PDF Segura
+# ==============================================================================
+def extraer_texto_pdf_seguro(ruta_pdf: str) -> str:
+    """Extrae texto de un PDF con manejo robusto de errores y validación de contenido."""
+    try:
+        reader = PdfReader(ruta_pdf)
+        texto_completo = ""
+        
+        for page_num, page in enumerate(reader.pages, 1):
+            texto_pagina = page.extract_text() or ""
+            if texto_pagina.strip():
+                texto_completo += f"\n\n--- PÁGINA {page_num} ---\n{texto_pagina}"
+        
+        # Validar que el texto tenga contenido significativo
+        if len(texto_completo.strip()) < 50:  # Mínimo 50 caracteres para ser válido
+            print(f"⚠️ PDF {os.path.basename(ruta_pdf)}: Texto extraído muy corto ({len(texto_completo)} caracteres)")
+            return ""
+        
+        print(f"✅ PDF {os.path.basename(ruta_pdf)}: Texto extraído exitosamente ({len(texto_completo)} caracteres)")
+        return texto_completo
+        
+    except Exception as e:
+        print(f"❌ Error extrayendo texto del PDF {os.path.basename(ruta_pdf)}: {str(e)}")
+        return ""
+
+
+# ==============================================================================
+# Funciones auxiliares para transcripción de audio/video
+# ==============================================================================
+def transcribir_audio_local(ruta_audio: str) -> str:
+    """Transcribe un archivo de audio local usando SpeechRecognition."""
+    try:
+        import speech_recognition as sr
+        recognizer = sr.Recognizer()
+        
+        with sr.AudioFile(ruta_audio) as source:
+            audio_data = recognizer.record(source)
+            return recognizer.recognize_google(audio_data, language='es-CO')
+    except ImportError:
+        print("⚠️ SpeechRecognition no está instalado. Instale con: pip install SpeechRecognition pydub")
+        return None
+    except Exception as e:
+        print(f"❌ Error transcribiendo audio: {str(e)}")
+        return None
+
+def extraer_y_transcribir_video(ruta_video: str) -> str:
+    """Extrae el audio de un video y lo transcribe."""
+    try:
+        from pydub import AudioSegment
+        import tempfile
+        
+        # Crear archivo temporal para el audio
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
+            ruta_audio_temp = temp_audio.name
+        
+        # Convertir video a audio
+        audio = AudioSegment.from_file(ruta_video)
+        audio.export(ruta_audio_temp, format='wav')
+        
+        # Transcribir el audio
+        texto_transcrito = transcribir_audio_local(ruta_audio_temp)
+        
+        # Limpiar archivo temporal
+        os.unlink(ruta_audio_temp)
+        return texto_transcrito
+    except ImportError:
+        print("⚠️ pydub no está instalado. Instale con: pip install pydub")
+        return None
+    except Exception as e:
+        print(f"❌ Error procesando video: {str(e)}")
+        return None
+
+
+# ==============================================================================
+# Herramienta de Analisis Multimodal con Manejo Robusto de Errores
 # ==============================================================================
 def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[str]) -> Dict[str, Any]:
     """Analiza evidencia multimodal con manejo robusto de errores y extracción de texto para PDFs."""
@@ -49,28 +123,19 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
             # Manejo ESPECÍFICO para PDFs - EXTRAER TEXTO
             if tipo_mime == 'application/pdf':
                 print(f"📄 Procesando PDF: {nombre_archivo}")
-                try:
-                    # EXTRAER TEXTO DEL PDF
-                    reader = PdfReader(ruta_archivo)
-                    texto_pdf = ""
-                    for page in reader.pages:
-                        texto_extraido = page.extract_text() or ""
-                        if texto_extraido.strip():
-                            texto_pdf += texto_extraido + "\n\n"
-                    
-                    if texto_pdf.strip():
-                        contenido_para_analisis.append(f"--- CONTENIDO DEL PDF {nombre_archivo} ---\n{texto_pdf}")
-                        archivos_procesados.append(f"✅ PDF procesado: {nombre_archivo}")
-                        print(f"✅ Texto extraído exitosamente de {nombre_archivo} ({len(texto_pdf)} caracteres)")
-                    else:
-                        errores_procesamiento.append(f"No se pudo extraer texto del PDF: {nombre_archivo}")
-                        print(f"❌ No se pudo extraer texto del PDF: {nombre_archivo}")
-                except Exception as pdf_e:
-                    error_msg = f"Error al procesar PDF {nombre_archivo}: {str(pdf_e)}"
-                    errores_procesamiento.append(error_msg)
-                    print(f"❌ {error_msg}")
+                texto_pdf = extraer_texto_pdf_seguro(ruta_archivo)
+                
+                if texto_pdf.strip():
+                    # Limpiar y truncar texto si es demasiado largo (máx 10,000 caracteres)
+                    texto_limpio = texto_pdf.strip()[:10000] + "..." if len(texto_pdf) > 10000 else texto_pdf.strip()
+                    contenido_para_analisis.append(f"--- CONTENIDO DEL PDF {nombre_archivo} ---\n{texto_limpio}")
+                    archivos_procesados.append(f"✅ PDF procesado: {nombre_archivo}")
+                    print(f"✅ Texto extraído exitosamente de {nombre_archivo} ({len(texto_limpio)} caracteres)")
+                else:
+                    errores_procesamiento.append(f"No se pudo extraer texto válido del PDF: {nombre_archivo}")
+                    print(f"❌ Texto extraído inválido o vacío del PDF: {nombre_archivo}")
             
-            # Manejo para IMÁGENES - enviar directamente
+            # Manejo para IMÁGENES - enviar directamente (compatibles con Gemini)
             elif tipo_mime.startswith('image/'):
                 print(f"🖼️ Procesando imagen: {nombre_archivo}")
                 try:
@@ -79,8 +144,9 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
                         contenido_para_analisis.extend(contenido_imagen[1:])
                         archivos_procesados.append(f"✅ Imagen procesada: {nombre_archivo}")
                 except Exception as img_e:
-                    errores_procesamiento.append(f"Error procesando imagen {nombre_archivo}: {str(img_e)}")
-                    print(f"❌ Error procesando imagen {nombre_archivo}: {str(img_e)}")
+                    error_msg = f"Error procesando imagen {nombre_archivo}: {str(img_e)}"
+                    errores_procesamiento.append(error_msg)
+                    print(f"❌ {error_msg}")
             
             # Manejo para AUDIO - transcribir localmente
             elif tipo_mime.startswith('audio/'):
@@ -90,10 +156,13 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
                     if texto_transcrito:
                         texto_transcrito_audio += f"\n\n--- TRANSCRIPCIÓN DE AUDIO: {nombre_archivo} ---\n{texto_transcrito}"
                         archivos_procesados.append(f"✅ Audio transcrito: {nombre_archivo}")
+                        print(f"✅ Audio transcrito exitosamente: {texto_transcrito[:50]}...")
                     else:
                         errores_procesamiento.append(f"No se pudo transcribir el audio: {nombre_archivo}")
                 except Exception as e:
-                    errores_procesamiento.append(f"Error transcribiendo {nombre_archivo}: {str(e)}")
+                    error_msg = f"Error transcribiendo {nombre_archivo}: {str(e)}"
+                    errores_procesamiento.append(error_msg)
+                    print(f"❌ {error_msg}")
             
             # Manejo para VIDEO - extraer audio y transcribir
             elif tipo_mime.startswith('video/'):
@@ -106,7 +175,9 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
                     else:
                         errores_procesamiento.append(f"No se pudo transcribir el video: {nombre_archivo}")
                 except Exception as e:
-                    errores_procesamiento.append(f"Error procesando video {nombre_archivo}: {str(e)}")
+                    error_msg = f"Error procesando video {nombre_archivo}: {str(e)}"
+                    errores_procesamiento.append(error_msg)
+                    print(f"❌ {error_msg}")
             
             else:
                 errores_procesamiento.append(f"Formato no compatible: {nombre_archivo} ({tipo_mime})")
@@ -163,20 +234,33 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
         except json.JSONDecodeError as json_e:
             error_msg = f"Error parsing JSON: {str(json_e)}"
             print(f"❌ {error_msg}")
-            return {
-                "error": "respuesta_invalida",
-                "mensaje": "Gemini no devolvió una respuesta en formato JSON válido",
-                "detalle": str(json_e),
-                "respuesta_original": texto_respuesta[:200] + "..." if len(texto_respuesta) > 200 else texto_respuesta,
-                "archivos_procesados": archivos_procesados,
-                "errores": errores_procesamiento,
-                "resultado_triaje": {
-                    "admisible": False,
-                    "justificacion": "Error en el formato de respuesta del sistema de IA. Por favor, contacte al administrador.",
-                    "hechos_clave": "Respuesta no válida del sistema de IA",
-                    "informacion_suficiente": True
+            
+            # Intentar reparar JSON truncado
+            if texto_respuesta.endswith('"'):
+                texto_respuesta += "}"
+            elif texto_respuesta.endswith(','):
+                texto_respuesta = texto_respuesta[:-1] + "}"
+            
+            try:
+                resultado = json.loads(texto_respuesta)
+                resultado["advertencia"] = "JSON reparado - posiblemente truncado"
+                return resultado
+            except:
+                # Fallback completo
+                return {
+                    "error": "respuesta_invalida",
+                    "mensaje": "Gemini no devolvió una respuesta en formato JSON válido",
+                    "detalle": str(json_e),
+                    "respuesta_original": texto_respuesta[:200] + "..." if len(texto_respuesta) > 200 else texto_respuesta,
+                    "archivos_procesados": archivos_procesados,
+                    "errores": errores_procesamiento,
+                    "resultado_triaje": {
+                        "admisible": False,
+                        "justificacion": "Error en el formato de respuesta del sistema de IA. Por favor, contacte al administrador.",
+                        "hechos_clave": "Respuesta no válida del sistema de IA",
+                        "informacion_suficiente": True
+                    }
                 }
-            }
     
     except Exception as e:
         error_msg = f"Error crítico durante el análisis multimodal: {str(e)}"
@@ -194,49 +278,6 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
             }
         }
 
-# Funciones auxiliares para transcripción (mantener las existentes)
-def transcribir_audio_local(ruta_audio: str) -> str:
-    """Transcribe un archivo de audio local usando SpeechRecognition."""
-    try:
-        import speech_recognition as sr
-        recognizer = sr.Recognizer()
-        
-        with sr.AudioFile(ruta_audio) as source:
-            audio_data = recognizer.record(source)
-            return recognizer.recognize_google(audio_data, language='es-CO')
-    except ImportError:
-        print("⚠️ SpeechRecognition no está instalado. Instale con: pip install SpeechRecognition pydub")
-        return None
-    except Exception as e:
-        print(f"❌ Error transcribiendo audio: {str(e)}")
-        return None
-
-def extraer_y_transcribir_video(ruta_video: str) -> str:
-    """Extrae el audio de un video y lo transcribe."""
-    try:
-        from pydub import AudioSegment
-        import tempfile
-        
-        # Crear archivo temporal para el audio
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
-            ruta_audio_temp = temp_audio.name
-        
-        # Convertir video a audio
-        audio = AudioSegment.from_file(ruta_video)
-        audio.export(ruta_audio_temp, format='wav')
-        
-        # Transcribir el audio
-        texto_transcrito = transcribir_audio_local(ruta_audio_temp)
-        
-        # Limpiar archivo temporal
-        os.unlink(ruta_audio_temp)
-        return texto_transcrito
-    except ImportError:
-        print("⚠️ pydub no está instalado. Instale con: pip install pydub")
-        return None
-    except Exception as e:
-        print(f"❌ Error procesando video: {str(e)}")
-        return None
 
 # ==============================================================================
 # Herramienta de Generacion de Texto Plano

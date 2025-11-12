@@ -372,18 +372,55 @@ def analizar_caso_completo(
             "rutas_archivos_evidencia": rutas_archivos,
             "texto_adicional_usuario": solicitud.texto_adicional_usuario,
             "pregunta_usuario": "Análisis inicial del caso",
-            "resultado_triaje": {},
+            "resultado_triaje": {
+                "admisible": False,
+                "justificacion": "Esperando análisis",
+                "hechos_clave": "",
+                "informacion_suficiente": False
+            },
             "respuesta_para_usuario": "",
             "respuesta_agente": ""
         }
-        print(f"DEBUG: Estado inicial para el grafo: {estado_inicial}")
+        print(f"DEBUG: Estado inicial completo para el grafo: {estado_inicial}")
 
-        # Invocamos a los agentes (síncrono)
-        print(f"DEBUG: Invocando el grafo de LangGraph...")
-        estado_final = grafo_compilado.invoke(estado_inicial)
-        print("DEBUG: El grafo de LangGraph completó su ejecución.")
+        try:
+            # Invocamos a los agentes (síncrono)
+            print(f"DEBUG: Invocando el grafo de LangGraph...")
+            estado_final = grafo_compilado.invoke(estado_inicial)
+            print("DEBUG: El grafo de LangGraph completó su ejecución.")
+            
+        except Exception as e_grafo:
+            error_msg = str(e_grafo)
+            print(f"DEBUG: ERROR EN EL GRAFO: {error_msg}")
+            print(f"DEBUG: Tipo del error: {type(e_grafo).__name__}")
+            
+            # Fallback seguro para errores del grafo
+            return {
+                "id_caso": id_caso,
+                "resultado_triaje": {
+                    "admisible": False,
+                    "justificacion": "Error interno durante el análisis. Por favor, contacte al administrador.",
+                    "hechos_clave": "Error en el procesamiento del caso",
+                    "informacion_suficiente": True
+                },
+                "pregunta_usuario": "Análisis inicial del caso",
+                "respuesta_para_usuario": "Error interno durante el procesamiento. Por favor, contacte al administrador.",
+                "respuesta_agente": "Error interno"
+            }
 
-        # Construir el reporte consolidado
+        # Validar que el resultado_triaje esté completo
+        resultado_triaje = estado_final.get("resultado_triaje", {})
+        if not isinstance(resultado_triaje, dict) or "admisible" not in resultado_triaje:
+            print("DEBUG: ADVERTENCIA - resultado_triaje incompleto o inválido")
+            resultado_triaje = {
+                "admisible": False,
+                "justificacion": "Respuesta no válida del sistema de IA",
+                "hechos_clave": "Error en el formato de respuesta",
+                "informacion_suficiente": True
+            }
+            estado_final["resultado_triaje"] = resultado_triaje
+        
+        # Construir el reporte consolidado de forma segura
         reporte_dict = {}
         claves_posibles = [
             "resultado_triaje",
@@ -406,9 +443,17 @@ def analizar_caso_completo(
         
         caso_actual.reporte_consolidado = json.dumps(reporte_dict_limpio, indent=2, ensure_ascii=False)
         
+        # Actualizar estado del caso basado en el resultado del triaje
+        if not resultado_triaje.get("informacion_suficiente", True):
+            caso_actual.estado = EstadoCaso.EN_REVISION
+        elif not resultado_triaje.get("admisible", False):
+            caso_actual.estado = EstadoCaso.RECHAZADO
+            caso_actual.justificacion_rechazo = resultado_triaje.get("justificacion", "No admisible")
+        
         # Recargar el caso para obtener el estado actualizado
-        sesion.refresh(caso_actual)
+        sesion.add(caso_actual)
         sesion.commit()
+        sesion.refresh(caso_actual)
         print(f"DEBUG: Reporte consolidado y estado actualizados en el Caso {id_caso} (hilo web).")
 
         print(f"- DEBUG FIN ANALISIS OK -")
@@ -425,13 +470,14 @@ def analizar_caso_completo(
                 caso_actual.reporte_consolidado = json.dumps({
                     "error": error_msg,
                     "tipo_error": "error_critico",
-                    "mensaje_usuario": "Error al procesar su caso. Por favor, intente nuevamente o contacte al administrador."
+                    "mensaje_usuario": "Error al procesar su caso. Por favor, intente nuevamente o contacte al administrador.",
+                    "timestamp": str(datetime.now())
                 })
                 
                 # Si el caso estaba en estado "creado", lo movemos a "rechazado" por error técnico
-                if caso_actual.estado == EstadoCaso.CREADO:
+                if caso_actual.estado not in [EstadoCaso.RECHAZADO, EstadoCaso.CERRADO]:
                     caso_actual.estado = EstadoCaso.RECHAZADO
-                    caso_actual.justificacion_rechazo = "Error técnico durante el procesamiento del caso"
+                    caso_actual.justificacion_rechazo = f"Error técnico: {error_msg[:100]}..." if len(error_msg) > 100 else error_msg
                 
                 sesion.add(caso_actual)
                 sesion.commit()
@@ -443,14 +489,13 @@ def analizar_caso_completo(
         if "media" in error_msg.lower() or "pdf" in error_msg.lower() or "imagen" in error_msg.lower():
             raise HTTPException(
                 status_code=400,
-                detail="Error con los archivos subidos. Por favor, asegúrese de que los archivos PDF, JPG o PNG estén en buen estado y no estén dañados."
+                detail="Error con los archivos subidos. Por favor, asegúrese de que los archivos PDF, JPG o PNG estén en buen estado y no estén dañados. Los archivos de audio deben ser transcritos como texto."
             )
         else:
             raise HTTPException(
                 status_code=500,
                 detail=f"Error interno al procesar el análisis: {error_msg}"
             )
-    
 
 # Asegúrate de que esta función esté dentro del mismo 'router' que las demás.
 
