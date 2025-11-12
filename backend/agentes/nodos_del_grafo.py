@@ -436,5 +436,14 @@ def nodo_preparar_respuesta_rechazo(estado: EstadoDelGrafo) -> Dict[str, Any]:
     
     print(f"--- [AGENTE RECHAZO] Mensaje final preparado para el usuario.")
     
-    # 4. Devolver el mensaje en la clave que el frontend espera.
-    return {"respuesta_para_usuario": mensaje_final_usuario}
+    # 4. DEVOLVER UN ESTADO COMPLETO MANTENIENDO TODOS LOS CAMPOS NECESARIOS
+    return {
+        "id_caso": estado["id_caso"],
+        "rutas_archivos_evidencia": estado.get("rutas_archivos_evidencia", []),
+        "texto_adicional_usuario": estado.get("texto_adicional_usuario", ""),
+        "resultado_triaje": estado.get("resultado_triaje", {}),
+        "pregunta_usuario": estado["pregunta_usuario"],
+        "respuesta_agente": mensaje_final_usuario,
+        "respuesta_para_usuario": mensaje_final_usuario
+    }
+    # --- FIN DE LA MODIFICACIÓN ---
