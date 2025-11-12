@@ -405,8 +405,6 @@ def nodo_preparar_respuesta_rechazo(estado: EstadoDelGrafo) -> Dict[str, Any]:
     """
     print("\n--- [AGENTE RECHAZO] Iniciando ejecucion del nodo ---")
     
-    # --- INICIO DE LA MODIFICACIÓN ---
-    
     # 1. Extraer los datos clave del estado.
     id_caso = estado["id_caso"]
     justificacion_rechazo = estado.get("resultado_triaje", {}).get("justificacion", "No se proporcionó una justificación específica.")
@@ -442,8 +440,7 @@ def nodo_preparar_respuesta_rechazo(estado: EstadoDelGrafo) -> Dict[str, Any]:
         "rutas_archivos_evidencia": estado.get("rutas_archivos_evidencia", []),
         "texto_adicional_usuario": estado.get("texto_adicional_usuario", ""),
         "resultado_triaje": estado.get("resultado_triaje", {}),
-        "pregunta_usuario": estado["pregunta_usuario"],
+        "pregunta_usuario": estado.get("pregunta_usuario", ""),  # <-- Campo clave faltante
         "respuesta_agente": mensaje_final_usuario,
         "respuesta_para_usuario": mensaje_final_usuario
     }
-    # --- FIN DE LA MODIFICACIÓN ---
