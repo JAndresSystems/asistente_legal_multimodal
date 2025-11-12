@@ -2,7 +2,6 @@
 
 import os
 import json
-import base64
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
@@ -49,23 +48,44 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
                 errores_procesamiento.append(f"Archivo no reconocido: {nombre_archivo}")
                 continue
                 
-            # Manejar PDFs e imágenes directamente con Gemini
-            if tipo_mime == 'application/pdf' or tipo_mime.startswith('image/'):
-                print(f"📄/🖼️ Procesando {tipo_mime} directamente con Gemini: {nombre_archivo}")
+            # Manejar PDFs: EXTRAER TEXTO primero (CORRECCIÓN CRÍTICA)
+            if tipo_mime == 'application/pdf':
+                print(f"📄 Procesando PDF: {nombre_archivo} - Extrayendo texto primero...")
                 try:
-                    # Usar tu función existente para preparar la entrada multimodal
-                    contenido_multimodal = preparar_entrada_multimodal("", [ruta_archivo])
-                    if len(contenido_multimodal) > 1:  # Si se añadió contenido multimodal
-                        contenido_para_analisis.extend(contenido_multimodal[1:])  # Excluir el prompt vacío
-                        archivos_procesados.append(f"✅ {nombre_archivo} ({tipo_mime.split('/')[1]})")
-                except Exception as e:
-                    errores_procesamiento.append(f"Error procesando {nombre_archivo}: {str(e)}")
+                    reader = PdfReader(ruta_archivo)
+                    texto_pdf = ""
+                    for page in reader.pages:
+                        texto_extraido = page.extract_text()
+                        if texto_extraido:
+                            texto_pdf += texto_extraido + "\n\n"
+                    
+                    if texto_pdf.strip():
+                        contenido_para_analisis.append(f"--- CONTENIDO PDF {nombre_archivo} ---\n{texto_pdf}")
+                        archivos_procesados.append(f"✅ PDF procesado: {nombre_archivo}")
+                        print(f"✅ Texto extraído exitosamente de {nombre_archivo}")
+                    else:
+                        errores_procesamiento.append(f"No se pudo extraer texto del PDF: {nombre_archivo}")
+                        print(f"❌ No se pudo extraer texto del PDF: {nombre_archivo}")
+                except Exception as pdf_e:
+                    errores_procesamiento.append(f"Error al procesar PDF {nombre_archivo}: {str(pdf_e)}")
+                    print(f"❌ Error procesando PDF {nombre_archivo}: {str(pdf_e)}")
+            
+            # Manejar imágenes: enviar directamente a Gemini
+            elif tipo_mime.startswith('image/'):
+                print(f"🖼️ Procesando imagen: {nombre_archivo}")
+                try:
+                    contenido_imagen = preparar_entrada_multimodal("", [ruta_archivo])
+                    if len(contenido_imagen) > 1:
+                        contenido_para_analisis.extend(contenido_imagen[1:])
+                        archivos_procesados.append(f"✅ Imagen procesada: {nombre_archivo}")
+                except Exception as img_e:
+                    errores_procesamiento.append(f"Error procesando imagen {nombre_archivo}: {str(img_e)}")
+                    print(f"❌ Error procesando imagen {nombre_archivo}: {str(img_e)}")
             
             # Manejar audio: transcripción primero, luego enviar texto a Gemini
             elif tipo_mime.startswith('audio/'):
                 print(f"🎵 Detectado archivo de audio para transcripción: {nombre_archivo}")
                 try:
-                    # Transcribir audio localmente
                     texto_transcrito = transcribir_audio_local(ruta_archivo)
                     if texto_transcrito:
                         texto_transcrito_audio += f"\n\n--- TRANSCRIPCIÓN DE AUDIO: {nombre_archivo} ---\n{texto_transcrito}"
@@ -79,7 +99,6 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
             elif tipo_mime.startswith('video/'):
                 print(f"🎬 Detectado archivo de video para extracción de audio: {nombre_archivo}")
                 try:
-                    # Extraer audio del video y transcribir
                     texto_transcrito = extraer_y_transcribir_video(ruta_archivo)
                     if texto_transcrito:
                         texto_transcrito_audio += f"\n\n--- TRANSCRIPCIÓN DE VIDEO: {nombre_archivo} ---\n{texto_transcrito}"
@@ -102,7 +121,13 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
                 "error": "sin_contenido_valido",
                 "archivos_procesados": archivos_procesados,
                 "errores": errores_procesamiento,
-                "mensaje": "No se pudo procesar ningún archivo válido. Por favor, suba archivos PDF, JPG, PNG o describa su caso por escrito."
+                "mensaje": "No se pudo procesar ningún archivo válido. Por favor, suba archivos PDF, JPG, PNG o describa su caso por escrito.",
+                "resultado_triaje": {
+                    "admisible": False,
+                    "justificacion": "Error en el procesamiento de archivos",
+                    "hechos_clave": "No se pudieron extraer hechos",
+                    "informacion_suficiente": True
+                }
             }
         
         # 5. Invocar a Gemini con el contenido preparado
@@ -126,25 +151,41 @@ def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[st
                 }
             return resultado
         except json.JSONDecodeError:
+            # Si falla el parseo JSON, devolver un resultado estructurado con el error
             return {
                 "error": "respuesta_invalida",
                 "mensaje": "Gemini no devolvió una respuesta en formato JSON válido",
-                "respuesta_original": texto_respuesta,
+                "respuesta_original": texto_respuesta[:200] + "..." if len(texto_respuesta) > 200 else texto_respuesta,
                 "archivos_procesados": archivos_procesados,
-                "errores": errores_procesamiento
+                "errores": errores_procesamiento,
+                "resultado_triaje": {
+                    "admisible": False,
+                    "justificacion": "Error en el formato de respuesta del sistema de IA. Por favor, contacte al administrador.",
+                    "hechos_clave": "Respuesta no válida del sistema de IA",
+                    "informacion_suficiente": True
+                }
             }
     
     except Exception as e:
         error_msg = f"Error crítico durante el análisis multimodal: {str(e)}"
         print(f"❌ {error_msg}")
+        # Devolver un resultado con todos los campos necesarios para LangGraph
         return {
             "error": "error_critico",
             "mensaje": "Error interno al procesar los archivos. Por favor, intente nuevamente o describa su caso por escrito.",
             "detalle": error_msg,
-            "solucion": "Para archivos de audio/video, asegúrese de que estén en formato compatible o describa su caso por escrito."
+            "solucion": "Para archivos de audio/video, asegúrese de que estén en formato compatible o describa su caso por escrito.",
+            "resultado_triaje": {
+                "admisible": False,
+                "justificacion": "Error en el formato de respuesta del sistema de IA. Por favor, contacte al administrador.",
+                "hechos_clave": "Error técnico durante el procesamiento",
+                "informacion_suficiente": True
+            }
         }
 
+# ==============================================================================
 # Funciones auxiliares para transcripción de audio/video
+# ==============================================================================
 def transcribir_audio_local(ruta_audio: str) -> str:
     """Transcribe un archivo de audio local usando SpeechRecognition."""
     try:
@@ -187,6 +228,7 @@ def extraer_y_transcribir_video(ruta_video: str) -> str:
     except Exception as e:
         print(f"❌ Error procesando video: {str(e)}")
         return None
+
 # ==============================================================================
 # Herramienta de Generacion de Texto Plano
 # ==============================================================================
