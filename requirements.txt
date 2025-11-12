@@ -42,3 +42,8 @@ fpdf2==2.7.8
 
 # --- Comunicaciones ---
 resend==0.8.0
+
+
+SpeechRecognition==3.10.0
+pydub==0.25.1
+ffmpeg-python==0.2.0

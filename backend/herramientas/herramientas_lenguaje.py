@@ -28,97 +28,165 @@ except Exception as e:
 # Herramienta de Analisis Multimodal con Salida Estructurada (JSON)
 # ==============================================================================
 def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[str]) -> Dict[str, Any]:
-    """Versión robusta que maneja múltiples formatos de archivos y errores multimodales."""
+    """Analiza evidencia multimodal (texto, imágenes, PDFs) y maneja audio mediante transcripción.
+    Devuelve un objeto JSON con el análisis estructurado."""
     if not llm_multimodal:
         return {"error": "El modelo de lenguaje no está disponible."}
     
     try:
-        # 1. Validar y procesar archivos antes de enviar a Gemini
-        contenido_para_analisis = [prompt_usuario]
-        archivos_no_procesables = []
+        # 1. Preparar contenido multimodal inicial con el prompt
+        contenido_para_analisis = [{"type": "text", "text": prompt_usuario}]
+        archivos_procesados = []
+        errores_procesamiento = []
+        texto_transcrito_audio = ""
         
-        for archivo in archivos_locales:
-            tipo_mime, _ = mimetypes.guess_type(archivo)
+        # 2. Procesar cada archivo según su tipo
+        for ruta_archivo in archivos_locales:
+            tipo_mime, _ = mimetypes.guess_type(ruta_archivo)
+            nombre_archivo = os.path.basename(ruta_archivo)
             
             if not tipo_mime:
-                archivos_no_procesables.append(f"Archivo no reconocido: {os.path.basename(archivo)}")
+                errores_procesamiento.append(f"Archivo no reconocido: {nombre_archivo}")
                 continue
-            
-            # Manejar PDFs: extraer texto en lugar de enviar el archivo binario
-            if tipo_mime == 'application/pdf':
+                
+            # Manejar PDFs e imágenes directamente con Gemini
+            if tipo_mime == 'application/pdf' or tipo_mime.startswith('image/'):
+                print(f"📄/🖼️ Procesando {tipo_mime} directamente con Gemini: {nombre_archivo}")
                 try:
-                    reader = PdfReader(archivo)
-                    texto_pdf = ""
-                    for page in reader.pages:
-                        texto_extraido = page.extract_text()
-                        if texto_extraido:
-                            texto_pdf += texto_extraido + "\n\n"
-                    
-                    if texto_pdf.strip():
-                        contenido_para_analisis.append(f"--- CONTENIDO DEL PDF {os.path.basename(archivo)} ---\n{texto_pdf}")
+                    # Usar tu función existente para preparar la entrada multimodal
+                    contenido_multimodal = preparar_entrada_multimodal("", [ruta_archivo])
+                    if len(contenido_multimodal) > 1:  # Si se añadió contenido multimodal
+                        contenido_para_analisis.extend(contenido_multimodal[1:])  # Excluir el prompt vacío
+                        archivos_procesados.append(f"✅ {nombre_archivo} ({tipo_mime.split('/')[1]})")
+                except Exception as e:
+                    errores_procesamiento.append(f"Error procesando {nombre_archivo}: {str(e)}")
+            
+            # Manejar audio: transcripción primero, luego enviar texto a Gemini
+            elif tipo_mime.startswith('audio/'):
+                print(f"🎵 Detectado archivo de audio para transcripción: {nombre_archivo}")
+                try:
+                    # Transcribir audio localmente
+                    texto_transcrito = transcribir_audio_local(ruta_archivo)
+                    if texto_transcrito:
+                        texto_transcrito_audio += f"\n\n--- TRANSCRIPCIÓN DE AUDIO: {nombre_archivo} ---\n{texto_transcrito}"
+                        archivos_procesados.append(f"✅ Audio transcrito: {nombre_archivo}")
                     else:
-                        archivos_no_procesables.append(f"No se pudo extraer texto del PDF: {os.path.basename(archivo)}")
-                except Exception as pdf_e:
-                    archivos_no_procesables.append(f"Error al procesar PDF {os.path.basename(archivo)}: {str(pdf_e)}")
+                        errores_procesamiento.append(f"No se pudo transcribir el audio: {nombre_archivo}")
+                except Exception as e:
+                    errores_procesamiento.append(f"Error transcribiendo {nombre_archivo}: {str(e)}")
             
-            # Manejar imágenes: enviar directamente a Gemini
-            elif tipo_mime.startswith('image/'):
+            # Manejar videos: extraer audio y transcribir
+            elif tipo_mime.startswith('video/'):
+                print(f"🎬 Detectado archivo de video para extracción de audio: {nombre_archivo}")
                 try:
-                    # Preparar el archivo de imagen para Gemini
-                    with open(archivo, "rb") as f:
-                        datos_imagen = f.read()
-                    
-                    # Añadir imagen al contenido
-                    contenido_para_analisis.append({
-                        "type": "media",
-                        "mime_type": tipo_mime,
-                        "data": base64.b64encode(datos_imagen).decode('utf-8')
-                    })
-                except Exception as img_e:
-                    archivos_no_procesables.append(f"Error al procesar imagen {os.path.basename(archivo)}: {str(img_e)}")
+                    # Extraer audio del video y transcribir
+                    texto_transcrito = extraer_y_transcribir_video(ruta_archivo)
+                    if texto_transcrito:
+                        texto_transcrito_audio += f"\n\n--- TRANSCRIPCIÓN DE VIDEO: {nombre_archivo} ---\n{texto_transcrito}"
+                        archivos_procesados.append(f"✅ Video transcrito: {nombre_archivo}")
+                    else:
+                        errores_procesamiento.append(f"No se pudo transcribir el video: {nombre_archivo}")
+                except Exception as e:
+                    errores_procesamiento.append(f"Error procesando video {nombre_archivo}: {str(e)}")
             
-            # Rechazar otros formatos con mensaje claro
             else:
-                archivos_no_procesables.append(f"Formato no compatible: {os.path.basename(archivo)} (tipo: {tipo_mime})")
-
-        # 2. Invocar a Gemini con el contenido procesado
+                errores_procesamiento.append(f"Formato no compatible: {nombre_archivo} ({tipo_mime})")
+        
+        # 3. Añadir transcripciones de audio/video al contenido si existen
+        if texto_transcrito_audio:
+            contenido_para_analisis.append({"type": "text", "text": texto_transcrito_audio})
+        
+        # 4. Si no hay contenido multimodal válido después del procesamiento
+        if len(contenido_para_analisis) == 1 and (errores_procesamiento or not archivos_procesados):
+            return {
+                "error": "sin_contenido_valido",
+                "archivos_procesados": archivos_procesados,
+                "errores": errores_procesamiento,
+                "mensaje": "No se pudo procesar ningún archivo válido. Por favor, suba archivos PDF, JPG, PNG o describa su caso por escrito."
+            }
+        
+        # 5. Invocar a Gemini con el contenido preparado
         mensaje = HumanMessage(content=contenido_para_analisis)
-        print(f"✨ Enviando a Gemini con {len(contenido_para_analisis)} elementos para análisis")
+        print(f"✨ Invocando Gemini con {len(contenido_para_analisis)} elementos para análisis")
         
         respuesta = llm_multimodal.invoke([mensaje])
         texto_respuesta = respuesta.content.strip()
         
-        # 3. Procesar respuesta JSON
+        # 6. Limpiar y parsear la respuesta JSON
         if texto_respuesta.startswith("```json"):
             texto_respuesta = texto_respuesta[7:-3].strip()
         
         try:
             resultado = json.loads(texto_respuesta)
-            
-            # Añadir advertencias si hay archivos no procesables
-            if archivos_no_procesables:
-                if "advertencias" not in resultado:
-                    resultado["advertencias"] = []
-                resultado["advertencias"].extend(archivos_no_procesables)
-            
+            # Añadir información de procesamiento
+            if archivos_procesados or errores_procesamiento:
+                resultado["metadatos_procesamiento"] = {
+                    "archivos_procesados": archivos_procesados,
+                    "errores": errores_procesamiento
+                }
             return resultado
-            
-        except json.JSONDecodeError as json_e:
+        except json.JSONDecodeError:
             return {
-                "error": "Respuesta no válida de Gemini",
-                "detalle": str(json_e),
-                "respuesta_original": texto_respuesta[:200] + "..." if len(texto_respuesta) > 200 else texto_respuesta
+                "error": "respuesta_invalida",
+                "mensaje": "Gemini no devolvió una respuesta en formato JSON válido",
+                "respuesta_original": texto_respuesta,
+                "archivos_procesados": archivos_procesados,
+                "errores": errores_procesamiento
             }
     
     except Exception as e:
-        error_msg = f"Error crítico durante el análisis: {str(e)}"
+        error_msg = f"Error crítico durante el análisis multimodal: {str(e)}"
         print(f"❌ {error_msg}")
         return {
-            "error": "Error interno al procesar los archivos",
-            "mensaje_usuario": "Por favor, asegúrese de subir archivos en formato PDF, JPG o PNG. Los archivos deben estar en buen estado y no dañados.",
-            "detalle_tecnico": error_msg
+            "error": "error_critico",
+            "mensaje": "Error interno al procesar los archivos. Por favor, intente nuevamente o describa su caso por escrito.",
+            "detalle": error_msg,
+            "solucion": "Para archivos de audio/video, asegúrese de que estén en formato compatible o describa su caso por escrito."
         }
 
+# Funciones auxiliares para transcripción de audio/video
+def transcribir_audio_local(ruta_audio: str) -> str:
+    """Transcribe un archivo de audio local usando SpeechRecognition."""
+    try:
+        import speech_recognition as sr
+        recognizer = sr.Recognizer()
+        
+        with sr.AudioFile(ruta_audio) as source:
+            audio_data = recognizer.record(source)
+            return recognizer.recognize_google(audio_data, language='es-CO')
+    except ImportError:
+        print("⚠️ SpeechRecognition no está instalado. Instale con: pip install SpeechRecognition pydub")
+        return None
+    except Exception as e:
+        print(f"❌ Error transcribiendo audio: {str(e)}")
+        return None
+
+def extraer_y_transcribir_video(ruta_video: str) -> str:
+    """Extrae el audio de un video y lo transcribe."""
+    try:
+        from pydub import AudioSegment
+        import tempfile
+        
+        # Crear archivo temporal para el audio
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
+            ruta_audio_temp = temp_audio.name
+        
+        # Convertir video a audio
+        audio = AudioSegment.from_file(ruta_video)
+        audio.export(ruta_audio_temp, format='wav')
+        
+        # Transcribir el audio
+        texto_transcrito = transcribir_audio_local(ruta_audio_temp)
+        
+        # Limpiar archivo temporal
+        os.unlink(ruta_audio_temp)
+        return texto_transcrito
+    except ImportError:
+        print("⚠️ pydub no está instalado. Instale con: pip install pydub")
+        return None
+    except Exception as e:
+        print(f"❌ Error procesando video: {str(e)}")
+        return None
 # ==============================================================================
 # Herramienta de Generacion de Texto Plano
 # ==============================================================================
