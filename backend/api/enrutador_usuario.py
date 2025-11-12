@@ -330,81 +330,67 @@ def analizar_caso_completo(
     cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
 ):
     """
-    Inicia el análisis del caso de forma síncrona. Maneja errores multimodales y garantiza
-    que el estado del grafo sea válido incluso en casos de fallo.
+    Versión robusta que maneja errores multimodales y garantiza estado válido.
     """
     print(f"- DEBUG INICIO ANALISIS -")
     print(f"DEBUG: Iniciando análisis SÍNCRONO para el CASO ID: {id_caso} en hilo web.")
     
     try:
-        # Validar que el caso pertenece al usuario
+        # Validación de caso existente y pertenencia
         print(f"DEBUG: Obteniendo caso con ID {id_caso} de la base de datos...")
         caso_actual = sesion.get(Caso, id_caso)
-        print(f"DEBUG: Caso obtenido: {caso_actual}")
         if not caso_actual:
-            print(f"DEBUG: ERROR - Caso con ID {id_caso} no encontrado en la base de datos.")
             raise HTTPException(status_code=404, detail="Caso no encontrado.")
 
-        print(f"DEBUG: ID usuario del caso: {caso_actual.id_usuario}")
-        print(f"DEBUG: ID usuario de la cuenta actual: {cuenta_actual.usuario.id}")
-
         if caso_actual.id_usuario != cuenta_actual.usuario.id:
-            print(f"DEBUG: ERROR - Permiso denegado. El caso no pertenece al usuario logueado.")
             raise HTTPException(status_code=403, detail="Permiso denegado. El caso no pertenece al usuario logueado.")
 
-        print(f"DEBUG: Validación de pertenencia completada con éxito.")
-
         if not caso_actual.evidencias:
-            print(f"DEBUG: ERROR - El caso {id_caso} no tiene evidencias adjuntas.")
             raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
 
-        print(f"DEBUG: El caso tiene {len(caso_actual.evidencias)} evidencia(s).")
-
-        # Preparamos la entrada para el grafo de LangGraph
-        print(f"DEBUG: Extrayendo rutas de archivos de evidencia...")
+        # Preparar estado inicial COMPLETO
         rutas_archivos = [ev.ruta_archivo for ev in caso_actual.evidencias]
-        print(f"DEBUG: Rutas de archivos extraídas: {rutas_archivos}")
-        print(f"DEBUG: El agente analizara un total de {len(rutas_archivos)} evidencia(s).")
-
-        # Estado inicial COMPLETO con todos los campos necesarios
         estado_inicial = {
             "id_caso": id_caso,
             "rutas_archivos_evidencia": rutas_archivos,
             "texto_adicional_usuario": solicitud.texto_adicional_usuario,
-            "pregunta_usuario": "Análisis inicial del caso",  # Campo crítico para evitar KeyError
-            "resultado_triaje": {},  # Inicializar como diccionario vacío
-            "respuesta_para_usuario": ""
+            "pregunta_usuario": "Análisis inicial del caso",
+            "resultado_triaje": {},
+            "resultado_determinador_competencias": {},
+            "resultado_repartidor": {},
+            "respuesta_para_usuario": "",
+            "respuesta_agente": ""
         }
-        print(f"DEBUG: Estado inicial para el grafo: {estado_inicial}")
+        print(f"DEBUG: Estado inicial completo para el grafo: {estado_inicial}")
 
-        # Manejo especial para errores de multimedia con reintentos
+        # Intentar análisis con manejo específico de errores multimodales
         try:
-            print(f"DEBUG: Invocando el grafo de LangGraph...")
             estado_final = grafo_compilado.invoke(estado_inicial)
-            print("DEBUG: El grafo de LangGraph completo su ejecucion.")
+            print("DEBUG: El grafo de LangGraph completó su ejecución exitosamente.")
             
         except Exception as e_gemini:
             error_msg = str(e_gemini)
             print(f"DEBUG: ERROR en Gemini durante análisis: {error_msg}")
             
-            # Manejar específicamente errores de multimedia
-            if "Unrecognized message part type: media" in error_msg or "media" in error_msg.lower():
+            # Manejar específicamente errores multimodales
+            if any(keyword in error_msg.lower() for keyword in ["media", "multimodal", "pdf", "audio", "video", "image"]):
                 mensaje_error = (
-                    "Error al procesar archivos multimedia. Por favor, asegúrese de que los archivos "
-                    "estén en formato compatible (PDF, JPG, PNG). Los archivos de audio deben ser "
-                    "transcritos manualmente como texto antes de subirlos."
+                    "Error al procesar archivos multimedia. Nuestro sistema acepta "
+                    "archivos PDF, JPG y PNG. Para audios o videos, por favor transcribe "
+                    "el contenido como texto en el campo correspondiente."
                 )
                 
-                # Actualizar estado del caso en BD
+                # Actualizar estado en BD
                 caso_actual.estado = EstadoCaso.RECHAZADO
                 caso_actual.justificacion_rechazo = mensaje_error
                 caso_actual.reporte_consolidado = json.dumps({
                     "error": mensaje_error,
-                    "tipo_error": "archivo_no_compatible"
+                    "tipo_error": "archivo_multimedia_no_compatible",
+                    "archivos_procesados": len(rutas_archivos),
+                    "timestamp": str(datetime.now())
                 })
                 sesion.add(caso_actual)
                 sesion.commit()
-                sesion.refresh(caso_actual)
                 
                 # Devolver estado válido para LangGraph
                 return {
@@ -412,94 +398,66 @@ def analizar_caso_completo(
                     "resultado_triaje": {
                         "admisible": False,
                         "justificacion": mensaje_error,
-                        "informacion_suficiente": True,
-                        "hechos_clave": "Error de procesamiento de archivos multimedia"
+                        "hechos_clave": "Error en procesamiento de archivos multimedia",
+                        "informacion_suficiente": True
                     },
                     "pregunta_usuario": "Análisis inicial del caso",
                     "respuesta_para_usuario": mensaje_error,
                     "respuesta_agente": mensaje_error
                 }
             else:
-                # Otro tipo de error - intentar devolver un estado válido
-                caso_actual.estado = EstadoCaso.RECHAZADO
-                caso_actual.justificacion_rechazo = f"Error técnico: {error_msg}"
-                caso_actual.reporte_consolidado = json.dumps({
-                    "error": error_msg,
-                    "tipo_error": "error_tecnico"
-                })
-                sesion.add(caso_actual)
-                sesion.commit()
-                sesion.refresh(caso_actual)
-                
+                # Otro tipo de error
                 raise HTTPException(status_code=500, detail=f"Error interno: {error_msg}")
 
-        # Construir el reporte consolidado de forma segura
+        # Construir reporte consolidado de forma segura
         reporte_dict = {}
-        claves_posibles = [
-            "resultado_triaje",
-            "resultado_determinador_competencias",
-            "resultado_repartidor",
-            "resultado_analisis_documento",
-            "resultado_analisis_audio",
-            "resultado_agente_juridico",
-            "resultado_agente_generador_documentos"
-        ]
-
-        for clave in claves_posibles:
-            if clave in estado_final and estado_final[clave]:
+        for clave, valor in estado_final.items():
+            if valor and isinstance(valor, dict) and any(k in clave.lower() for k in ["triaje", "competencia", "repartidor", "juridico"]):
                 nombre_reporte = clave.upper().replace("RESULTADO_", "").replace("_", "")
                 if nombre_reporte == "TRIAGE":
                     nombre_reporte = "TRIEJE"
-                reporte_dict[nombre_reporte] = estado_final[clave]
+                reporte_dict[nombre_reporte] = valor
 
-        # Filtrar valores None y vacíos
-        reporte_dict_limpio = {k: v for k, v in reporte_dict.items() if v is not None and v != {}}
-        
-        caso_actual.reporte_consolidado = json.dumps(reporte_dict_limpio, indent=2, ensure_ascii=False)
-        
-        # Recargar el caso para obtener el estado actualizado
+        caso_actual.reporte_consolidado = json.dumps(reporte_dict, indent=2, ensure_ascii=False)
         sesion.refresh(caso_actual)
         sesion.commit()
-        print(f"DEBUG: Reporte consolidado y estado actualizados en el Caso {id_caso} (hilo web).")
-
+        
         print(f"- DEBUG FIN ANALISIS OK -")
         return estado_final
 
     except HTTPException:
-        # Si es una excepción de HTTP ya manejada, la dejamos pasar
         raise
     except Exception as e:
         error_msg = str(e)
         print(f"DEBUG: ERROR CRITICO en la ejecución SÍNCRONA para caso {id_caso}: {error_msg}")
-        print(f"DEBUG: Tipo del error: {type(e).__name__}")
-
-        # Intentar guardar el error en la base de datos
+        
+        # Manejo de error general con retroalimentación útil
         try:
             if 'caso_actual' in locals() and caso_actual:
                 caso_actual.reporte_consolidado = json.dumps({
                     "error": error_msg,
                     "tipo_error": "error_critico",
+                    "solucion": "Intente subir archivos en formato PDF, JPG o PNG. Para contenido de audio/video, transcríbalo como texto.",
                     "timestamp": str(datetime.now())
                 })
                 if caso_actual.estado not in [EstadoCaso.RECHAZADO, EstadoCaso.CERRADO]:
                     caso_actual.estado = EstadoCaso.RECHAZADO
-                    caso_actual.justificacion_rechazo = f"Error crítico: {error_msg}"
+                    caso_actual.justificacion_rechazo = "Error crítico durante el procesamiento"
                 sesion.add(caso_actual)
                 sesion.commit()
-                print(f"DEBUG: Error guardado en la base de datos para el Caso {id_caso}.")
         except Exception as db_error:
-            print(f"DEBUG: Error al guardar el error en la base de datos: {db_error}")
+            print(f"DEBUG: Error al guardar error en BD: {db_error}")
 
-        # Responder con un error claro al frontend
+        # Respuesta clara al frontend
         if "media" in error_msg.lower() or "multimedia" in error_msg.lower():
             raise HTTPException(
                 status_code=400,
-                detail="Error con archivos multimedia. Por favor, suba solo archivos PDF, JPG o PNG compatibles."
+                detail="Error con archivos multimedia. Suba solo archivos PDF, JPG o PNG. Los audios deben ser transcritos como texto."
             )
         else:
             raise HTTPException(
                 status_code=500,
-                detail=f"Error interno al procesar el análisis: {error_msg}. Por favor, contacte al administrador."
+                detail="Error interno al procesar el análisis. Por favor, contacte al administrador."
             )
     
 
