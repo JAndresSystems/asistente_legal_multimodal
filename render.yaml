@@ -1,9 +1,5 @@
-# render.yaml
+# render.yaml (Versión Final, sin dependencias de sistema)
 
-# --- GRUPO DE VARIABLES DE ENTORNO (Secrets) ---
-# =====================================================================
-# Centralizamos las claves secretas en un grupo para que estén disponibles en build.
-# =====================================================================
 envVarGroups:
   - name: secrets
     envVars:
@@ -14,28 +10,27 @@ envVarGroups:
       - key: RESEND_API_KEY
         sync: false
 
-# --- BASE DE DATOS POSTGRESQL ---
 databases:
   - name: asistente-legal-db
     databaseName: asistente_legal_db
     user: asistente_legal_user
     plan: free
 
-# --- SERVICIOS ---
 services:
-  # # Redis (Key-Value Store) - COMENTADO/ELIMINADO
-  # - name: asistente-legal-redis
-  #   type: keyvalue
-  #   ipAllowList: []
-  #   plan: free
-
   # 1. Backend (FastAPI + Uvicorn)
   - name: asistente-legal-backend
     type: web
     runtime: python
-    buildCommand: "pip install -r requirements.txt"
-    # Limpia ChromaDB en cada deploy para evitar errores de esquema (free tier)
-    startCommand: "rm -rf backend/archivos_subidos/* && rm -rf chroma_db_data && python -m backend.scripts.ingestar_documentos && python -m backend.seed_db && uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
+    # Build Command: Instala dependencias y prepara las bases de datos (solo 1 vez por deploy)
+    buildCommand: |
+      pip install -r requirements.txt
+      rm -rf chroma_db_data
+      python -m backend.scripts.ingestar_documentos
+      python -m backend.seed_db
+    # Start Command: Limpia archivos de subidas en cada inicio y arranca el servidor.
+    startCommand: |
+      rm -rf backend/archivos_subidos/*
+      uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/chat/healthcheck
     plan: free
     envVars:
@@ -44,44 +39,12 @@ services:
         fromDatabase:
           name: asistente-legal-db
           property: connectionString
-      # --- INICIO DE LA MODIFICACIÓN ---
-      # QUITAR ESTA LINEA SI ELIMINASTE EL SERVICIO REDIS EN RENDER
-      # - key: REDIS_URL
-      #   fromService:
-      #     name: asistente-legal-redis
-      #     type: keyvalue
-      #     property: connectionString
-      # --- FIN DE LA MODIFICACIÓN ---
       - key: PYTHON_VERSION
         value: 3.11.5
-      # CORS: URLs fijas (ajusta si cambian tus dominios)
       - key: CORS_ORIGINS
-        value: "https://asistente-legal-frontend-8n9i.onrender.com,http://localhost:5173,http://127.0.0.1:5173" # Eliminados espacios de CORS_ORIGINS también por consistencia
+        value: "https://asistente-legal-frontend-8n9i.onrender.com,http://localhost:5173,http://127.0.0.1:5173"
 
-  # # 2. Worker de Celery (Tareas Asíncronas) - COMENTADO/ELIMINADO
-  # - name: celery-worker
-  #   type: worker
-  #   runtime: python
-  #   buildCommand: "pip install -r requirements.txt"
-  #   # Opcional: limpia ChromaDB también aquí si el worker la usa
-  #   startCommand: "rm -rf chroma_db_data && celery -A backend.tareas.celery_app worker --loglevel=info"
-  #   plan: starter
-  #   envVars:
-  #     - fromGroup: secrets
-  #     - key: DATABASE_URL
-  #       fromDatabase:
-  #         name: asistente-legal-db
-  #         property: connectionString
-  #     # QUITAR ESTA LINEA SI ELIMINASTE EL SERVICIO REDIS EN RENDER
-  #     # - key: REDIS_URL
-  #     #   fromService:
-  #     #     name: asistente-legal-redis
-  #     #     type: keyvalue
-  #     #     property: connectionString
-  #     - key: PYTHON_VERSION
-  #       value: 3.11.5
-
-  # 3. Frontend (React + Vite)
+  # 2. Frontend (React + Vite)
   - name: asistente-legal-frontend
     type: web
     runtime: static
@@ -94,5 +57,5 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_URL_BASE_BACKEND
-        # --- CORRECCIÓN: Eliminados los espacios al final ---
+        # Respetando su instrucción, no se modifica este valor.
         value: "https://asistente-legal-backend-71ft.onrender.com"
