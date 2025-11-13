@@ -21,15 +21,13 @@ services:
   - name: asistente-legal-backend
     type: web
     runtime: python
-    # Build Command: Instala dependencias y prepara las bases de datos (solo 1 vez por deploy)
     buildCommand: |
       pip install -r requirements.txt
       rm -rf chroma_db_data
       python -m backend.scripts.ingestar_documentos
-      python -m backend.seed_db
-    # Start Command: Limpia archivos de subidas en cada inicio y arranca el servidor.
     startCommand: |
       rm -rf backend/archivos_subidos/*
+      python -m backend.seed_db
       uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/chat/healthcheck
     plan: free
