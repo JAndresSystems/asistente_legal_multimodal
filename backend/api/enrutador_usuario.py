@@ -4,30 +4,33 @@ from fastapi import APIRouter, HTTPException, File, UploadFile, Depends, status
 import shutil
 from pathlib import Path
 from sqlmodel import Session, select
-from typing import List
+from typing import List, Dict, Any
 import json
 
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import (
     Caso, CasoCreacion, Evidencia, Nota, NotaCreacion, NotaLectura, 
     SolicitudAnalisis, Cuenta, CasoLecturaUsuario, EstadoCaso, CasoDetalleUsuario,
-    EvidenciaLecturaSimple,CasoLecturaConEvidencias
+    EvidenciaLecturaSimple,CasoLecturaConEvidencias,
+    # --- INICIO DE LA CORRECCIÓN ---
+    # Importamos el modelo de respuesta del chat para ser consistentes
+    RespuestaChat
+    # --- FIN DE LA CORRECCIÓN ---
 )
-from ..tareas import procesar_evidencia_tarea
+from ..tareas import procesar_evidencia_sincrono
 from ..seguridad.jwt_manager import obtener_cuenta_actual
 
 from fpdf import FPDF
 from fastapi.responses import Response
 
-# --- INICIO DE LA MODIFICACIÓN ---
-# 1. Renombramos a 'router' por consistencia
+# El resto del archivo hasta el endpoint de análisis permanece sin cambios
 router = APIRouter(
     prefix="/api/casos",
     tags=["Casos (Ciudadano)"],
     dependencies=[Depends(obtener_cuenta_actual)]
 )
 
-
+# [ ... Todo el código anterior (PDF, obtener_mis_casos, etc.) permanece aquí ... ]
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -316,34 +319,37 @@ def subir_evidencia_simple(
     return nueva_evidencia_db
 
 
-
-
-@router.post("/{id_caso}/analizar")
-def analizar_caso_completo(id_caso: int, solicitud: SolicitudAnalisis, sesion: Session = Depends(obtener_sesion)):
+# --- INICIO DE LA CORRECCIÓN CLAVE ---
+@router.post("/{id_caso}/analizar", response_model=Dict[str, Any])
+def analizar_caso_completo(id_caso: int, solicitud: SolicitudAnalisis, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
     """
-    Inicia la tarea de análisis y ESPERA a que se complete.
-    Esta es la lógica correcta para el flujo interactivo del Agente de Triaje.
+    Inicia el análisis SÍNCRONO del caso y devuelve el estado final del grafo,
+    restaurando la lógica original para el frontend.
     """
     caso_actual = sesion.get(Caso, id_caso)
-    if not caso_actual or not caso_actual.evidencias: 
+    if not caso_actual:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    
+    if not cuenta_actual.usuario or caso_actual.id_usuario != cuenta_actual.usuario.id:
+        raise HTTPException(status_code=403, detail="No tiene permisos para analizar este caso.")
+
+    if not caso_actual.evidencias: 
         raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
     
-    # Se inicia la tarea en segundo plano...
-    tarea_resultado = procesar_evidencia_tarea.delay(id_caso, solicitud.texto_adicional_usuario)
-    
     try:
-        # ...y el servidor ESPERA aquí hasta que la tarea termine o falle por timeout.
-        estado_final = tarea_resultado.get(timeout=180) # Timeout de 3 minutos
-        return estado_final
+        # Llamamos a la función síncrona, que ahora devuelve el 'estado_final' del grafo.
+        estado_final_del_grafo = procesar_evidencia_sincrono(
+            id_caso=id_caso,
+            texto_adicional_usuario=solicitud.texto_adicional_usuario,
+            sesion=sesion
+        )
+        
+        # Devolvemos directamente este diccionario al frontend.
+        return estado_final_del_grafo
+
     except Exception as e:
-        # Si la tarea tarda más de 3 minutos, se lanza el error 504.
-        raise HTTPException(status_code=504, detail=f"El analisis del caso tardo demasiado en responder: {e}")
-    
-
-
-
-
-
+        print(f"Error detallado en analizar_caso_completo: {e}")
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error interno durante el análisis.")
 
 
 @router.post("/{id_caso}/crear-nota", response_model=NotaLectura, status_code=status.HTTP_201_CREATED)

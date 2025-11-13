@@ -48,11 +48,11 @@ const DashboardAsesor = ({ onVerExpediente }) => {
         <h2 className={styles.titulo}>Bienvenido de nuevo, {usuario?.nombre_completo}</h2>
         <p className={styles.subtitulo}>Este es su panel de supervisión de casos.</p>
       </div>
-      <h2 className={styles.titulo}>Dashboard del Supervisor</h2>
+      <h2 className={styles.titulo}>Casos Asignados al Asesor</h2>
       
       {/* 4. Añadimos el nuevo panel de métricas */}
       <div className={styles.panelMetricas}>
-        <h3>Carga de Trabajo del Equipo</h3>
+        <h3>Reporte de Casos</h3>
         {metricas.length > 0 ? (
           <ul className={styles.listaMetricas}>
             {metricas.map((metrica, index) => (
