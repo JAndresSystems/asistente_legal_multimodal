@@ -78,16 +78,16 @@ const manejarRegistro = async (e) => {
           />
         </div>
 
-        <div className="campo-formulario">
-            <label htmlFor="contrasena">Contraseña</label>
-            <CampoContrasena
-              id="contrasena"
-              value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
-              required
-              disabled={estaProcesando}
-            />
-          </div>
+      <div className="campo-formulario">
+          <label htmlFor="contrasena">Contraseña</label>
+          <CampoContrasena
+            id="contrasena"
+            value={contrasena}
+            onChange={(e) => setContrasena(e.target.value)}
+            required
+            disabled={estaProcesando}
+          />
+        </div>
 
         <button type="submit" disabled={estaProcesando} className="boton-principal">
           {estaProcesando ? 'Registrando...' : 'Crear Cuenta'}

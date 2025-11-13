@@ -1,4 +1,4 @@
-# render.yaml - Versión corregida para producción
+# render.yaml
 
 # --- GRUPO DE VARIABLES DE ENTORNO (Secrets) ---
 # =====================================================================
@@ -23,19 +23,19 @@ databases:
 
 # --- SERVICIOS ---
 services:
+  # # Redis (Key-Value Store) - COMENTADO/ELIMINADO
+  # - name: asistente-legal-redis
+  #   type: keyvalue
+  #   ipAllowList: []
+  #   plan: free
+
   # 1. Backend (FastAPI + Uvicorn)
   - name: asistente-legal-backend
     type: web
     runtime: python
-    buildCommand: |
-      # Instalar dependencias del sistema para audio/video
-      sudo apt-get update && sudo apt-get install -y ffmpeg libsndfile1
-      pip install -r requirements.txt
-    startCommand: |
-      rm -rf backend/archivos_subidos/* && 
-      rm -rf chroma_db_data && 
-      python -m backend.scripts.ingestar_documentos && 
-      uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT
+    buildCommand: "pip install -r requirements.txt"
+    # Limpia ChromaDB en cada deploy para evitar errores de esquema (free tier)
+    startCommand: "rm -rf backend/archivos_subidos/* && rm -rf chroma_db_data && python -m backend.scripts.ingestar_documentos && python -m backend.seed_db && uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT"
     healthCheckPath: /api/chat/healthcheck
     plan: free
     envVars:
@@ -44,17 +44,42 @@ services:
         fromDatabase:
           name: asistente-legal-db
           property: connectionString
+      # --- INICIO DE LA MODIFICACIÓN ---
+      # QUITAR ESTA LINEA SI ELIMINASTE EL SERVICIO REDIS EN RENDER
+      # - key: REDIS_URL
+      #   fromService:
+      #     name: asistente-legal-redis
+      #     type: keyvalue
+      #     property: connectionString
+      # --- FIN DE LA MODIFICACIÓN ---
       - key: PYTHON_VERSION
         value: 3.11.5
+      # CORS: URLs fijas (ajusta si cambian tus dominios)
       - key: CORS_ORIGINS
-        value: "https://asistente-legal-frontend-8n9i.onrender.com,http://localhost:5173,http://127.0.0.1:5173"
-      # Variables para manejo de espera de base de datos
-      - key: WAIT_FOR_DB
-        value: "true"
-      - key: MAX_DB_RETRIES
-        value: "30"
-      - key: DB_RETRY_DELAY
-        value: "2"
+        value: "https://asistente-legal-frontend-8n9i.onrender.com,http://localhost:5173,http://127.0.0.1:5173" # Eliminados espacios de CORS_ORIGINS también por consistencia
+
+  # # 2. Worker de Celery (Tareas Asíncronas) - COMENTADO/ELIMINADO
+  # - name: celery-worker
+  #   type: worker
+  #   runtime: python
+  #   buildCommand: "pip install -r requirements.txt"
+  #   # Opcional: limpia ChromaDB también aquí si el worker la usa
+  #   startCommand: "rm -rf chroma_db_data && celery -A backend.tareas.celery_app worker --loglevel=info"
+  #   plan: starter
+  #   envVars:
+  #     - fromGroup: secrets
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: asistente-legal-db
+  #         property: connectionString
+  #     # QUITAR ESTA LINEA SI ELIMINASTE EL SERVICIO REDIS EN RENDER
+  #     # - key: REDIS_URL
+  #     #   fromService:
+  #     #     name: asistente-legal-redis
+  #     #     type: keyvalue
+  #     #     property: connectionString
+  #     - key: PYTHON_VERSION
+  #       value: 3.11.5
 
   # 3. Frontend (React + Vite)
   - name: asistente-legal-frontend
@@ -69,4 +94,5 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_URL_BASE_BACKEND
+        # --- CORRECCIÓN: Eliminados los espacios al final ---
         value: "https://asistente-legal-backend-71ft.onrender.com"

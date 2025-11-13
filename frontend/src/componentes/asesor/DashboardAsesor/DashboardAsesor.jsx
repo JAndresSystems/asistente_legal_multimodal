@@ -48,11 +48,11 @@ const DashboardAsesor = ({ onVerExpediente }) => {
         <h2 className={styles.titulo}>Bienvenido de nuevo, {usuario?.nombre_completo}</h2>
         <p className={styles.subtitulo}>Este es su panel de supervisión de casos.</p>
       </div>
-      <h2 className={styles.titulo}>Casos Asignados al Asesor</h2>
+      <h2 className={styles.titulo}>Dashboard del Supervisor</h2>
       
       {/* 4. Añadimos el nuevo panel de métricas */}
       <div className={styles.panelMetricas}>
-        <h3>Estudiantes de Trabajo</h3>
+        <h3>Carga de Trabajo del Equipo</h3>
         {metricas.length > 0 ? (
           <ul className={styles.listaMetricas}>
             {metricas.map((metrica, index) => (
@@ -68,7 +68,7 @@ const DashboardAsesor = ({ onVerExpediente }) => {
       </div>
 
       <div className={styles.panelCasos}>
-        <h3>Tus casos asignados</h3>
+        <h3>Detalle de Casos Asignados</h3>
         {casosSupervisados.length === 0 ? (
           <p>No hay casos asignados a sus estudiantes en este momento.</p>
         ) : (

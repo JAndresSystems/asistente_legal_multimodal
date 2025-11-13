@@ -361,6 +361,7 @@ class UsuarioGestionLectura(SQLModel):
     esta_activo: bool
 
 
+
 class UsuarioEdicion(SQLModel):
     """
     Modelo para validar los datos que envía el administrador para editar
@@ -369,7 +370,6 @@ class UsuarioEdicion(SQLModel):
     nombre: Optional[str] = None
     cedula: Optional[str] = None
     contrasena: Optional[str] = None
-
 
 
 class PersonalEdicion(SQLModel):
@@ -413,7 +413,3 @@ class NotificacionCreacion(SQLModel):
     """
     asunto: str
     mensaje: str
-
-
-
-

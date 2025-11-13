@@ -6,10 +6,6 @@ from pathlib import Path
 from sqlmodel import Session, select
 from typing import List
 import json
-from celery.result import AsyncResult
-from ..tareas import celery_app
-from ..agentes.orquestador_del_grafo import grafo_compilado
-from datetime import datetime
 
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import (
@@ -323,213 +319,27 @@ def subir_evidencia_simple(
 
 
 @router.post("/{id_caso}/analizar")
-def analizar_caso_completo(
-    id_caso: int,
-    solicitud: SolicitudAnalisis,
-    sesion: Session = Depends(obtener_sesion),
-    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
-):
+def analizar_caso_completo(id_caso: int, solicitud: SolicitudAnalisis, sesion: Session = Depends(obtener_sesion)):
     """
-    Inicia el análisis del caso de forma síncrona. Maneja errores multimodales y garantiza
-    que el estado del grafo sea válido incluso en casos de fallo.
+    Inicia la tarea de análisis y ESPERA a que se complete.
+    Esta es la lógica correcta para el flujo interactivo del Agente de Triaje.
     """
-    print(f"- DEBUG INICIO ANALISIS -")
-    print(f"DEBUG: Iniciando análisis SÍNCRONO para el CASO ID: {id_caso} en hilo web.")
+    caso_actual = sesion.get(Caso, id_caso)
+    if not caso_actual or not caso_actual.evidencias: 
+        raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
+    
+    # Se inicia la tarea en segundo plano...
+    tarea_resultado = procesar_evidencia_tarea.delay(id_caso, solicitud.texto_adicional_usuario)
     
     try:
-        # Validar que el caso pertenece al usuario
-        print(f"DEBUG: Obteniendo caso con ID {id_caso} de la base de datos...")
-        caso_actual = sesion.get(Caso, id_caso)
-        print(f"DEBUG: Caso obtenido: {caso_actual}")
-        if not caso_actual:
-            print(f"DEBUG: ERROR - Caso con ID {id_caso} no encontrado en la base de datos.")
-            raise HTTPException(status_code=404, detail="Caso no encontrado.")
-
-        print(f"DEBUG: ID usuario del caso: {caso_actual.id_usuario}")
-        print(f"DEBUG: ID usuario de la cuenta actual: {cuenta_actual.usuario.id}")
-
-        if caso_actual.id_usuario != cuenta_actual.usuario.id:
-            print(f"DEBUG: ERROR - Permiso denegado. El caso no pertenece al usuario logueado.")
-            raise HTTPException(status_code=403, detail="Permiso denegado. El caso no pertenece al usuario logueado.")
-
-        print(f"DEBUG: Validación de pertenencia completada con éxito.")
-
-        if not caso_actual.evidencias:
-            print(f"DEBUG: ERROR - El caso {id_caso} no tiene evidencias adjuntas.")
-            raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
-
-        print(f"DEBUG: El caso tiene {len(caso_actual.evidencias)} evidencia(s).")
-
-        # Preparamos la entrada para el grafo de LangGraph
-        print(f"DEBUG: Extrayendo rutas de archivos de evidencia...")
-        rutas_archivos = [ev.ruta_archivo for ev in caso_actual.evidencias]
-        print(f"DEBUG: Rutas de archivos extraídas: {rutas_archivos}")
-        print(f"DEBUG: El agente analizará un total de {len(rutas_archivos)} evidencia(s).")
-
-        # Estado inicial COMPLETO con todos los campos necesarios
-        estado_inicial = {
-            "id_caso": id_caso,
-            "rutas_archivos_evidencia": rutas_archivos,
-            "texto_adicional_usuario": solicitud.texto_adicional_usuario,
-            "pregunta_usuario": "Análisis inicial del caso",
-            "resultado_triaje": {
-                "admisible": False,
-                "justificacion": "Esperando análisis",
-                "hechos_clave": "",
-                "informacion_suficiente": False
-            },
-            "respuesta_para_usuario": "",
-            "respuesta_agente": ""
-        }
-        print(f"DEBUG: Estado inicial completo para el grafo: {estado_inicial}")
-
-        try:
-            # Invocamos a los agentes (síncrono)
-            print(f"DEBUG: Invocando el grafo de LangGraph...")
-            estado_final = grafo_compilado.invoke(estado_inicial)
-            print("DEBUG: El grafo de LangGraph completó su ejecución.")
-            
-        except Exception as e_grafo:
-            error_msg = str(e_grafo)
-            print(f"DEBUG: ERROR EN EL GRAFO: {error_msg}")
-            print(f"DEBUG: Tipo del error: {type(e_grafo).__name__}")
-            
-            # Fallback seguro para errores del grafo
-            return {
-                "id_caso": id_caso,
-                "resultado_triaje": {
-                    "admisible": False,
-                    "justificacion": "Error interno durante el análisis. Por favor, contacte al administrador.",
-                    "hechos_clave": "Error en el procesamiento del caso",
-                    "informacion_suficiente": True
-                },
-                "pregunta_usuario": "Análisis inicial del caso",
-                "respuesta_para_usuario": "Error interno durante el procesamiento. Por favor, contacte al administrador.",
-                "respuesta_agente": "Error interno"
-            }
-
-        # Validar que el resultado_triaje esté completo
-        resultado_triaje = estado_final.get("resultado_triaje", {})
-        if not isinstance(resultado_triaje, dict) or "admisible" not in resultado_triaje:
-            print("DEBUG: ADVERTENCIA - resultado_triaje incompleto o inválido")
-            resultado_triaje = {
-                "admisible": False,
-                "justificacion": "Respuesta no válida del sistema de IA",
-                "hechos_clave": "Error en el formato de respuesta",
-                "informacion_suficiente": True
-            }
-            estado_final["resultado_triaje"] = resultado_triaje
-        
-        # Construir el reporte consolidado de forma segura
-        reporte_dict = {}
-        claves_posibles = [
-            "resultado_triaje",
-            "resultado_determinador_competencias",
-            "resultado_repartidor",
-            "resultado_analisis_documento",
-            "resultado_analisis_audio",
-            "resultado_agente_juridico"
-        ]
-
-        for clave in claves_posibles:
-            if clave in estado_final and estado_final[clave]:
-                nombre_reporte = clave.upper().replace("RESULTADO_", "").replace("_", "")
-                if nombre_reporte == "TRIAGE":
-                    nombre_reporte = "TRIEJE"
-                reporte_dict[nombre_reporte] = estado_final[clave]
-
-        # Filtrar valores None y vacíos
-        reporte_dict_limpio = {k: v for k, v in reporte_dict.items() if v is not None and v != {}}
-        
-        caso_actual.reporte_consolidado = json.dumps(reporte_dict_limpio, indent=2, ensure_ascii=False)
-        
-        # Actualizar estado del caso basado en el resultado del triaje
-        if not resultado_triaje.get("informacion_suficiente", True):
-            caso_actual.estado = EstadoCaso.EN_REVISION
-        elif not resultado_triaje.get("admisible", False):
-            caso_actual.estado = EstadoCaso.RECHAZADO
-            caso_actual.justificacion_rechazo = resultado_triaje.get("justificacion", "No admisible")
-        
-        # Recargar el caso para obtener el estado actualizado
-        sesion.add(caso_actual)
-        sesion.commit()
-        sesion.refresh(caso_actual)
-        print(f"DEBUG: Reporte consolidado y estado actualizados en el Caso {id_caso} (hilo web).")
-
-        print(f"- DEBUG FIN ANALISIS OK -")
+        # ...y el servidor ESPERA aquí hasta que la tarea termine o falle por timeout.
+        estado_final = tarea_resultado.get(timeout=180) # Timeout de 3 minutos
         return estado_final
-
     except Exception as e:
-        error_msg = str(e)
-        print(f"DEBUG: ERROR CRITICO en la ejecución SÍNCRONA para caso {id_caso}: {error_msg}")
-        print(f"DEBUG: Tipo del error: {type(e).__name__}")
+        # Si la tarea tarda más de 3 minutos, se lanza el error 504.
+        raise HTTPException(status_code=504, detail=f"El analisis del caso tardo demasiado en responder: {e}")
+    
 
-        # Intentar guardar el error en la base de datos
-        try:
-            if 'caso_actual' in locals() and caso_actual:
-                caso_actual.reporte_consolidado = json.dumps({
-                    "error": error_msg,
-                    "tipo_error": "error_critico",
-                    "mensaje_usuario": "Error al procesar su caso. Por favor, intente nuevamente o contacte al administrador.",
-                    "timestamp": str(datetime.now())
-                })
-                
-                # Si el caso estaba en estado "creado", lo movemos a "rechazado" por error técnico
-                if caso_actual.estado not in [EstadoCaso.RECHAZADO, EstadoCaso.CERRADO]:
-                    caso_actual.estado = EstadoCaso.RECHAZADO
-                    caso_actual.justificacion_rechazo = f"Error técnico: {error_msg[:100]}..." if len(error_msg) > 100 else error_msg
-                
-                sesion.add(caso_actual)
-                sesion.commit()
-                print(f"DEBUG: Error guardado en la base de datos para el Caso {id_caso}.")
-        except Exception as db_error:
-            print(f"DEBUG: Error al guardar el error en la base de datos: {db_error}")
-
-        # Responder con un error claro al frontend
-        if "media" in error_msg.lower() or "pdf" in error_msg.lower() or "imagen" in error_msg.lower():
-            raise HTTPException(
-                status_code=400,
-                detail="Error con los archivos subidos. Por favor, asegúrese de que los archivos PDF, JPG o PNG estén en buen estado y no estén dañados. Los archivos de audio deben ser transcritos como texto."
-            )
-        else:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error interno al procesar el análisis: {error_msg}"
-            )
-
-# Asegúrate de que esta función esté dentro del mismo 'router' que las demás.
-
-# @router.get("/{id_caso}/estado-analisis/{id_tarea}")
-# def consultar_estado_analisis(
-#     id_caso: int,
-#     id_tarea: str,
-#     sesion: Session = Depends(obtener_sesion),
-#     cuenta_actual: Cuenta = Depends(obtener_cuenta_actual) # Asegura que solo el dueño del caso pueda consultar
-# ):
-#     """
-#     Consulta el estado de una tarea de análisis de Celery.
-#     """
-#     # Validar que el caso pertenece al usuario logueado
-#     caso = sesion.get(Caso, id_caso)
-#     if not caso or caso.id_usuario != cuenta_actual.usuario.id:
-#         raise HTTPException(status_code=404, detail="Caso no encontrado o sin permisos.")
-
-#     # Obtener el estado de la tarea de Celery
-#     resultado_tarea = AsyncResult(id_tarea, app=celery_app)
-
-#     if resultado_tarea.state == 'PENDING':
-#         return {"estado": "en_progreso", "mensaje": "La tarea está pendiente de inicio."}
-#     elif resultado_tarea.state == 'PROGRESS':
-#         # Opcional: Si Celery reporta progreso, puedes devolverlo aquí
-#         return {"estado": "en_progreso", "mensaje": "Analizando evidencias..."}
-#     elif resultado_tarea.state == 'SUCCESS':
-#         # La tarea terminó exitosamente. Devolvemos el caso actualizado desde la BD.
-#         # Asegúrate de que la tarea haya guardado el resultado en la base de datos.
-#         caso_actualizado = sesion.get(Caso, id_caso)
-#         # Opcional: Puedes devolver solo el estado del caso o el objeto completo
-#         return {"estado": "completado", "caso": caso_actualizado}
-#     else: # FAILURE u otros estados
-#         return {"estado": "error", "mensaje": str(resultado_tarea.info)}
 
 
 
@@ -571,4 +381,3 @@ def crear_nota_usuario(
     respuesta_api.autor_nombre = caso.usuario.nombre
     
     return respuesta_api
-

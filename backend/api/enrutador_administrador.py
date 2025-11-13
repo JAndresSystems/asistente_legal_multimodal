@@ -5,6 +5,7 @@ from typing import List,Dict
 
 
 
+
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import (
     Cuenta,
@@ -14,7 +15,7 @@ from .modelos_compartidos import (
     PersonalCreacion,
     PersonalGestionLectura,
     UsuarioGestionLectura, 
-    UsuarioEdicion,
+     UsuarioEdicion,
     PersonalEdicion,
     AreaEspecialidad,
     AreaLectura,
@@ -343,6 +344,8 @@ def editar_usuario(id_cuenta: int, datos_edicion: UsuarioEdicion, sesion: Sessio
         nombre_completo=perfil_a_editar.nombre,
         esta_activo=cuenta_a_editar.esta_activo
     )
+
+
 
 
 

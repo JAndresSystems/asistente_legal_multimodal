@@ -99,7 +99,10 @@ def obtener_detalle_expediente_asesor(
     caso = sesion.get(Caso, id_caso)
     if not caso:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expediente no encontrado.")
-   
+    
+    # =================================================================
+    # INICIO DE LA MODIFICACIÓN
+    # =================================================================
     
     # Preparamos la respuesta base
     respuesta = CasoDetalleUsuario.model_validate(caso)

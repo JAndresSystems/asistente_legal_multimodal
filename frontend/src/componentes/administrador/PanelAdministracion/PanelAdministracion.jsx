@@ -1,15 +1,12 @@
-// C:\react\asistente_legal_multimodal\frontend\src\componentes\administrador\PanelAdministracion\PanelAdministracion.jsx
-
 import React from "react";
 import { useAuth } from "../../../contextos/ContextoAutenticacion";
-import { usePanelAdministracionLogic } from "./usePanelAdministracionLogic"; // Importamos nuestro Hook
+import { usePanelAdministracionLogic } from "./usePanelAdministracionLogic";
 import "./PanelAdministracion.css";
 import CampoContrasena from "../../compartidos/CampoContrasena";
 
 const PanelAdministracion = () => {
    const { usuario } = useAuth();
-  // Obtenemos todos los estados y funciones desde nuestro Hook de lógica
-const {
+   const {
     listaPersonal, listaAreas, listaUsuarios, nuevoPersonal, nuevaAreaNombre,
     setNuevaAreaNombre, areaAEditar, setAreaAEditar, modalVisible, personaAEditar,
     datosFormularioEdicion, cargando, error, setError,
@@ -21,11 +18,9 @@ const {
     handleEstudianteCheckboxChange, handleGuardarAsignacion,
   } = usePanelAdministracionLogic();
 
-
    const asesores = listaPersonal.filter(p => p.rol === 'asesor');
-  const estudiantes = listaPersonal.filter(p => p.rol === 'estudiante');
+   const estudiantes = listaPersonal.filter(p => p.rol === 'estudiante');
 
-  // El componente ahora solo se encarga de renderizar el JSX
  return (
     <div className="panel-admin-contenedor">
       <div className="admin-saludo">
@@ -92,7 +87,7 @@ const {
         </table>
       </div>
 
-      {/* SECCION DE ASIGNACION DE SUPERVISORES (CON LOGICA DE FILTRADO MEJORADA) */}
+      {/* SECCION DE ASIGNACION DE SUPERVISORES */}
       <div className="gestion-seccion">
         <h2>Asignación de Supervisores</h2>
         <div className="asignacion-contenedor">
@@ -137,22 +132,22 @@ const {
         </div>
       </div>
 
-      {/* SECCION DE GESTION DE PERSONAL (TABLA MODIFICADA) */}
+      {/* SECCION DE GESTION DE PERSONAL */}
       <div className="gestion-seccion">
         <h2>Gestión de Personal del Sistema</h2>
         <div className="form-creacion-seccion">
             <h3>Crear Nuevo Personal</h3>
             <form onSubmit={handleSubmit}>
               <div className="form-grupo"><label>Email:</label><input type="email" name="email" value={nuevoPersonal.email} onChange={handleInputChange} required /></div>
-              <div className="form-grupo">
-                <label>Contraseña:</label>
-                <CampoContrasena
-                  name="contrasena"
-                  value={nuevoPersonal.contrasena}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
+             <div className="form-grupo">
+              <label>Contraseña:</label>
+              <CampoContrasena
+                name="contrasena"
+                value={nuevoPersonal.contrasena}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
               <div className="form-grupo"><label>Nombre Completo:</label><input type="text" name="nombre_completo" value={nuevoPersonal.nombre_completo} onChange={handleInputChange} required /></div>
               <div className="form-grupo">
                   <label>Área de Especialidad:</label>
@@ -218,8 +213,14 @@ const {
                     <td>{usuario.email}</td>
                     <td><span className={usuario.esta_activo ? 'estado-activo' : 'estado-inactivo'}>{usuario.esta_activo ? "Activo" : "Inactivo"}</span></td>
                     <td className="celda-acciones">
-                      <button onClick={() => handleAbrirModal(usuario)} className="boton-editar">Editar</button>
-                    <button onClick={() => handleCambiarEstadoUsuario(usuario.id_cuenta)} className={usuario.esta_activo ? 'boton-desactivar' : 'boton-activar'}>{usuario.esta_activo ? "Desactivar" : "Activar"}</button>
+                        {/* ================================================================= */}
+                        {/* INICIO DE LA MODIFICACIÓN 1: Añadir el botón de editar usuario */}
+                        {/* ================================================================= */}
+                        <button onClick={() => handleAbrirModal(usuario)} className="boton-editar">Editar</button>
+                        {/* ================================================================= */}
+                        {/* FIN DE LA MODIFICACIÓN 1 */}
+                        {/* ================================================================= */}
+                        <button onClick={() => handleCambiarEstadoUsuario(usuario.id_cuenta)} className={usuario.esta_activo ? 'boton-desactivar' : 'boton-activar'}>{usuario.esta_activo ? "Desactivar" : "Activar"}</button>
                     </td>
                 </tr>
                 ))}
@@ -228,7 +229,9 @@ const {
         )}
       </div>
 
-      {/* MODAL DE EDICION DE PERSONAL */}
+      {/* ================================================================= */}
+      {/* INICIO DE LA MODIFICACIÓN 2: Hacer el modal dinámico */}
+      {/* ================================================================= */}
       {modalVisible && personaAEditar && (
         <div className="modal-overlay">
           <div className="modal-contenido">
@@ -274,6 +277,9 @@ const {
           </div>
         </div>
       )}
+      {/* ================================================================= */}
+      {/* FIN DE LA MODIFICACIÓN 2 */}
+      {/* ================================================================= */}
     </div>
   );
 };

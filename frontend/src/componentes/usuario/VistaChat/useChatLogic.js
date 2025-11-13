@@ -139,10 +139,12 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
     }
     setEstaProcesando(false);
   };
+  
+  const manejarClickSugerencia = (texto) => { manejarEnvioUnificado(texto); };
 
 
 
-  /**
+   /**
    * Elimina un archivo de la lista de archivos para subir.
    * @param {number} indiceAEliminar - El índice del archivo a eliminar en el array 'archivosParaSubir'.
    */
@@ -157,8 +159,7 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
       anteriores.filter((_, indice) => indice !== indiceAEliminar)
     );
   };
-  
-  const manejarClickSugerencia = (texto) => { manejarEnvioUnificado(texto); };
+
 
   const iniciarGrabacion = async () => {
     try {

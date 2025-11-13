@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import {
   apiObtenerPersonal, apiCrearPersonal, apiCambiarEstadoCuenta, apiEditarPersonal, apiEliminarPersonal,
   apiObtenerAreas, apiCrearArea, apiEditarArea, apiEliminarArea,
-  apiObtenerUsuarios, apiCambiarEstadoCuentaUsuario,apiAsignarSupervisor,apiEditarUsuario
+  apiObtenerUsuarios, apiCambiarEstadoCuentaUsuario,apiAsignarSupervisor,apiEditarUsuario 
 } from "../../../servicios/api/administrador";
 
 // Este es nuestro Hook Personalizado. Empieza con "use" por convención.
@@ -332,7 +332,7 @@ export const usePanelAdministracionLogic = () => {
   };
 
 
-return {
+ return {
     listaPersonal, listaAreas, listaUsuarios, nuevoPersonal, nuevaAreaNombre,
     setNuevaAreaNombre, areaAEditar, setAreaAEditar, modalVisible, personaAEditar,
     datosFormularioEdicion, cargando, error, setError,
@@ -344,5 +344,3 @@ return {
     handleEstudianteCheckboxChange, handleGuardarAsignacion,
   };
 };
-
-

@@ -90,7 +90,7 @@ function VistaChat(props) {
     manejarClickSugerencia,
     iniciarGrabacion,
     detenerGrabacion,
-    manejarEliminarArchivo, 
+     manejarEliminarArchivo,
     obtenerPlaceholder
   } = useChatLogic(props);
   
@@ -111,14 +111,14 @@ function VistaChat(props) {
 
       <div className="area-acciones-chat">
         {modoAgente === 'triaje_evidencias' && !triajeFinalizado && (
-          <SubidorDeEvidencias 
+            <SubidorDeEvidencias 
           archivos={archivosParaSubir}
           onSeleccionArchivos={(e) => setArchivosParaSubir(prev => [...prev, ...Array.from(e.target.files)])}
           onIniciarGrabacion={iniciarGrabacion}
           onDetenerGrabacion={detenerGrabacion}
           grabando={grabando}
           audioUrl={audioUrl}
-          onEliminarArchivo={manejarEliminarArchivo}
+          onEliminarArchivo={manejarEliminarArchivo} // <-- Añadir esta línea
         />
         )}
         

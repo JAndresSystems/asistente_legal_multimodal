@@ -514,6 +514,3 @@ def enviar_documento_a_revision(
     sesion.refresh(documento)
 
     return {"mensaje": f"El documento '{documento.nombre_archivo}' ha sido enviado a revisión."}
-
-
-

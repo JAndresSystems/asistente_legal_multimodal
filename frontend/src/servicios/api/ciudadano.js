@@ -183,31 +183,3 @@ export const apiCrearNotaUsuario = async (idCaso, contenido) => {
     throw error;
   }
 };
-
-
-
-// /**
-//  * Docstring:
-//  * Consulta el estado de una tarea de análisis de Celery.
-//  * @param {number} id_caso El ID del caso.
-//  * @param {string} id_tarea El ID de la tarea de Celery.
-//  */
-// export const apiConsultarEstadoAnalisis = async (idCaso, idTarea) => {
-//   console.log(`API: Consultando estado de la tarea ${idTarea} para el caso ${idCaso}`);
-//   try {
-//     const respuesta = await fetch(`${URL_BASE_BACKEND}/api/casos/${idCaso}/estado-analisis/${idTarea}`, {
-//       method: 'GET',
-//       headers: obtenerCabeceras(),
-//     });
-
-//     if (!respuesta.ok) {
-//       const errorData = await respuesta.json();
-//       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
-//     }
-
-//     return await respuesta.json();
-//   } catch (error) {
-//     console.error("API: Error al consultar el estado del análisis:", error);
-//     throw error;
-//   }
-// };

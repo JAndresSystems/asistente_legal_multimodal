@@ -20,11 +20,11 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     rutas_archivos = estado["rutas_archivos_evidencia"]
     print(f"--- [AGENTE TRIAJE] Analizando evidencias: {rutas_archivos}")
     texto_adicional = estado.get("texto_adicional_usuario", "")
-    print(f"--- [AGENTE TRIAJE] Analizando {len(rutas_archivos)} archivo(s) y texto adicional: '{texto_adicional[:50]}...'")
+    print(f"--- [AGENTE TRIAJE] Analizando {len(rutas_archivos)} archivos y texto adicional: '{texto_adicional[:50]}...'")
 
     try:
-        # Obtener contexto legal relevante
-        consulta_contexto = "Reglas de admisibilidad, competencia, beneficiarios y cuantías de los consultorios jurídicos según la Ley 2113. También, qué documentos son esenciales para casos de familia, laboral o civil. Exclusiones claras: casos comerciales, casos penales."
+        # --- MODIFICACION: La llamada ahora es más simple y directa ---
+        consulta_contexto = "Reglas de admisibilidad, competencia, beneficiarios y cuantías de los consultorios jurídicos según la Ley 2113. También, qué documentos son esenciales para casos de familia, laboral o civil."
         lista_contexto = buscar_en_base_de_conocimiento(consulta=consulta_contexto)
         contexto_completo = "\n\n---\n\n".join(lista_contexto)
         print(f"--- [AGENTE TRIAJE] Contexto legal y documental recuperado de RAG vectorial.")
@@ -40,86 +40,56 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     --- FIN DEL CONTEXTO ---
 
     --- EVIDENCIA A ANALIZAR ---
-    1.  Archivos Adjuntos: {len(rutas_archivos)} archivo(s) proporcionado(s) (contenidos ya extraídos y disponibles para análisis).
+    1.  Archivos Adjuntos: {len(rutas_archivos)} archivo(s) proporcionado(s).
     2.  Texto Adicional del Usuario: "{texto_adicional}"
     --- FIN DE LA EVIDENCIA ---
 
     --- REGLA DE INTERPRETACION JURIDICA ---
     La excepción prevalece sobre la regla general. El Artículo 9 tiene un límite de 50 SMLMV, pero exceptúa los casos de "tránsito". Un caso de accidente de tránsito con reclamación de 50 SMLMV ES ADMISIBLE.
 
-    --- REGLAS DE EXCLUSIÓN CORREGIDAS ---
-    1.  CASOS COMERCIALES: RECHAZA únicamente disputas entre empresas sobre contratos comerciales, facturas, cuentas por cobrar, etc.
-    2.  CASOS PENALES: RECHAZA casos que requieran defensa penal o investigación criminal.
-    3.  CASOS DE TRÁNSITO: ACEPTA casos de accidentes de tránsito con lesiones personales y reclamación de perjuicios, incluso si involucran empresas de servicio público.
-
-    --- CRITERIOS DE ADMISIBILIDAD CLAROS ---
-    - ACCIDENTES DE TRÁNSITO CON LESIONES: Son ADMISIBLES si el usuario es víctima de lesiones personales.
-    - EMPRESAS DE SERVICIO PÚBLICO: No convierte automáticamente el caso en comercial si el usuario busca indemnización por daños personales.
-    - CUANTÍA: Para casos de tránsito, la cuantía máxima es 50 SMLMV, pero se evalúa por el valor de los perjuicios, no por el valor del vehículo.
-
     --- ESTRATEGIA DE SALIDA ---
     Si el usuario indica explícitamente que NO tiene más documentos (ej. "no tengo mas"), DEBES detener el ciclo de preguntas. Establece "informacion_suficiente" como "true" y añade una advertencia en tu "justificacion".
     
-    --- REGLA DE FLEXIBILIDAD Y BUENA FE ---
-    Tu objetivo es pedir los documentos faltantes UNA SOLA VEZ. Después de que hayas hecho una pregunta pidiendo documentos (ej. pidiendo el informe de tránsito), si en la siguiente interacción el usuario sube CUALQUIER archivo (PDF, PNG, JPG), DEBES ASUMIR que ha intentado cumplir tu petición. No vuelvas a pedir el mismo documento. Considera que con eso es suficiente para esta etapa, marca "informacion_suficiente" como "true" y permite que el caso avance.
+    --- REGLA DE FLEXIBILIDAD Y BUENA FE (NUEVO Y MUY IMPORTANTE) ---
+    Tu objetivo es pedir los documentos faltantes UNA SOLA VEZ. Después de que hayas hecho una pregunta pidiendo documentos (ej. pidiendo el informe de tránsito), si en la siguiente interacción el usuario sube CUALQUIER archivo (PDF, PNG, JPG), DEBES ASUMIR que ha intentado cumplir tu petición. NO vuelvas a pedir el mismo documento. Considera que con eso es suficiente para esta etapa, marca "informacion_suficiente" como "true" y permite que el caso avance.
 
+    {'''--- INICIO DE LA MODIFICACIÓN ---'''}
     --- INSTRUCCION CRITICA DE JUSTIFICACION ---
     Si y solo si decides que `admisible` es `false`, es OBLIGATORIO que tu `justificacion` contenga una cita textual del `CONTEXTO LEGAL` que respalda tu decisión. Tu explicación debe ser clara y conectar el hecho del caso con la norma.
-    (Ejemplo CORREGIDO para accidentes de tránsito: "El caso ES ADMISIBLE por tratarse de un accidente de tránsito con lesiones personales. Fundamento: '...la competencia por cuantía de los consultorios jurídicos no podrá superar los 50 SMLMV, excepto para casos de tránsito...'").
+    (Ejemplo: "El caso no es admisible por superar la cuantía. Fundamento: '...la competencia por cuantía de los consultorios jurídicos no podrá superar los 50 SMLMV...'").
 
     REGLAS DE DECISION:
-    1.  EVALUA ADMISIBILIDAD: ¿El caso es admisible según las reglas CORREGIDAS?
+    1.  EVALUA ADMISIBILIDAD: ¿El caso es admisible?
     2.  VERIFICA SUFICIENCIA: ¿Tienes los documentos esenciales? Si no, aplica las REGLAS DE SOLICITUD. Si ya pediste y el usuario subió algo, aplica la REGLA DE FLEXIBILIDAD.
+    {'''--- FIN DE LA MODIFICACIÓN ---'''}
 
-    --- REGLAS DE SOLICITUD ---
+    --- REGLAS DE EXCLUSION INQUEBRABLES ---
+    1.  CASOS COMERCIALES: RECHAZA cualquier disputa comercial.
+    
+    REGLAS DE SOLICITUD (Aplica solo la primera vez que falten documentos):
     1.  PIDE MAXIMO 2 DOCUMENTOS: Si faltan documentos, pide solo los 2 más importantes y sé específico (ej. "informe de tránsito y epicrisis médica").
 
     TAREA:
     Analiza la evidencia y el texto. Devuelve un objeto JSON con la siguiente estructura:
     {{
       "admisible": boolean,
-      "justificacion": "string (Si `admisible` es false, DEBE citar el contexto legal como se instruyó. Si es true, explica brevemente por qué)",
-      "hechos_clave": "string (Resumen de los hechos en 1-2 oraciones)",
+      
+      "justificacion": "string (Si `admisible` es false, DEBE citar el contexto legal como se instruyó)",
+      
+      "hechos_clave": "string (Resumen de los hechos)",
       "informacion_suficiente": boolean,
       "pregunta_para_usuario": "string (SOLO si 'informacion_suficiente' es false. De lo contrario, déjalo vacío '')"
     }}
     """
     
     print("--- [AGENTE TRIAJE] Invocando LLM para analisis de admisibilidad...")
-    try:
-        resultado_analisis = analizar_evidencia_con_gemini(
-            archivos_locales=rutas_archivos,
-            prompt_usuario=prompt_completo
-        )
-        print(f"--- [AGENTE TRIAJE] Analisis completado. Resultado: {resultado_analisis}")
-        
-        # Validación adicional del resultado
-        if not isinstance(resultado_analisis, dict):
-            raise ValueError("El resultado de Gemini no es un diccionario válido")
-        
-        if "admisible" not in resultado_analisis:
-            resultado_analisis["admisible"] = False
-            resultado_analisis["justificacion"] = "Error en el formato de respuesta del sistema de IA. Por favor, contacte al administrador."
-            resultado_analisis["hechos_clave"] = "No se pudieron extraer hechos debido a error de sistema."
-            resultado_analisis["informacion_suficiente"] = True
-            resultado_analisis["pregunta_para_usuario"] = ""
-        
-        return {"resultado_triaje": resultado_analisis}
-    except Exception as e_gemini:
-        # Captura cualquier error proveniente de la herramienta de LLM
-        error_msg = str(e_gemini)
-        print(f"--- [AGENTE TRIAJE] ERROR CRITICO al invocar LLM: {error_msg}")
-        
-        # Devolvemos un resultado de triaje ESTÁNDAR que indica un fallo
-        resultado_error = {
-            "admisible": False,
-            "justificacion": f"Error técnico al procesar la evidencia: {error_msg}. Por favor, revise los archivos subidos o consulte con un administrador.",
-            "hechos_clave": "No se pudieron extraer hechos debido al error de procesamiento.",
-            "informacion_suficiente": True,
-            "pregunta_para_usuario": ""
-        }
-        print(f"--- [AGENTE TRIAJE] Devolviendo resultado de error estandarizado: {resultado_error}")
-        return {"resultado_triaje": resultado_error}
+    resultado_analisis = analizar_evidencia_con_gemini(
+        archivos_locales=rutas_archivos,
+        prompt_usuario=prompt_completo
+    )
+    print(f"--- [AGENTE TRIAJE] Analisis completado. Resultado: {resultado_analisis}")
+    return {"resultado_triaje": resultado_analisis}
+
 
 
 def nodo_solicitar_informacion_adicional(estado: EstadoDelGrafo) -> Dict[str, Any]:
@@ -414,83 +384,39 @@ def nodo_preparar_respuesta_rechazo(estado: EstadoDelGrafo) -> Dict[str, Any]:
     admisible. Sus funciones son:
     1. Persistir el resultado del rechazo en la base de datos.
     2. Construir un mensaje final, claro y empático para el usuario.
-    3. Devolver un estado COMPLETO y válido para LangGraph.
-    
-    IMPORTANTE: Este nodo DEBE devolver todos los campos necesarios para que
-    LangGraph pueda continuar el flujo sin errores de estado inválido.
     """
     print("\n--- [AGENTE RECHAZO] Iniciando ejecucion del nodo ---")
     
-    # 1. Extraer los datos clave del estado de forma segura
-    id_caso = estado.get("id_caso")
-    if not id_caso:
-        print("--- [AGENTE RECHAZO] ERROR CRITICO: No se encontró el ID del caso en el estado.")
-        return {
-            "id_caso": 0,
-            "resultado_triaje": {"admisible": False, "justificacion": "Error interno: caso no identificado"},
-            "pregunta_usuario": estado.get("pregunta_usuario", "Análisis de caso"),
-            "respuesta_para_usuario": "Error interno al procesar su caso. Por favor, contacte al administrador.",
-            "respuesta_agente": "Error interno al procesar su caso."
-        }
+    # --- INICIO DE LA MODIFICACIÓN ---
     
-    # Obtener resultado_triaje de forma segura
-    resultado_triaje = estado.get("resultado_triaje", {})
-    if not isinstance(resultado_triaje, dict):
-        resultado_triaje = {"admisible": False, "justificacion": "Error en el procesamiento del triaje"}
-    
-    # 2. Obtener justificación de forma robusta
-    justificacion_rechazo = resultado_triaje.get("justificacion", "No se proporcionó una justificación específica.")
-    if not justificacion_rechazo or justificacion_rechazo.strip() == "":
-        justificacion_rechazo = "El caso no cumple con los criterios de admisibilidad del consultorio jurídico."
-    
+    # 1. Extraer los datos clave del estado.
+    id_caso = estado["id_caso"]
+    justificacion_rechazo = estado.get("resultado_triaje", {}).get("justificacion", "No se proporcionó una justificación específica.")
     print(f"--- [AGENTE RECHAZO] Justificacion recibida del triaje: '{justificacion_rechazo}'")
 
-    # 3. Actualizar la base de datos con el estado y la justificación
+    # 2. Actualizar la base de datos con el estado y la justificación.
     try:
         with Session(motor) as sesion_db:
             caso_a_actualizar = sesion_db.get(Caso, id_caso)
             if caso_a_actualizar:
                 caso_a_actualizar.estado = EstadoCaso.RECHAZADO
-                caso_a_actualizar.justificacion_rechazo = justificacion_rechazo[:500]  # Limitar longitud
+                caso_a_actualizar.justificacion_rechazo = justificacion_rechazo
                 sesion_db.add(caso_a_actualizar)
                 sesion_db.commit()
-                sesion_db.refresh(caso_a_actualizar)
                 print(f"--- [AGENTE RECHAZO] (DB): Caso {id_caso} actualizado a '{EstadoCaso.RECHAZADO.value}' con justificación.")
             else:
                 print(f"--- [AGENTE RECHAZO] (DB) ADVERTENCIA: No se encontró el caso {id_caso} para actualizar.")
     except Exception as e:
         print(f"--- [AGENTE RECHAZO] (DB) ERROR: Fallo al actualizar la base de datos: {e}")
-        # No lanzamos excepción aquí para no interrumpir el flujo del grafo
 
-    # 4. Construir el mensaje final para el usuario usando una plantilla clara
+    # 3. Construir el mensaje final para el usuario usando una plantilla.
     mensaje_final_usuario = (
         "Hemos evaluado la información de su caso y, lamentablemente, no cumple con los criterios "
-        "de admisibilidad definidos para nuestro consultorio jurídico gratuito. "
-        f"Razón específica: {justificacion_rechazo}"
+        "de competencia definidos para nuestro consultorio jurídico. La razón es la siguiente: "
+        f"'{justificacion_rechazo}'. Le agradecemos su tiempo y por contactarnos."
     )
     
-    # 5. Asegurar que el mensaje no sea demasiado largo para evitar problemas de tokenización
-    if len(mensaje_final_usuario) > 1000:
-        mensaje_final_usuario = mensaje_final_usuario[:950] + "..."
-    
     print(f"--- [AGENTE RECHAZO] Mensaje final preparado para el usuario.")
-
-    # 6. DEVOLVER UN ESTADO COMPLETO Y VÁLIDO PARA LANGGRAPH
-    #    Este es el cambio CRUCIAL que soluciona el InvalidUpdateError
-    return {
-        "id_caso": id_caso,
-        "rutas_archivos_evidencia": estado.get("rutas_archivos_evidencia", []),
-        "texto_adicional_usuario": estado.get("texto_adicional_usuario", ""),
-        "pregunta_usuario": estado.get("pregunta_usuario", "Análisis de caso"),  # Campo crítico que faltaba
-        "resultado_triaje": resultado_triaje,
-        "resultado_determinador_competencias": estado.get("resultado_determinador_competencias", {}),
-        "resultado_repartidor": estado.get("resultado_repartidor", {}),
-        "resultado_analisis_documento": estado.get("resultado_analisis_documento", {}),
-        "resultado_analisis_audio": estado.get("resultado_analisis_audio", {}),
-        "resultado_agente_juridico": estado.get("resultado_agente_juridico", {}),
-        "resultado_agente_generador_documentos": estado.get("resultado_agente_generador_documentos", {}),
-        "respuesta_para_usuario": mensaje_final_usuario,
-        "respuesta_agente": mensaje_final_usuario,
-        "solicitud_agente_juridico": estado.get("solicitud_agente_juridico", ""),
-        "solicitud_agente_documentos": estado.get("solicitud_agente_documentos", "")
-    }
+    
+    # 4. Devolver el mensaje en la clave que el frontend espera.
+    return {"respuesta_para_usuario": mensaje_final_usuario}

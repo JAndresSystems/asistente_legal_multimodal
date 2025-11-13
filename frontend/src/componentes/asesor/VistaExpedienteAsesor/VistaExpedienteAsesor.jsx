@@ -247,7 +247,7 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
                   {item.tipo === 'documento' ? (
                     <>
                       <p><strong>Documento:</strong> {item.nombre_archivo}</p>
-                     
+                      {/* LÍNEA AÑADIDA: Muestra quién subió el archivo */}
                       <p className={styles.autorInfo}>Subido por: {item.autor_nombre || 'No disponible'}</p>
                       <a href={`http://127.0.0.1:8000${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer" className={styles.enlaceDescarga}>Descargar</a>
                       <div className={styles.documentoEstadoContenedor}>
@@ -267,7 +267,7 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
                     </>
                   ) : (
                     <>
-                  
+                      {/* LÓGICA MODIFICADA: Muestra el nombre del autor de la nota */}
                       <p><strong>Nota de {item.autor_nombre || item.rol_autor}:</strong></p>
                       <p className={styles.contenidoNota}>{item.contenido}</p>
                       <span className={styles.fechaNota}>Añadida el {new Date(item.fecha).toLocaleString()}</span>
