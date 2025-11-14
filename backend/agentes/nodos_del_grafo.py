@@ -43,11 +43,9 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     2.  Texto Adicional del Usuario: "{texto_adicional}"
     --- FIN DE LA EVIDENCIA ---
 
-    {'''--- INICIO DE LA MODIFICACIÓN #1: REGLA DE RECURSOS ---'''}
     --- REGLA CRITICA DE RECURSOS Y LIMITES (MUY IMPORTANTE) ---
     1.  ANALIZA MAXIMO 3 ARCHIVOS: Si el usuario ha subido más de 3 archivos, ignora los excedentes y basa tu análisis solo en los 3 primeros. El sistema ya ha limitado los archivos que te entrega, pero esta es una confirmación.
     2.  SE EXTREMADAMENTE CONCISO: Tu "justificacion" y "hechos_clave" deben ser muy breves, directos y al grano para ahorrar recursos.
-    {'''--- FIN DE LA MODIFICACIÓN #1 ---'''}
 
     --- REGLA DE INTERPRETACION JURIDICA ---
     La excepción prevalece sobre la regla general. El Artículo 9 tiene un límite de 50 SMLMV, pero exceptúa los casos de "tránsito". Un caso de accidente de tránsito con reclamación de 50 SMLMV ES ADMISIBLE.
@@ -85,33 +83,33 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     
     print("--- [AGENTE TRIAJE] Invocando LLM para analisis de admisibilidad...")
     
-    # --- INICIO DE LA MODIFICACIÓN #2: BLINDAJE CON TRY-EXCEPT ---
-    try:
-        # Limitamos la cantidad de archivos enviados a la IA a un máximo de 3.
-        archivos_para_analizar = rutas_archivos[:3]
-        
-        resultado_analisis = analizar_evidencia_con_gemini(
-            archivos_locales=archivos_para_analizar,
-            prompt_usuario=prompt_completo
-        )
-        print(f"--- [AGENTE TRIAJE] Analisis completado. Resultado: {resultado_analisis}")
+    # Limitamos la cantidad de archivos enviados a la IA a un máximo de 3.
+    archivos_para_analizar = rutas_archivos[:3]
     
-    except Exception as e:
-        print(f"--- [AGENTE TRIAJE] ERROR-CRITICO: Ha ocurrido una excepcion al llamar a la IA: {e}")
+    resultado_analisis = analizar_evidencia_con_gemini(
+        archivos_locales=archivos_para_analizar,
+        prompt_usuario=prompt_completo
+    )
+    
+    # --- INICIO DE LA CORRECCIÓN LÓGICA DEFINITIVA ---
+    # En lugar de un try-except, verificamos si el resultado es un diccionario de error.
+    if isinstance(resultado_analisis, dict) and 'error' in resultado_analisis:
+        print(f"--- [AGENTE TRIAJE] ERROR-CONTROLADO: Se detectó un error devuelto por la herramienta de IA: {resultado_analisis['error']}")
+        
         # Creamos una respuesta de contingencia que no rompa el sistema.
-        resultado_analisis_contingencia = {
+        resultado_contingencia = {
             "admisible": False,
-            "justificacion": "No se pudo completar el análisis de la evidencia. Es posible que los archivos sean demasiado grandes o que haya un problema con el servicio de IA. Por favor, intente con menos archivos o con archivos de menor tamaño.",
+            "justificacion": "No se pudo completar el análisis de la evidencia. Es posible que los archivos sean demasiado grandes. Por favor, intente con menos archivos o de menor tamaño.",
             "hechos_clave": "Error en el procesamiento de la IA.",
             "informacion_suficiente": True, # Forzamos a True para detener el flujo.
             "pregunta_para_usuario": ""
         }
-        print(f"--- [AGENTE TRIAJE] Generando respuesta de contingencia: {resultado_analisis_contingencia}")
-        return {"resultado_triaje": resultado_analisis_contingencia}
-    # --- FIN DE LA MODIFICACIÓN #2 ---
+        print(f"--- [AGENTE TRIAJE] Generando respuesta de contingencia: {resultado_contingencia}")
+        return {"resultado_triaje": resultado_contingencia}
+    # --- FIN DE LA CORRECCIÓN LÓGICA DEFINITIVA ---
         
+    print(f"--- [AGENTE TRIAJE] Analisis completado. Resultado: {resultado_analisis}")
     return {"resultado_triaje": resultado_analisis}
-
 
 
 def nodo_solicitar_informacion_adicional(estado: EstadoDelGrafo) -> Dict[str, Any]:
