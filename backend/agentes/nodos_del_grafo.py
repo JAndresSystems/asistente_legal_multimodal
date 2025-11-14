@@ -96,8 +96,8 @@ def nodo_solicitar_informacion_adicional(estado: EstadoDelGrafo) -> Dict[str, An
     """
     Docstring:
     Este nodo se activa cuando el Agente de Triaje determina que la
-    informacion no es suficiente. Su unica funcion es cumplir con las
-    reglas de LangGraph para permitir que el grafo termine.
+    informacion no es suficiente. Su unica funcion es tomar la pregunta
+    generada por el triaje y prepararla para ser enviada de vuelta al usuario.
     """
     print("\n--- [AGENTE SOLICITUD] Iniciando ejecucion del nodo ---")
     
@@ -105,10 +105,10 @@ def nodo_solicitar_informacion_adicional(estado: EstadoDelGrafo) -> Dict[str, An
     
     print(f"--- [AGENTE SOLICITUD] Se enviara la siguiente pregunta al usuario: '{pregunta_generada}'")
     
-    # La corrección clave es devolver un diccionario vacío.
-    # Esto satisface la regla de LangGraph y permite que el grafo termine,
-    # devolviendo el estado actual (que ya contiene la pregunta del triaje).
-    return {}
+    # En un futuro, este nodo podria añadir la pregunta a una lista de mensajes
+    # para que el frontend la muestre en la interfaz de chat.
+    # Por ahora, simplemente actualizamos el estado.
+    return {"respuesta_para_usuario": pregunta_generada}
 
 
 def nodo_agente_analizador_pdf(estado: EstadoDelGrafo) -> Dict[str, Any]:

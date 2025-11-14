@@ -44,3 +44,11 @@ class EstadoDelGrafo(TypedDict):
     solicitud_agente_documentos: Optional[Dict[str, str]]
     resultado_agente_juridico: Optional[str]
     resultado_agente_generador_documentos: Optional[str]
+
+    # --- INICIO DE LA CORRECCIÓN CLAVE ---
+    # Este es el campo que faltaba. Al añadirlo aquí, le damos "permiso"
+    # a los nodos 'nodo_solicitar_informacion_adicional' y 
+    # 'nodo_preparar_respuesta_rechazo' para que escriban en el estado.
+    # Esto resuelve el error 'Must write to at least one of...'.
+    respuesta_para_usuario: Optional[str]
+    # --- FIN DE LA CORRECCIÓN CLAVE ---
