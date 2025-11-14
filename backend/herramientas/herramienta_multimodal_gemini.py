@@ -5,8 +5,8 @@ from typing import List, Dict, Any
 
 def preparar_entrada_multimodal(prompt_texto: str, rutas_archivos: List[str]) -> List[Dict[str, Any]]:
     """
-    Prepara una lista de contenidos en el formato multimodal correcto y definitivo,
-    compatible con LangChain para el envío directo de cualquier tipo de archivo a Gemini.
+    Prepara una lista de contenidos en el formato multimodal correcto,
+    compatible con la versión actual de LangChain para los modelos Gemini 1.5.
     """
     # El contenido siempre comienza con la parte de texto.
     contenido_multimodal = [{"type": "text", "text": prompt_texto}]
@@ -23,14 +23,15 @@ def preparar_entrada_multimodal(prompt_texto: str, rutas_archivos: List[str]) ->
 
             datos_codificados = base64.b64encode(datos_archivo).decode('utf-8')
 
-            
-            # La librería LangChain espera un diccionario con el tipo "media"
-            # para archivos genéricos como PDF, audio, video, etc.
+            # --- INICIO DE LA CORRECCIÓN CLAVE ---
+            # La versión actual de la librería LangChain para Gemini 1.5
+            # espera un diccionario que contenga directamente 'mime_type' y 'data'
+            # para los archivos, sin el campo "type": "media".
             parte_archivo = {
-                "type": "media",
                 "mime_type": tipo_mime,
                 "data": datos_codificados
             }
+            # --- FIN DE LA CORRECCIÓN CLAVE ---
             
             contenido_multimodal.append(parte_archivo)
 
