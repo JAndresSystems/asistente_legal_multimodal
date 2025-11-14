@@ -1,6 +1,6 @@
 # backend/agentes/estado_del_grafo.py
 
-from typing import TypedDict, List, Dict, Any, Optional
+from typing import TypedDict, List, Dict, Any, Optional,NotRequired
 
 class EstadoDelGrafo(TypedDict):
     """
@@ -50,5 +50,5 @@ class EstadoDelGrafo(TypedDict):
     # a los nodos 'nodo_solicitar_informacion_adicional' y 
     # 'nodo_preparar_respuesta_rechazo' para que escriban en el estado.
     # Esto resuelve el error 'Must write to at least one of...'.
-    respuesta_para_usuario: Optional[str]
+    respuesta_para_usuario: NotRequired[str]
     # --- FIN DE LA CORRECCIÓN CLAVE ---
