@@ -23,7 +23,6 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     print(f"--- [AGENTE TRIAJE] Analizando {len(rutas_archivos)} archivos y texto adicional: '{texto_adicional[:50]}...'")
 
     try:
-        # --- MODIFICACION: La llamada ahora es más simple y directa ---
         consulta_contexto = "Reglas de admisibilidad, competencia, beneficiarios y cuantías de los consultorios jurídicos según la Ley 2113. También, qué documentos son esenciales para casos de familia, laboral o civil."
         lista_contexto = buscar_en_base_de_conocimiento(consulta=consulta_contexto)
         contexto_completo = "\n\n---\n\n".join(lista_contexto)
@@ -44,6 +43,12 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     2.  Texto Adicional del Usuario: "{texto_adicional}"
     --- FIN DE LA EVIDENCIA ---
 
+    {'''--- INICIO DE LA MODIFICACIÓN #1: REGLA DE RECURSOS ---'''}
+    --- REGLA CRITICA DE RECURSOS Y LIMITES (MUY IMPORTANTE) ---
+    1.  ANALIZA MAXIMO 3 ARCHIVOS: Si el usuario ha subido más de 3 archivos, ignora los excedentes y basa tu análisis solo en los 3 primeros. El sistema ya ha limitado los archivos que te entrega, pero esta es una confirmación.
+    2.  SE EXTREMADAMENTE CONCISO: Tu "justificacion" y "hechos_clave" deben ser muy breves, directos y al grano para ahorrar recursos.
+    {'''--- FIN DE LA MODIFICACIÓN #1 ---'''}
+
     --- REGLA DE INTERPRETACION JURIDICA ---
     La excepción prevalece sobre la regla general. El Artículo 9 tiene un límite de 50 SMLMV, pero exceptúa los casos de "tránsito". Un caso de accidente de tránsito con reclamación de 50 SMLMV ES ADMISIBLE.
 
@@ -53,7 +58,6 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     --- REGLA DE FLEXIBILIDAD Y BUENA FE (NUEVO Y MUY IMPORTANTE) ---
     Tu objetivo es pedir los documentos faltantes UNA SOLA VEZ. Después de que hayas hecho una pregunta pidiendo documentos (ej. pidiendo el informe de tránsito), si en la siguiente interacción el usuario sube CUALQUIER archivo (PDF, PNG, JPG), DEBES ASUMIR que ha intentado cumplir tu petición. NO vuelvas a pedir el mismo documento. Considera que con eso es suficiente para esta etapa, marca "informacion_suficiente" como "true" y permite que el caso avance.
 
-    {'''--- INICIO DE LA MODIFICACIÓN ---'''}
     --- INSTRUCCION CRITICA DE JUSTIFICACION ---
     Si y solo si decides que `admisible` es `false`, es OBLIGATORIO que tu `justificacion` contenga una cita textual del `CONTEXTO LEGAL` que respalda tu decisión. Tu explicación debe ser clara y conectar el hecho del caso con la norma.
     (Ejemplo: "El caso no es admisible por superar la cuantía. Fundamento: '...la competencia por cuantía de los consultorios jurídicos no podrá superar los 50 SMLMV...'").
@@ -61,7 +65,6 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     REGLAS DE DECISION:
     1.  EVALUA ADMISIBILIDAD: ¿El caso es admisible?
     2.  VERIFICA SUFICIENCIA: ¿Tienes los documentos esenciales? Si no, aplica las REGLAS DE SOLICITUD. Si ya pediste y el usuario subió algo, aplica la REGLA DE FLEXIBILIDAD.
-    {'''--- FIN DE LA MODIFICACIÓN ---'''}
 
     --- REGLAS DE EXCLUSION INQUEBRABLES ---
     1.  CASOS COMERCIALES: RECHAZA cualquier disputa comercial.
@@ -73,9 +76,7 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     Analiza la evidencia y el texto. Devuelve un objeto JSON con la siguiente estructura:
     {{
       "admisible": boolean,
-      
       "justificacion": "string (Si `admisible` es false, DEBE citar el contexto legal como se instruyó)",
-      
       "hechos_clave": "string (Resumen de los hechos)",
       "informacion_suficiente": boolean,
       "pregunta_para_usuario": "string (SOLO si 'informacion_suficiente' es false. De lo contrario, déjalo vacío '')"
@@ -83,11 +84,32 @@ def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
     """
     
     print("--- [AGENTE TRIAJE] Invocando LLM para analisis de admisibilidad...")
-    resultado_analisis = analizar_evidencia_con_gemini(
-        archivos_locales=rutas_archivos,
-        prompt_usuario=prompt_completo
-    )
-    print(f"--- [AGENTE TRIAJE] Analisis completado. Resultado: {resultado_analisis}")
+    
+    # --- INICIO DE LA MODIFICACIÓN #2: BLINDAJE CON TRY-EXCEPT ---
+    try:
+        # Limitamos la cantidad de archivos enviados a la IA a un máximo de 3.
+        archivos_para_analizar = rutas_archivos[:3]
+        
+        resultado_analisis = analizar_evidencia_con_gemini(
+            archivos_locales=archivos_para_analizar,
+            prompt_usuario=prompt_completo
+        )
+        print(f"--- [AGENTE TRIAJE] Analisis completado. Resultado: {resultado_analisis}")
+    
+    except Exception as e:
+        print(f"--- [AGENTE TRIAJE] ERROR-CRITICO: Ha ocurrido una excepcion al llamar a la IA: {e}")
+        # Creamos una respuesta de contingencia que no rompa el sistema.
+        resultado_analisis_contingencia = {
+            "admisible": False,
+            "justificacion": "No se pudo completar el análisis de la evidencia. Es posible que los archivos sean demasiado grandes o que haya un problema con el servicio de IA. Por favor, intente con menos archivos o con archivos de menor tamaño.",
+            "hechos_clave": "Error en el procesamiento de la IA.",
+            "informacion_suficiente": True, # Forzamos a True para detener el flujo.
+            "pregunta_para_usuario": ""
+        }
+        print(f"--- [AGENTE TRIAJE] Generando respuesta de contingencia: {resultado_analisis_contingencia}")
+        return {"resultado_triaje": resultado_analisis_contingencia}
+    # --- FIN DE LA MODIFICACIÓN #2 ---
+        
     return {"resultado_triaje": resultado_analisis}
 
 
