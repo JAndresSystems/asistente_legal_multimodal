@@ -4,7 +4,7 @@
 // Configuracion Compartida
 // ==============================================================================
 
-export const URL_BASE_BACKEND = "http://127.0.0.1:8000";
+export const URL_BASE_BACKEND = import.meta.env.VITE_URL_BASE_BACKEND || 'http://localhost:8000';
 
 let authToken = null;
 
