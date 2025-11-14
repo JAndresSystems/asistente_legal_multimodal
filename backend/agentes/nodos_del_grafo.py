@@ -105,12 +105,9 @@ def nodo_solicitar_informacion_adicional(estado: EstadoDelGrafo) -> Dict[str, An
     
     print(f"--- [AGENTE SOLICITUD] Se enviara la siguiente pregunta al usuario: '{pregunta_generada}'")
     
-    # --- INICIO DE LA CORRECCIÓN CLAVE ---
-    # El error 'Must write to at least one of...' ocurre porque la clave 
-    # 'respuesta_para_usuario' no está definida en el EstadoDelGrafo.
-    # No necesitamos añadir nueva información, ya que la pregunta ya está en el estado.
-    # Devolver un diccionario vacío cumple la regla de LangGraph y permite que el
-    # grafo termine, devolviendo el estado actual (que contiene la pregunta).
+    # La corrección clave es devolver un diccionario vacío.
+    # Esto satisface la regla de LangGraph y permite que el grafo termine,
+    # devolviendo el estado actual (que ya contiene la pregunta del triaje).
     return {}
 
 
