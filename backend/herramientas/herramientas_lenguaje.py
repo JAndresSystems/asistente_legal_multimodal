@@ -16,9 +16,10 @@ load_dotenv()
 
 # ==============================================================================
 # Inicializacion del Modelo de Lenguaje
+#gemini-3-pro-preview  gemini-2.5-flash
 # ==============================================================================
 try:
-    llm_multimodal = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=os.getenv("GOOGLE_API_KEY"))
+    llm_multimodal = ChatGoogleGenerativeAI(model="gemini-3-pro-preview", google_api_key=os.getenv("GOOGLE_API_KEY"))
     print("TOOL-SETUP: Modelo Gemini 2.5 Flash inicializado correctamente.")
 except Exception as e:
     llm_multimodal = None
