@@ -1,39 +1,65 @@
+LEY 2113 DE 2021 (REGULACIÓN TÉCNICA DE CONSULTORIOS JURÍDICOS)
 
-LEY 2113 DE 2021 - REGLAS DE FUNCIONAMIENTO Y COMPETENCIA DE CONSULTORIOS JURIDICOS
+CAPÍTULO I: NATURALEZA Y PRINCIPIOS
 
-ARTICULO 2. Definicion. El Consultorio Juridico es un escenario de aprendizaje practico donde estudiantes de Derecho, bajo supervision, prestan el servicio obligatorio y gratuito de asistencia juridica a la poblacion establecida en la presente ley.
+ARTÍCULO 2. DEFINICIÓN. El Consultorio Jurídico es un escenario de aprendizaje práctico donde los estudiantes de Derecho prestan el servicio obligatorio y gratuito de asistencia jurídica a la población vulnerable.
 
-ARTICULO 5. Funcion social. El Consultorio Juridico orienta su accion a la defensa de derechos de sujetos de especial proteccion constitucional y personas naturales que carezcan de medios economicos para contratar los servicios de un profesional en Derecho, o en general personas o grupos que, por sus circunstancias especiales, se encuentren en situacion de vulnerabilidad o indefension.
+ARTÍCULO 6. SERVICIOS HABILITADOS. Los Consultorios Jurídicos prestarán servicios de:
+1. Asesoría jurídica.
+2. Conciliación extrajudicial en derecho y en equidad.
+3. Representación judicial y extrajudicial (Litigio).
+4. Pedagogía en derechos.
+5. Litigio estratégico de interés público.
 
-ARTICULO 7. Gratuidad. El Consultorio Juridico presta servicios juridicos gratuitos en favor de las personas beneficiadas que se definen en esta ley.
+CAPÍTULO II: COMPETENCIA Y USUARIOS (CRITERIOS DE ADMISIBILIDAD)
 
-ARTICULO 8. Beneficiarios de los servicios. Los Consultorios Juridicos prestaran servicios de asesoria juridica y litigio estrategico de interes publico a sujetos de especial proteccion constitucional, a personas naturales que carezcan de medios economicos para contratar los servicios de un profesional en Derecho, y en general a personas o grupos que, por sus circunstancias especiales, se encuentren en situacion de vulnerabilidad o indefension, cuando se trate de asuntos intimamente ligados con su condicion. En caso de encontrar improcedente la atencion a un usuario, el consultorio juridico le debera informar acerca de dicha determinacion. PARAGRAFO. En ningun caso el valor de la pretension podra ser tenido en cuenta como factor de evaluacion de la situacion socioeconomica del usuario.
+ARTÍCULO 8. BENEFICIARIOS (CRITERIO SUBJETIVO).
+Los servicios se prestarán exclusivamente a:
+1. Sujetos de especial protección constitucional.
+2. Personas naturales que carezcan de medios económicos (Estratos 1, 2, Sisbén A/B/C).
+3. Personas en situación de vulnerabilidad o indefensión.
+PARÁGRAFO: En ningún caso el valor de la pretensión podrá ser tenido en cuenta como factor para evaluar la situación socioeconómica (es decir, una persona pobre puede reclamar una indemnización alta, siempre que no supere la cuantía de competencia).
 
-ARTICULO 9. Competencia general para la representacion de terceros. Los estudiantes podran actuar en los casos establecidos en este Articulo, siempre y cuando la cuantia no supere los 50 Salarios Minimos Legales Mensuales Vigentes (SMLMV), salvo la competencia aqui establecida en materia penal, laboral y de transito.
+ARTÍCULO 9. COMPETENCIA GENERAL Y POR CUANTÍA (CRITERIO OBJETIVO).
+Los estudiantes podrán actuar siempre y cuando la cuantía NO supere los 50 Salarios Mínimos Legales Mensuales Vigentes (SMLMV).
 
-Competencias especificas:
+COMPETENCIAS ESPECÍFICAS (TAXATIVAS):
+1. MATERIA PENAL (Jueces Municipales/Promiscuos):
+   - Representantes de víctimas (Ley 906/2004).
+   - Delitos querellables (Injuria, calumnia, hurto simple, lesiones personales sin secuelas graves).
+   - Acusador Privado (Ley 1826).
+   - Fiscal en procesos Ley 600.
+   *EXCLUSIÓN:* No tienen competencia en Homicidios, Secuestros, Acceso Carnal Violento ni delitos de competencia del Circuito.
 
-1. En materia penal:
-a) Como representantes de la parte civil o de victimas en procesos regidos por la Ley 600 de 2000 o Ley 906 de 2004.
-b) Como defensores o voceros en procesos regidos por la Ley 600 de 2000 o Ley 906 de 2004.
-c) En los asuntos querellables y en los procedimientos de los que conocen los juzgados municipales.
-d) Como representantes del acusador privado en los terminos de la Ley 1826 de 2017.
-e) Como apoderados de victima en procesos de conocimiento de los jueces penales del circuito.
+2. MATERIA LABORAL:
+   - Procesos cuya cuantía NO supere los 20 SMLMV (Veinte salarios mínimos).
+   - Nota: La competencia laboral es más restringida que la general.
 
-IMPORTANTE: A pesar de tener competencia en materia penal, el reglamento interno del consultorio puede decidir NO admitir casos de naturaleza penal por politicas internas. La prioridad son los casos no penales.
+3. MATERIA CIVIL:
+   - Procesos de competencia de Jueces Municipales en Única Instancia.
+   - Procesos Monitorios (Cobro de deudas) de mínima cuantía (< 50 SMLMV).
 
-2. En los procedimientos laborales: Siempre y cuando la cuantia no supere los 20 SMLMV.
+4. MATERIA FAMILIA:
+   - Procesos de Única Instancia.
+   - Fijación, aumento o disminución de cuota alimentaria.
+   - Trámites ante Comisarias y Defensorías de Familia.
+   *REQUISITO ESPECIAL:* En procesos de Adopción o Patria Potestad, se requiere acompañamiento especial docente.
 
-3. En los procedimientos civiles: De los que conocen los jueces municipales en unica instancia.
+5. ACCIONES CONSTITUCIONALES:
+   - Tutelas, Incidentes de Desacato, Acciones de Cumplimiento y Populares.
 
-4. En los procedimientos de jurisdiccion voluntaria: Incluyendo emancipacion y adopcion, con acompañamiento especial del personal docente.
+6. MATERIA ADMINISTRATIVA Y DISCIPLINARIA:
+   - Derechos de petición y recursos en vía gubernativa.
+   - Procesos disciplinarios (Personerías/Procuraduría) si no hay notificación personal.
+   - Responsabilidad Fiscal (Contralorías) de oficio.
+   - Procesos sancionatorios ante Superintendencias (Consumidor, Salud, Financiero).
 
-5. En los procedimientos de competencia de los jueces de familia en unica instancia: Y en tramites administrativos ante Comisarias de Familia, Defensorias de Familia e inspecciones de policia, salvo los asuntos que versen sobre medidas de restablecimiento de derechos de niños, niñas y adolescentes, y procesos de adopcion.
+7. MATERIA DE TRÁNSITO:
+   - Procesos contravencionales (multas) cuya sanción no supere 20 SMLMV.
+   - Reclamación de perjuicios por accidente (vía Civil) hasta 50 SMLMV.
 
-6. En las acciones constitucionales: De tutela, cumplimiento y populares.
+ARTÍCULO 11. AMPARO DE POBREZA.
+Se presume legalmente que quien actúa a través de Consultorio Jurídico se encuentra en incapacidad de sufragar gastos procesales.
 
-7. En los arbitrajes sociales.
-
-8. En asuntos jurisdiccionales ante autoridades administrativas:
-a) Ante la Superintendencia de Industria y Comercio: Las acciones de proteccion al consumidor.
-b) Ante la Superintendencia Financiera: La accion de Proteccion al Consumidor Financiero.
+ARTÍCULO 12. AUXILIOS.
+Las universidades podrán otorgar auxilios de transporte a estudiantes que atiendan casos de personas en precariedad económica.

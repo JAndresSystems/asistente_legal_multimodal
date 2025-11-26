@@ -323,8 +323,8 @@ def subir_evidencia_simple(
 @router.post("/{id_caso}/analizar", response_model=Dict[str, Any])
 def analizar_caso_completo(id_caso: int, solicitud: SolicitudAnalisis, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
     """
-    Inicia el análisis SÍNCRONO del caso y devuelve el estado final del grafo,
-    restaurando la lógica original para el frontend.
+    Inicia el análisis SÍNCRONO del caso.
+    CORRECCIÓN: Permite analizar aunque no haya archivos, si hay texto adicional.
     """
     caso_actual = sesion.get(Caso, id_caso)
     if not caso_actual:
@@ -333,18 +333,23 @@ def analizar_caso_completo(id_caso: int, solicitud: SolicitudAnalisis, sesion: S
     if not cuenta_actual.usuario or caso_actual.id_usuario != cuenta_actual.usuario.id:
         raise HTTPException(status_code=403, detail="No tiene permisos para analizar este caso.")
 
-    if not caso_actual.evidencias: 
-        raise HTTPException(status_code=400, detail="No se pueden analizar casos sin evidencias.")
+    # --- CORRECCIÓN CLAVE: Validación más inteligente ---
+    # Antes fallaba si no había archivos. Ahora permitimos pasar si hay texto.
+    tiene_archivos = len(caso_actual.evidencias) > 0
+    tiene_texto = bool(solicitud.texto_adicional_usuario and solicitud.texto_adicional_usuario.strip())
+    
+    if not tiene_archivos and not tiene_texto:
+        raise HTTPException(status_code=400, detail="Debe proporcionar evidencias (archivos) o una descripción detallada (texto) para analizar.")
+    # ----------------------------------------------------
     
     try:
-        # Llamamos a la función síncrona, que ahora devuelve el 'estado_final' del grafo.
+        # Llamamos a la función síncrona
         estado_final_del_grafo = procesar_evidencia_sincrono(
             id_caso=id_caso,
             texto_adicional_usuario=solicitud.texto_adicional_usuario,
             sesion=sesion
         )
         
-        # Devolvemos directamente este diccionario al frontend.
         return estado_final_del_grafo
 
     except Exception as e:

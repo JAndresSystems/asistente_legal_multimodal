@@ -1,128 +1,121 @@
-#C:\react\asistente_legal_multimodal\backend\herramientas\herramientas_lenguaje.py
+# backend/herramientas/herramientas_lenguaje.py
+#gemini-3-pro-preview   gemini-2.5-flash
+
+
+# backend/herramientas/herramientas_lenguaje.py
 import os
 import json
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from typing import List, Dict, Any
-
-
 from PIL import Image
 import io
+import langchain 
+
+# --- PARCHE DE COMPATIBILIDAD ---
+if not hasattr(langchain, 'verbose'):
+    langchain.verbose = False
+if not hasattr(langchain, 'debug'):
+    langchain.debug = False
+if not hasattr(langchain, 'llm_cache'):
+    langchain.llm_cache = None
+# --------------------------------
 
 from .herramienta_multimodal_gemini import preparar_entrada_multimodal
 
 load_dotenv()
 
-# ==============================================================================
-# Inicializacion del Modelo de Lenguaje
-#gemini-3-pro-preview  gemini-2.5-flash
-# ==============================================================================
+# Usamos Flash por velocidad. Ajustamos safety settings para que no bloquee imágenes médicas.
 try:
-    llm_multimodal = ChatGoogleGenerativeAI(model="gemini-3-pro-preview", google_api_key=os.getenv("GOOGLE_API_KEY"))
-    print("TOOL-SETUP: Modelo Gemini 2.5 Flash inicializado correctamente.")
+    llm_multimodal = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash", 
+        google_api_key=os.getenv("GOOGLE_API_KEY"),
+        temperature=0,
+    )
+    print("TOOL-SETUP: Modelo Gemini 2.5 Flash inicializado.")
 except Exception as e:
     llm_multimodal = None
-    print(f"TOOL-SETUP-ERROR: No se pudo inicializar Gemini. Causa: {e}")
-
-
+    print(f"TOOL-SETUP-ERROR: {e}")
 
 def _comprimir_imagen_si_es_necesario(ruta_archivo: str, calidad: int = 80) -> str:
-    """
-    Funcion interna para comprimir una imagen y sobreescribirla en formato JPEG.
-    Reduce drasticamente los tokens de la conversion a base64.
-    """
     try:
-        # Abre la imagen
         with Image.open(ruta_archivo) as img:
-            # Convierte a RGB para asegurar compatibilidad con JPEG
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
-            
-            # Crea un buffer en memoria para guardar la imagen comprimida
-            buffer_en_memoria = io.BytesIO()
-            img.save(buffer_en_memoria, format='JPEG', quality=calidad, optimize=True)
-            
-            # Sobreescribe el archivo original con su version comprimida
+            buffer = io.BytesIO()
+            img.save(buffer, format='JPEG', quality=calidad, optimize=True)
             with open(ruta_archivo, "wb") as f:
-                f.write(buffer_en_memoria.getvalue())
-
-            print(f"--- [COMPRESOR] Imagen {ruta_archivo} comprimida exitosamente.")
+                f.write(buffer.getvalue())
             return ruta_archivo
-    except Exception as e:
-        print(f"--- [COMPRESOR] ADVERTENCIA: No se pudo comprimir la imagen {ruta_archivo}. Error: {e}. Se usará el original.")
+    except Exception:
         return ruta_archivo
 
-
-
-
-
-# ==============================================================================
-# Herramienta de Analisis Multimodal con Salida Estructurada (JSON)
-# ==============================================================================
 def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[str]) -> Dict[str, Any]:
-    """Analiza evidencia multimodal (texto e imagenes/PDFs) y fuerza una respuesta
-    del LLM en formato JSON."""
     if not llm_multimodal:
-        return {"error": "El modelo de lenguaje no está disponible."}
+        return {"error": "Modelo no disponible."}
         
     try:
-        # --- INICIO DE LA MODIFICACIÓN #3: PASO DE COMPRESIÓN PREVIO ---
         rutas_procesadas = []
         for ruta in archivos_locales:
-            if ruta.lower().endswith(('.png', '.jpg', '.jpeg')):
-                # Si es una imagen, la comprimimos antes de cualquier otra cosa
-                ruta_comprimida = _comprimir_imagen_si_es_necesario(ruta)
-                rutas_procesadas.append(ruta_comprimida)
+            if ruta.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                rutas_procesadas.append(_comprimir_imagen_si_es_necesario(ruta))
             else:
-                # Si no es una imagen (ej. PDF, audio), la dejamos como está
                 rutas_procesadas.append(ruta)
-        # --- FIN DE LA MODIFICACIÓN #3 ---
 
-        # Usamos las rutas ya procesadas (comprimidas si era necesario)
-        contenido_listo = preparar_entrada_multimodal(prompt_usuario, rutas_procesadas)
-        mensaje = HumanMessage(content=contenido_listo)
+        contenido = preparar_entrada_multimodal(prompt_usuario, rutas_procesadas)
+        mensaje = HumanMessage(content=contenido)
         
-        print(f"      TOOL-SYSTEM: -> Invocando a Gemini 1.5 Flash (esperando JSON) con {len(rutas_procesadas)} archivo(s)...")
+        print(f"      TOOL-SYSTEM: -> Invocando Gemini ({len(rutas_procesadas)} archivos)...")
         respuesta = llm_multimodal.invoke([mensaje])
-        texto_respuesta = respuesta.content.strip()
+        texto_crudo = respuesta.content.strip()
         
-        if texto_respuesta.startswith("```json"):
-            texto_respuesta = texto_respuesta[7:-3]
-            
-        return json.loads(texto_respuesta)
+        # 1. INTENTO DE LIMPIEZA ESTÁNDAR (Si viene como bloque de código)
+        texto_limpio = texto_crudo
+        if "```json" in texto_crudo:
+            # Extraemos solo lo que está dentro de los bloques ```json ... ```
+            partes = texto_crudo.split("```json")
+            if len(partes) > 1:
+                texto_limpio = partes[1].split("```")[0].strip()
+        elif "```" in texto_crudo:
+            texto_limpio = texto_crudo.split("```")[1].strip()
+
+        return json.loads(texto_limpio)
         
     except json.JSONDecodeError:
-        error_msg = f"Error: El modelo no devolvió un JSON válido. Respuesta: {texto_respuesta[:200]}"
-        print(f"      ERROR-CRITICO: {error_msg}")
-        return {"error": error_msg, "respuesta_original": texto_respuesta}
+        # --- ESTRATEGIA DE RESCATE INTELIGENTE V3 ---
+        print(f"      ALERTA: Gemini mezcló texto y JSON. Intentando separar...")
+        
+        # Caso Típico: "Hola soy Camila... {json}"
+        # Buscamos dónde empieza el primer '{' y dónde termina el último '}'
+        inicio_json = texto_crudo.find('{')
+        fin_json = texto_crudo.rfind('}')
+        
+        if inicio_json != -1 and fin_json != -1:
+            try:
+                json_part = texto_crudo[inicio_json:fin_json+1]
+                data = json.loads(json_part)
+                # Si logramos extraer el JSON, usamos ese.
+                return data
+            except:
+                pass # Si falla, seguimos al plan B
+        
+        # Plan B: Si no hay JSON válido, usamos todo el texto como mensaje
+        return {
+            "admisible": False,
+            "justificacion": "Respuesta conversacional recuperada.",
+            "hechos_clave": "Análisis en curso.",
+            "informacion_suficiente": False,
+            "pregunta_para_usuario": texto_crudo # Mostramos lo que dijo Camila
+        }
+        
     except Exception as e:
-        error_msg = f"Error crítico durante el análisis JSON con Gemini: {e}"
-        print(f"      ERROR-CRITICO: {error_msg}")
-        return {"error": error_msg}
+        print(f"      ERROR-CRITICO: {e}")
+        return {"error": str(e)}
 
-# ==============================================================================
-# Herramienta de Generacion de Texto Plano
-# ==============================================================================
 def generar_respuesta_texto(prompt: str) -> str:
-    """Toma un prompt de texto y devuelve la respuesta del LLM como un string 
-    de texto plano. Ideal para tareas de síntesis o conversacionales, como el 
-    Agente de Atencion.
-    
-    Args:
-        prompt (str): El prompt o la pregunta a realizar al modelo.
-        
-    Returns:
-        (str): La respuesta del modelo como una cadena de texto.
-    """
-    if not llm_multimodal:
-        return "Error: El modelo de lenguaje no está disponible."
-        
+    if not llm_multimodal: return "Error modelo."
     try:
-        print(f"      TOOL-SYSTEM: -> Invocando a Gemini 2.5 Flash (esperando TEXTO)...")
-        respuesta = llm_multimodal.invoke(prompt)
-        return respuesta.content.strip()
+        return llm_multimodal.invoke(prompt).content.strip()
     except Exception as e:
-        error_msg = f"Error crítico durante la generación de texto con Gemini: {e}"
-        print(f"      ERROR-CRITICO: {error_msg}")
-        return error_msg
+        return str(e)

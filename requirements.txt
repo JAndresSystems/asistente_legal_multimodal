@@ -47,3 +47,11 @@ resend==0.8.0
 # SpeechRecognition==3.10.0
 # pydub==0.25.1
 # # ffmpeg-python==0.2.0
+
+#unidecode # Para normalización de texto (opcional)
+#pandas openpyxl # Para manejo avanzado de datos y Excel (opcional)
+
+
+#ragas # Para recuperación avanzada de información (opcional)
+#datasets # Para manejo de conjuntos de datos (opcional)
+langchain-chroma

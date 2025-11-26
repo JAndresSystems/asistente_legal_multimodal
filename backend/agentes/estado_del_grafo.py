@@ -13,6 +13,18 @@ class EstadoDelGrafo(TypedDict):
     id_caso: int
     rutas_archivos_evidencia: List[str]
 
+
+
+    # --- NUEVO: MEMORIA INCREMENTAL ---
+    # Aquí guardamos qué archivos ya analizamos para no leerlos de nuevo.
+    # Formato: [{"ruta": "x/y/cedula.png", "descripcion": "Cédula de Ciudadanía"}, ...]
+    inventario_evidencia: NotRequired[List[Dict[str, str]]]
+
+
+     # --- NUEVO: MEMORIA DE CONVERSACIÓN ---
+    # Es vital para que el agente recuerde lo que se habló.
+    historial_chat: NotRequired[List[Dict[str, str]]]
+
     texto_adicional_usuario: Optional[str]
 
     # --- RESULTADOS DE LA CADENA DE PROCESAMIENTO ---
