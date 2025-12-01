@@ -31,7 +31,7 @@ pypdf==4.2.0
 # =====================================================================
 # CORRECCIÓN CLAVE: Usamos una versión de pysqlite3-binary que SÍ existe.
 # =====================================================================
-pysqlite3-binary==0.5.4
+#pysqlite3-binary==0.5.4
 
 # --- Utilidades ---
 python-docx==1.1.2
@@ -55,3 +55,5 @@ resend==0.8.0
 #ragas # Para recuperación avanzada de información (opcional)
 #datasets # Para manejo de conjuntos de datos (opcional)
 langchain-chroma
+
+PyMuPDF

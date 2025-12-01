@@ -1,7 +1,7 @@
 # backend/agentes/nodos_del_grafo.py
-
+import json
 from sqlmodel import Session, select, func
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
 from .estado_del_grafo import EstadoDelGrafo
 from ..herramientas.herramientas_lenguaje import analizar_evidencia_con_gemini, generar_respuesta_texto
@@ -10,126 +10,146 @@ from ..base_de_datos import motor # Eliminamos importaciones no usadas
 from ..api.modelos_compartidos import (
     Caso, Asignacion, Estudiante, Asesor, EstadoCaso, AreaEspecialidad)# Eliminamos importaciones no usadas
 
-def nodo_agente_triaje(estado: EstadoDelGrafo) -> Dict[str, Any]:
+
+
+
+def _formatear_historial(historial: List[Dict[str, str]]) -> str:
+    """Función utilitaria para convertir el historial en un string legible para el LLM."""
+    if not historial:
+        return "No hay conversación previa."
+    
+    texto_formateado = ""
+    for mensaje in historial:
+        rol = "Usuario" if mensaje.get("autor") == "usuario" else "Asistente Camila"
+        texto_formateado += f"{rol}: {mensaje.get('texto')}\n"
+    return texto_formateado.strip()
+
+
+
+# --- INICIO DEL CAMBIO FINAL Y DEFINITIVO ---
+
+# --- INICIO DEL CAMBIO FINAL Y DEFINITIVO ---
+
+def nodo_agente_triaje(estado: dict) -> dict:
     """
-    Docstring:
-    Este nodo actua como el primer filtro de admisibilidad formal, solicitando
-    informacion de forma gradual si es necesario.
+    Nodo principal del Agente de Triaje ("Camila").
+    VERSIÓN FUSIONADA CON ESPECIFICIDAD, FLEXIBILIDAD Y TRANSFERENCIA DE MEMORIA.
     """
     print("\n--- [AGENTE TRIAJE] Iniciando ejecucion del nodo ---")
-    rutas_archivos = estado["rutas_archivos_evidencia"]
-    print(f"--- [AGENTE TRIAJE] Analizando evidencias: {rutas_archivos}")
-    texto_adicional = estado.get("texto_adicional_usuario", "")
-    print(f"--- [AGENTE TRIAJE] Analizando {len(rutas_archivos)} archivos y texto adicional: '{texto_adicional[:50]}...'")
+    
+    rutas_archivos = estado.get("rutas_archivos_evidencia", [])
+    descripcion_hechos = estado.get("descripcion_hechos", "")
+    historial_chat = estado.get("historial_chat", [])
+    
+    ultimo_mensaje_usuario = ""
+    historial_anterior = []
+    if historial_chat:
+        ultimo_mensaje_usuario = historial_chat[-1].get("texto", "")
+        historial_anterior = historial_chat[:-1]
 
     try:
-        consulta_contexto = "Reglas de admisibilidad, competencia, beneficiarios y cuantías de los consultorios jurídicos según la Ley 2113. También, qué documentos son esenciales para casos de familia, laboral o civil."
-        lista_contexto = buscar_en_base_de_conocimiento(consulta=consulta_contexto)
-        contexto_completo = "\n\n---\n\n".join(lista_contexto)
+        consulta_contexto = f"Reglas de admisibilidad (Ley 2113 de 2021) y documentos para un caso sobre: {descripcion_hechos}"
+        contexto_rag = buscar_en_base_de_conocimiento(consulta=consulta_contexto)
+        contexto_completo = "\n\n---\n\n".join(contexto_rag)
         print(f"--- [AGENTE TRIAJE] Contexto legal y documental recuperado de RAG vectorial.")
     except Exception as e:
         print(f"--- [AGENTE TRIAJE] ERROR: Fallo al buscar en RAG: {e}")
-        contexto_completo = "Error: No se pudo recuperar el contexto legal."
+        contexto_completo = "No se pudo recuperar el contexto legal."
 
-    prompt_completo = f"""
-    ERES un abogado de triaje para un consultorio juridico gratuito, riguroso pero razonable. Tu mision es calificar casos y pedir la documentacion justa y necesaria. Tu respuesta DEBE ser unicamente un objeto JSON.
+    # --- INICIO DE LA REINGENIERÍA FINAL DEL PROMPT ---
+    prompt_sistema_triaje = f"""
+    Eres "Camila", un agente de IA de triaje en FASE DE PRUEBAS. Tu principio rector es la MÁXIMA FLEXIBILIDAD. NO uses la palabra "oficial".
 
-    --- CONTEXTO LEGAL Y GUIA DOCUMENTAL ---
+    --- CONTEXTO LEGAL Y GUÍA DOCUMENTAL (Tu Guía Maestra) ---
     {contexto_completo}
-    --- FIN DEL CONTEXTO ---
+    --- FIN DEL CONTEXTO LEGAL ---
 
-    --- EVIDENCIA A ANALIZAR ---
-    1.  Archivos Adjuntos: {len(rutas_archivos)} archivo(s) proporcionado(s).
-    2.  Texto Adicional del Usuario: "{texto_adicional}"
-    --- FIN DE LA EVIDENCIA ---
+    --- ESTADO ACTUAL DEL CASO (Tu Memoria) ---
+    1.  **Descripción Inicial de los Hechos:** "{descripcion_hechos}"
+    2.  **ÚLTIMO MENSAJE DEL USUARIO (Tu Foco Principal):** "{ultimo_mensaje_usuario}"
+    3.  **Archivos recibidos en esta interacción:** {len(rutas_archivos)} adjuntos.
 
-    --- REGLA CRITICA DE RECURSOS Y LIMITES (MUY IMPORTANTE) ---
-    1.  ANALIZA MAXIMO 3 ARCHIVOS: Si el usuario ha subido más de 3 archivos, ignora los excedentes y basa tu análisis solo en los 3 primeros. El sistema ya ha limitado los archivos que te entrega, pero esta es una confirmación.
-    2.  SE EXTREMADAMENTE CONCISO: Tu "justificacion" y "hechos_clave" deben ser muy breves, directos y al grano para ahorrar recursos.
+    --- PROCESO DE RAZONAMIENTO JERÁRQUICO (INQUEBRANTABLE) ---
 
-    --- REGLA DE INTERPRETACION JURIDICA ---
-    La excepción prevalece sobre la regla general. El Artículo 9 tiene un límite de 50 SMLMV, pero exceptúa los casos de "tránsito". Un caso de accidente de tránsito con reclamación de 50 SMLMV ES ADMISIBLE.
+    **REGLA 1 (MÁXIMA PRIORIDAD): MANEJO DE LA DECLARACIÓN FINAL**
+    - Si el usuario dice "no tengo más", "eso es todo", etc., ANULA todas las demás reglas.
+    - **DECISIÓN FORZADA:** Tu "decision_triaje" DEBE SER "ADMISSIBLE".
 
-    --- ESTRATEGIA DE SALIDA ---
-    Si el usuario indica explícitamente que NO tiene más documentos (ej. "no tengo mas"), DEBES detener el ciclo de preguntas. Establece "informacion_suficiente" como "true" y añade una advertencia en tu "justificacion".
-    
-    --- REGLA DE FLEXIBILIDAD Y BUENA FE (NUEVO Y MUY IMPORTANTE) ---
-    Tu objetivo es pedir los documentos faltantes UNA SOLA VEZ. Después de que hayas hecho una pregunta pidiendo documentos (ej. pidiendo el informe de tránsito), si en la siguiente interacción el usuario sube CUALQUIER archivo (PDF, PNG, JPG), DEBES ASUMIR que ha intentado cumplir tu petición. NO vuelvas a pedir el mismo documento. Considera que con eso es suficiente para esta etapa, marca "informacion_suficiente" como "true" y permite que el caso avance.
+    **REGLA 2 (PROCESO NORMAL):**
+    *   **SI ES EL PRIMER CONTACTO:** Tu decisión es "FALTA_INFORMACION". USA TU GUÍA PARA LISTAR EXPLÍCITAMENTE los documentos que necesitas (ej. Cédula, Sisbén, recivo de servicios publico). No seas vago.
+    *   **SI ES UNA RESPUESTA DEL USUARIO:** Si sube CUALQUIER archivo, considéralo ENTREGADO. Si ya tienes "algo" para cada documento que pediste, tu decisión DEBE SER "ADMISSIBLE".
 
-    --- INSTRUCCION CRITICA DE JUSTIFICACION ---
-    Si y solo si decides que `admisible` es `false`, es OBLIGATORIO que tu `justificacion` contenga una cita textual del `CONTEXTO LEGAL` que respalda tu decisión. Tu explicación debe ser clara y conectar el hecho del caso con la norma.
-    (Ejemplo: "El caso no es admisible por superar la cuantía. Fundamento: '...la competencia por cuantía de los consultorios jurídicos no podrá superar los 50 SMLMV...'").
+    --- CAMPO CLAVE PARA EL SIGUIENTE AGENTE (OBLIGATORIO) ---
+    - **hechos_clave:** SI LA DECISIÓN ES "ADMISSIBLE", DEBES crear un resumen corto y preciso de la "Descripción Inicial de los Hechos" para que el siguiente agente pueda clasificar el caso. ESTE CAMPO NO PUEDE ESTAR VACÍO.
 
-    REGLAS DE DECISION:
-    1.  EVALUA ADMISIBILIDAD: ¿El caso es admisible?
-    2.  VERIFICA SUFICIENCIA: ¿Tienes los documentos esenciales? Si no, aplica las REGLAS DE SOLICITUD. Si ya pediste y el usuario subió algo, aplica la REGLA DE FLEXIBILIDAD.
-
-    --- REGLAS DE EXCLUSION INQUEBRABLES ---
-    1.  CASOS COMERCIALES: RECHAZA cualquier disputa comercial.
-    
-    REGLAS DE SOLICITUD (Aplica solo la primera vez que falten documentos):
-    1.  PIDE MAXIMO 2 DOCUMENTOS: Si faltan documentos, pide solo los 2 más importantes y sé específico (ej. "informe de tránsito y epicrisis médica").
-
-    TAREA:
-    Analiza la evidencia y el texto. Devuelve un objeto JSON con la siguiente estructura:
+    --- FORMATO DE SALIDA OBLIGATORIO (JSON VÁLIDO) ---
     {{
-      "admisible": boolean,
-      "justificacion": "string (Si `admisible` es false, DEBE citar el contexto legal como se instruyó)",
-      "hechos_clave": "string (Resumen de los hechos)",
-      "informacion_suficiente": boolean,
-      "pregunta_para_usuario": "string (SOLO si 'informacion_suficiente' es false. De lo contrario, déjalo vacío '')"
+        "resumen_evidencia": "Descripción CONCISA de los archivos recibidos.",
+        "decision_triaje": "ADMISSIBLE | NO_ADMISSIBLE | FALTA_INFORMACION",
+        "justificacion": "Explicación BREVE de tu decisión.",
+        "mensaje_para_usuario": "Mensaje AMIGABLE y CORTO. Si admites el caso, debe ser de aceptación. Si pides documentos, DEBES ser específico.",
+        "hechos_clave": "Resumen CONCISO de los hechos para el siguiente agente. NO PUEDE ESTAR VACÍO SI LA DECISIÓN ES ADMISSIBLE."
     }}
     """
+    # --- FIN DE LA REINGENIERÍA FINAL DEL PROMPT ---
     
-    print("--- [AGENTE TRIAJE] Invocando LLM para analisis de admisibilidad...")
-    
-    # Limitamos la cantidad de archivos enviados a la IA a un máximo de 3.
-    archivos_para_analizar = rutas_archivos[:3]
-    
-    resultado_analisis = analizar_evidencia_con_gemini(
-        archivos_locales=archivos_para_analizar,
-        prompt_usuario=prompt_completo
-    )
-    
-    # --- INICIO DE LA CORRECCIÓN LÓGICA DEFINITIVA ---
-    # En lugar de un try-except, verificamos si el resultado es un diccionario de error.
-    if isinstance(resultado_analisis, dict) and 'error' in resultado_analisis:
-        print(f"--- [AGENTE TRIAJE] ERROR-CONTROLADO: Se detectó un error devuelto por la herramienta de IA: {resultado_analisis['error']}")
+    try:
+        print(f"--- [AGENTE TRIAJE] Invocando herramienta multimodal con {len(rutas_archivos)} archivos...")
+        resultado_analisis = analizar_evidencia_con_gemini(
+            prompt_usuario=prompt_sistema_triaje,
+            archivos_locales=rutas_archivos
+        )
+        print("--- [AGENTE TRIAJE] Análisis multimodal completado.")
         
-        # Creamos una respuesta de contingencia que no rompa el sistema.
+        if "error" in resultado_analisis:
+            raise Exception(f"La herramienta de análisis devolvió un error: {resultado_analisis['error']}")
+        
+        # INYECCIÓN DE SEGURIDAD PARA ASEGURAR EL FLUJO
+        if resultado_analisis.get("decision_triaje") == "ADMISSIBLE" and not resultado_analisis.get("hechos_clave"):
+            resultado_analisis["hechos_clave"] = descripcion_hechos[:500]
+            print("--- [AGENTE TRIAJE] ADVERTENCIA: LLM no generó 'hechos_clave'. Usando fallback.")
+            
+        return {"resultado_triaje": resultado_analisis}
+
+    except Exception as e:
+        print(f"--- [AGENTE TRIAJE] ERROR CRÍTICO en el nodo: {e}")
         resultado_contingencia = {
-            "admisible": False,
-            "justificacion": "No se pudo completar el análisis de la evidencia. Es posible que los archivos sean demasiado grandes. Por favor, intente con menos archivos o de menor tamaño.",
-            "hechos_clave": "Error en el procesamiento de la IA.",
-            "informacion_suficiente": True, # Forzamos a True para detener el flujo.
-            "pregunta_para_usuario": ""
+            "resumen_evidencia": "Fallo crítico.",
+            "decision_triaje": "NO_ADMISSIBLE",
+            "justificacion": f"Error inesperado: {str(e)}",
+            "mensaje_para_usuario": "Lo siento, encontré un error técnico y no puedo continuar.",
+            "hechos_clave": "Error"
         }
-        print(f"--- [AGENTE TRIAJE] Generando respuesta de contingencia: {resultado_contingencia}")
         return {"resultado_triaje": resultado_contingencia}
-    # --- FIN DE LA CORRECCIÓN LÓGICA DEFINITIVA ---
-        
-    print(f"--- [AGENTE TRIAJE] Analisis completado. Resultado: {resultado_analisis}")
-    return {"resultado_triaje": resultado_analisis}
+
+# --- FIN DEL CAMBIO FINAL Y DEFINITIVO ---
 
 
 def nodo_solicitar_informacion_adicional(estado: EstadoDelGrafo) -> Dict[str, Any]:
     """
     Docstring:
-    Este nodo se activa cuando el Agente de Triaje determina que la
-    informacion no es suficiente. Su unica funcion es tomar la pregunta
-    generada por el triaje y prepararla para ser enviada de vuelta al usuario.
+    Este nodo es el CORAZÓN de "Camila". Comunica la necesidad de más
+    documentos de forma amable y le indica al frontend que la conversación DEBE continuar.
+    VERSIÓN SIMPLIFICADA: Ya no necesita parsear el JSON, lo recibe como un diccionario
+    directamente desde el orquestador.
     """
-    print("\n--- [AGENTE SOLICITUD] Iniciando ejecucion del nodo ---")
+    print("\n--- [AGENTE SOLICITUD - CORAZÓN] Iniciando ejecucion del nodo ---")
     
-    pregunta_generada = estado.get("resultado_triaje", {}).get("pregunta_para_usuario", "")
-    
-    print(f"--- [AGENTE SOLICITUD] Se enviara la siguiente pregunta al usuario: '{pregunta_generada}'")
-    
-    # En un futuro, este nodo podria añadir la pregunta a una lista de mensajes
-    # para que el frontend la muestre en la interfaz de chat.
-    # Por ahora, simplemente actualizamos el estado.
-    return {"respuesta_para_usuario": pregunta_generada}
+    try:
+        # Gracias a la corrección en el orquestador, ahora podemos leer esto directamente.
+        resultado_triaje_dict = estado.get("resultado_triaje", {})
+        mensaje_para_usuario = resultado_triaje_dict.get("mensaje_para_usuario", "Necesito más información, pero no pude generar un mensaje específico.")
 
+    except Exception as e:
+        print(f"--- [AGENTE SOLICITUD - CORAZÓN] ERROR al procesar resultado: {e}")
+        mensaje_para_usuario = "Parece que necesito más información, pero he encontrado un problema al generar mi respuesta. ¿Podrías intentar adjuntar los documentos que consideres relevantes?"
+
+    print(f"--- [AGENTE SOLICITUD - CORAZÓN] Respuesta conversacional obtenida: '{mensaje_para_usuario}'")
+    
+    return {
+        "respuesta_para_usuario": mensaje_para_usuario, 
+        "flujo_terminado": False
+    }
 
 def nodo_agente_analizador_pdf(estado: EstadoDelGrafo) -> Dict[str, Any]:
     print("--- Ejecutando Nodo: Agente Analizador de PDFs ---")
@@ -400,21 +420,15 @@ def nodo_agente_generador_documentos(estado: EstadoDelGrafo) -> Dict[str, Any]:
 def nodo_preparar_respuesta_rechazo(estado: EstadoDelGrafo) -> Dict[str, Any]:
     """
     Docstring:
-    Este nodo se activa cuando el Agente de Triaje determina que un caso no es
-    admisible. Sus funciones son:
-    1. Persistir el resultado del rechazo en la base de datos.
-    2. Construir un mensaje final, claro y empático para el usuario.
+    Este nodo se activa para un caso no admisible. Persiste el rechazo en la BD,
+    construye un mensaje empático y le indica al frontend que el flujo TERMINÓ SIN ÉXITO.
     """
     print("\n--- [AGENTE RECHAZO] Iniciando ejecucion del nodo ---")
     
-    # --- INICIO DE LA MODIFICACIÓN ---
-    
-    # 1. Extraer los datos clave del estado.
     id_caso = estado["id_caso"]
     justificacion_rechazo = estado.get("resultado_triaje", {}).get("justificacion", "No se proporcionó una justificación específica.")
-    print(f"--- [AGENTE RECHAZO] Justificacion recibida del triaje: '{justificacion_rechazo}'")
+    print(f"--- [AGENTE RECHAZO] Justificacion recibida: '{justificacion_rechazo}'")
 
-    # 2. Actualizar la base de datos con el estado y la justificación.
     try:
         with Session(motor) as sesion_db:
             caso_a_actualizar = sesion_db.get(Caso, id_caso)
@@ -423,20 +437,48 @@ def nodo_preparar_respuesta_rechazo(estado: EstadoDelGrafo) -> Dict[str, Any]:
                 caso_a_actualizar.justificacion_rechazo = justificacion_rechazo
                 sesion_db.add(caso_a_actualizar)
                 sesion_db.commit()
-                print(f"--- [AGENTE RECHAZO] (DB): Caso {id_caso} actualizado a '{EstadoCaso.RECHAZADO.value}' con justificación.")
-            else:
-                print(f"--- [AGENTE RECHAZO] (DB) ADVERTENCIA: No se encontró el caso {id_caso} para actualizar.")
+                print(f"--- [AGENTE RECHAZO] (DB): Caso {id_caso} actualizado a '{EstadoCaso.RECHAZADO.value}'.")
     except Exception as e:
-        print(f"--- [AGENTE RECHAZO] (DB) ERROR: Fallo al actualizar la base de datos: {e}")
+        print(f"--- [AGENTE RECHAZO] (DB) ERROR: {e}")
 
-    # 3. Construir el mensaje final para el usuario usando una plantilla.
     mensaje_final_usuario = (
         "Hemos evaluado la información de su caso y, lamentablemente, no cumple con los criterios "
-        "de competencia definidos para nuestro consultorio jurídico. La razón es la siguiente: "
-        f"'{justificacion_rechazo}'. Le agradecemos su tiempo y por contactarnos."
+        "de competencia de nuestro consultorio en este momento. La razón es la siguiente: "
+        f"'{justificacion_rechazo}'. Le agradecemos su tiempo."
     )
     
-    print(f"--- [AGENTE RECHAZO] Mensaje final preparado para el usuario.")
+    print(f"--- [AGENTE RECHAZO] Mensaje final preparado.")
     
-    # 4. Devolver el mensaje en la clave que el frontend espera.
-    return {"respuesta_para_usuario": mensaje_final_usuario}
+    # Le decimos al frontend que el flujo TERMINÓ y que el caso NO fue admitido.
+    return {
+        "respuesta_para_usuario": mensaje_final_usuario,
+        "flujo_terminado": True,
+        "caso_admitido": False
+    }
+
+
+
+def nodo_preparar_respuesta_aceptacion(estado: EstadoDelGrafo) -> Dict[str, Any]:
+    """
+    Docstring:
+    Este nodo se activa cuando un caso es admitido. Construye un mensaje transparente
+    y le indica al frontend que el flujo TERMINÓ CON ÉXITO.
+    """
+    print("\n--- [AGENTE ACEPTACIÓN] Iniciando ejecucion del nodo ---")
+    
+    justificacion_aceptacion = estado.get("resultado_triaje", {}).get("justificacion", "Su caso ha sido admitido.")
+    
+    mensaje_final_usuario = (
+        f"¡Buenas noticias! {justificacion_aceptacion} "
+        "Hemos reunido toda la información necesaria. A partir de este momento, nuestro equipo interno comenzará el proceso de clasificación y asignación a un estudiante. "
+        "Puede seguir el estado de su caso desde su panel principal."
+    )
+    
+    print(f"--- [AGENTE ACEPTACIÓN] Mensaje final preparado.")
+    
+    # Le decimos al frontend que el flujo TERMINÓ y que el caso SÍ fue admitido.
+    return {
+        "respuesta_para_usuario": mensaje_final_usuario,
+        "flujo_terminado": True,
+        "caso_admitido": True
+    }

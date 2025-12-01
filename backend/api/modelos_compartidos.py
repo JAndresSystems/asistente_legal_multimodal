@@ -1,6 +1,6 @@
 #C:\react\asistente_legal_multimodal\backend\api\modelos_compartidos.py
-from sqlmodel import Field, SQLModel, Relationship, Column, Text
-from typing import Optional, List
+from sqlmodel import Field, SQLModel, Relationship, Column, Text, JSON
+from typing import Dict, Optional, List
 
 # =================================================================================
 # MODELOS DE TABLAS DE BASE DE DATOS
@@ -124,11 +124,15 @@ class Caso(SQLModel, table=True):
     estado: str = Field(default=EstadoCaso.EN_REVISION.value, index=True)
     justificacion_rechazo: Optional[str] = Field(default=None, sa_column=Column(Text))
     reporte_consolidado: Optional[str] = Field(default=None, sa_column=Column(Text))
+    inventario_documentos: Optional[List[str]] = Field(default_factory=list, sa_column=Column(JSON))
     
+    historial_conversacion: Optional[List[Dict[str, Any]]] = Field(default_factory=list, sa_column=Column(JSON))
+
     usuario: "Usuario" = Relationship(back_populates="casos")
     evidencias: List["Evidencia"] = Relationship(back_populates="caso")
     asignaciones: List["Asignacion"] = Relationship(back_populates="caso")
     notas: List["Nota"] = Relationship(back_populates="caso")
+    
 
 class Evidencia(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -174,7 +178,7 @@ class CasoCreacion(SQLModel):
     descripcion_hechos: str
     # Este campo se eliminará en un paso futuro, ya que el id_usuario
     # se obtendrá del token de autenticación. Por ahora, lo mantenemos.
-    id_usuario: int
+    id_usuario: Optional[int] = None
 
 class NotaCreacion(SQLModel):
     """
@@ -255,6 +259,8 @@ class CasoDetalleUsuario(SQLModel):
 
 class PreguntaChat(SQLModel):
     pregunta: str
+    # Añadimos un campo opcional para recibir el historial del chat.
+    historial_chat: Optional[List[Dict[str, str]]] = None
 
 class RespuestaChat(SQLModel):
     respuesta: str

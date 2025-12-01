@@ -1,0 +1,79 @@
+/* frontend/src/componentes/usuario/DashboardUsuario/WidgetChat.css */
+
+/* Estilo para el botón que abre el chat */
+.widget-toggler {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  width: 60px;
+  height: 60px;
+  background-color: #005a4b; /* Color principal de tu marca */
+  color: white;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 28px; /* Tamaño del ícono */
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  z-index: 999;
+  transition: transform 0.2s ease-in-out;
+}
+
+.widget-toggler:hover {
+  transform: scale(1.1);
+}
+
+/* Contenedor principal del widget de chat cuando está abierto */
+.widget-chat-container {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  width: 400px;
+  max-width: 90vw;
+  height: 600px;
+  max-height: 80vh;
+  background-color: #ffffff;
+  border-radius: 15px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1000;
+  transition: opacity 0.3s, transform 0.3s;
+  transform-origin: bottom right;
+}
+
+/* Cabecera del widget */
+.widget-chat-header {
+  background-color: #005a4b;
+  color: white;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.widget-chat-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.widget-chat-header .close-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+/* El contenido del chat (nuestro VistaChat) se adaptará al contenedor */
+.widget-chat-content {
+  flex-grow: 1;
+  /* Esto es clave para que VistaChat ocupe todo el espacio disponible */
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 60px); /* Ajustar según la altura del header */
+}

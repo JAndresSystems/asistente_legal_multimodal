@@ -69,3 +69,11 @@ backend/.env
 # Dependencias de Python
 backend/__pycache__/
 backend/venv/
+
+
+
+validacion_sistema\reporte_validacion_global_ragas.xlsx
+validacion_sistema\reporte_validacion_kpi_1_1.xlsx 
+validacion_sistema\reporte_validacion_kpi_1_2.xlsx
+validacion_sistema\reporte_validacion_subsistema_2.xlsx
+validacion_sistema\reporte_validacion_subsistema_3.xlsx

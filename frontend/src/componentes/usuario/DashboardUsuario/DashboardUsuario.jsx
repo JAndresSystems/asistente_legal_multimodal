@@ -1,16 +1,23 @@
-// frontend\src\componentes\usuario\DashboardUsuario\DashboardUsuario.jsx
+// frontend/src/componentes/usuario/DashboardUsuario/DashboardUsuario.jsx
 
 import React, { useState, useEffect } from 'react';
 import { apiObtenerMisCasos } from '../../../servicios/api';
 import { useAuth } from '../../../contextos/ContextoAutenticacion';
 import './DashboardUsuario.css';
 
-// 1. (MODIFICACIÓN) Aceptamos una nueva prop: onVerDetalles
+// (NUEVO) Importamos los componentes del widget
+import WidgetChat from './WidgetChat';
+import WidgetToggler from './WidgetToggler';
+
+// Aceptamos las props que ya teníamos: onIniciarNuevoCaso y onVerDetalles
 function DashboardUsuario({ onIniciarNuevoCaso, onVerDetalles }) {
   const { usuario } = useAuth();
   const [listaDeCasos, setListaDeCasos] = useState([]);
   const [estaCargando, setEstaCargando] = useState(true);
   const [error, setError] = useState(null);
+
+  // (NUEVO) Estado para controlar la visibilidad del widget de chat
+  const [isWidgetOpen, setIsWidgetOpen] = useState(false);
 
   useEffect(() => {
     const cargarCasosDelUsuario = async () => {
@@ -28,13 +35,17 @@ function DashboardUsuario({ onIniciarNuevoCaso, onVerDetalles }) {
   }, []);
 
   if (estaCargando) {
-    return <div className="dashboard-contenedor"><p>Cargando sus casos...</p></div>;
+    return <div className="dashboard-contenedor"><p>Cargando su información...</p></div>;
   }
   if (error) {
     return <div className="dashboard-contenedor error"><p>{error}</p></div>;
   }
 
+  // (NUEVO) Función para abrir/cerrar el widget
+  const toggleWidget = () => setIsWidgetOpen(!isWidgetOpen);
+
   return (
+    // (MODIFICACIÓN) Volvemos a un contenedor simple de una sola columna.
     <div className="dashboard-contenedor">
 
       <div className="dashboard-saludo">
@@ -52,6 +63,7 @@ function DashboardUsuario({ onIniciarNuevoCaso, onVerDetalles }) {
         <p>Aún no tiene casos registrados en el sistema.</p>
       ) : (
         <table className="tabla-casos">
+          {/* ... El contenido de la tabla no cambia ... */}
           <thead>
             <tr>
               <th>ID del Caso</th>
@@ -69,7 +81,6 @@ function DashboardUsuario({ onIniciarNuevoCaso, onVerDetalles }) {
                   <span className={`estado-caso ${caso.estado}`}>{caso.estado.replace('_', ' ')}</span>
                 </td>
                 <td>
-                  {/* 2. (MODIFICACIÓN) El boton ahora llama a la funcion de la prop con el id del caso */}
                   <button onClick={() => onVerDetalles(caso.id)} className="boton-accion">
                     Ver Detalles
                   </button>
@@ -78,6 +89,13 @@ function DashboardUsuario({ onIniciarNuevoCaso, onVerDetalles }) {
             ))}
           </tbody>
         </table>
+      )}
+
+      {/* --- (NUEVA LÓGICA DE RENDERIZADO DEL WIDGET) --- */}
+      {isWidgetOpen ? (
+        <WidgetChat onToggle={toggleWidget} onIniciarNuevoCaso={onIniciarNuevoCaso} />
+      ) : (
+        <WidgetToggler onToggle={toggleWidget} />
       )}
     </div>
   );

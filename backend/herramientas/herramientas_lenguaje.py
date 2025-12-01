@@ -1,32 +1,22 @@
 # backend/herramientas/herramientas_lenguaje.py
 #gemini-3-pro-preview   gemini-2.5-flash
-
-
-# backend/herramientas/herramientas_lenguaje.py
+# Ubicación: backend/herramientas/herramientas_lenguaje.py
+# Ubicación: backend/herramientas/herramientas_lenguaje.py
 import os
 import json
+import base64
+import re  # <--  Importamos el módulo de expresiones regulares
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from typing import List, Dict, Any
-from PIL import Image
-import io
-import langchain 
-
-# --- PARCHE DE COMPATIBILIDAD ---
-if not hasattr(langchain, 'verbose'):
-    langchain.verbose = False
-if not hasattr(langchain, 'debug'):
-    langchain.debug = False
-if not hasattr(langchain, 'llm_cache'):
-    langchain.llm_cache = None
-# --------------------------------
-
-from .herramienta_multimodal_gemini import preparar_entrada_multimodal
+from pathlib import Path
+import mimetypes
+import fitz  # PyMuPDF
 
 load_dotenv()
 
-# Usamos Flash por velocidad. Ajustamos safety settings para que no bloquee imágenes médicas.
+# --- INICIALIZACIÓN DEL MODELO DE LENGUAJE ---
 try:
     llm_multimodal = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash", 
@@ -38,83 +28,94 @@ except Exception as e:
     llm_multimodal = None
     print(f"TOOL-SETUP-ERROR: {e}")
 
-def _comprimir_imagen_si_es_necesario(ruta_archivo: str, calidad: int = 80) -> str:
+# --- FUNCIONES AUXILIARES ---
+
+def _preparar_entrada_multimodal_imagenes(prompt_texto: str, rutas_imagenes: List[str]) -> List[Dict[str, Any]]:
+    """
+    Prepara el contenido para Gemini, incluyendo un prompt de texto y
+    codificando las imágenes en base64 en el formato correcto que la librería espera.
+    """
+    contenido_multimodal = [{"type": "text", "text": prompt_texto}]
+    for ruta in rutas_imagenes:
+        try:
+            tipo_mime, _ = mimetypes.guess_type(ruta)
+            if not tipo_mime or not tipo_mime.startswith("image/"):
+                continue
+            with open(ruta, "rb") as f:
+                contenido_binario = f.read()
+            contenido_multimodal.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{tipo_mime};base64,{base64.b64encode(contenido_binario).decode('utf-8')}"
+                }
+            })
+        except Exception as e:
+            print(f"      ERROR-IMAGEN: No se pudo procesar la imagen {ruta}: {e}")
+    return contenido_multimodal
+
+def _extraer_texto_de_pdf(ruta_archivo: str) -> str:
+    """
+    Abre un archivo PDF y extrae todo su contenido de texto.
+    """
     try:
-        with Image.open(ruta_archivo) as img:
-            if img.mode in ("RGBA", "P"):
-                img = img.convert("RGB")
-            buffer = io.BytesIO()
-            img.save(buffer, format='JPEG', quality=calidad, optimize=True)
-            with open(ruta_archivo, "wb") as f:
-                f.write(buffer.getvalue())
-            return ruta_archivo
-    except Exception:
-        return ruta_archivo
+        texto_completo = ""
+        with fitz.open(ruta_archivo) as doc:
+            for pagina in doc:
+                texto_completo += pagina.get_text()
+        print(f"      INFO-PDF: Texto extraído exitosamente de {Path(ruta_archivo).name}")
+        return texto_completo
+    except Exception as e:
+        print(f"      ERROR-PDF: No se pudo extraer texto de {ruta_archivo}: {e}")
+        return ""
+
+# --- FUNCIONES PRINCIPALES ---
 
 def analizar_evidencia_con_gemini(prompt_usuario: str, archivos_locales: List[str]) -> Dict[str, Any]:
+    """
+    Función de análisis multimodal reconstruida y robusta.
+    """
     if not llm_multimodal:
-        return {"error": "Modelo no disponible."}
+        return {"error": "El modelo de IA no está disponible."}
         
     try:
-        rutas_procesadas = []
-        for ruta in archivos_locales:
-            if ruta.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                rutas_procesadas.append(_comprimir_imagen_si_es_necesario(ruta))
-            else:
-                rutas_procesadas.append(ruta)
+        rutas_imagenes = []
+        textos_de_pdfs = []
 
-        contenido = preparar_entrada_multimodal(prompt_usuario, rutas_procesadas)
-        mensaje = HumanMessage(content=contenido)
+        for ruta in archivos_locales:
+            tipo_mime, _ = mimetypes.guess_type(ruta)
+            if tipo_mime == "application/pdf":
+                texto_pdf = _extraer_texto_de_pdf(ruta)
+                if texto_pdf:
+                    header = f"\n\n--- INICIO CONTENIDO DEL DOCUMENTO '{Path(ruta).name}' ---\n"
+                    footer = f"\n--- FIN CONTENIDO DEL DOCUMENTO '{Path(ruta).name}' ---"
+                    textos_de_pdfs.append(header + texto_pdf + footer)
+            elif tipo_mime and tipo_mime.startswith("image/"):
+                rutas_imagenes.append(ruta)
+
+        prompt_enriquecido = prompt_usuario
+        if textos_de_pdfs:
+            prompt_enriquecido += "\n\n" + "\n".join(textos_de_pdfs)
+
+        contenido_para_gemini = _preparar_entrada_multimodal_imagenes(prompt_enriquecido, rutas_imagenes)
+        mensaje = HumanMessage(content=contenido_para_gemini)
         
-        print(f"      TOOL-SYSTEM: -> Invocando Gemini ({len(rutas_procesadas)} archivos)...")
+        print(f"      TOOL-SYSTEM: -> Invocando Gemini ({len(rutas_imagenes)} imágenes y {len(textos_de_pdfs)} PDFs procesados)...")
         respuesta = llm_multimodal.invoke([mensaje])
         texto_crudo = respuesta.content.strip()
         
-        # 1. INTENTO DE LIMPIEZA ESTÁNDAR (Si viene como bloque de código)
-        texto_limpio = texto_crudo
-        if "```json" in texto_crudo:
-            # Extraemos solo lo que está dentro de los bloques ```json ... ```
-            partes = texto_crudo.split("```json")
-            if len(partes) > 1:
-                texto_limpio = partes[1].split("```")[0].strip()
-        elif "```" in texto_crudo:
-            texto_limpio = texto_crudo.split("```")[1].strip()
-
-        return json.loads(texto_limpio)
-        
-    except json.JSONDecodeError:
-        # --- ESTRATEGIA DE RESCATE INTELIGENTE V3 ---
-        print(f"      ALERTA: Gemini mezcló texto y JSON. Intentando separar...")
-        
-        # Caso Típico: "Hola soy Camila... {json}"
-        # Buscamos dónde empieza el primer '{' y dónde termina el último '}'
-        inicio_json = texto_crudo.find('{')
-        fin_json = texto_crudo.rfind('}')
-        
-        if inicio_json != -1 and fin_json != -1:
-            try:
-                json_part = texto_crudo[inicio_json:fin_json+1]
-                data = json.loads(json_part)
-                # Si logramos extraer el JSON, usamos ese.
-                return data
-            except:
-                pass # Si falla, seguimos al plan B
-        
-        # Plan B: Si no hay JSON válido, usamos todo el texto como mensaje
-        return {
-            "admisible": False,
-            "justificacion": "Respuesta conversacional recuperada.",
-            "hechos_clave": "Análisis en curso.",
-            "informacion_suficiente": False,
-            "pregunta_para_usuario": texto_crudo # Mostramos lo que dijo Camila
-        }
+        match = re.search(r'\{.*\}', texto_crudo, re.DOTALL)
+        if match:
+            texto_limpio = match.group(0)
+            return json.loads(texto_limpio)
+        else:
+            raise json.JSONDecodeError("No se encontró un objeto JSON en la respuesta.", texto_crudo, 0)
         
     except Exception as e:
-        print(f"      ERROR-CRITICO: {e}")
+        print(f"      ERROR-CRITICO en analizar_evidencia_con_gemini: {e}")
         return {"error": str(e)}
 
 def generar_respuesta_texto(prompt: str) -> str:
-    if not llm_multimodal: return "Error modelo."
+    if not llm_multimodal: return "Error: El modelo de IA no está disponible."
     try:
         return llm_multimodal.invoke(prompt).content.strip()
     except Exception as e:

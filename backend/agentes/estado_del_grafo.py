@@ -23,12 +23,12 @@ class EstadoDelGrafo(TypedDict):
 
      # --- NUEVO: MEMORIA DE CONVERSACIÓN ---
     # Es vital para que el agente recuerde lo que se habló.
-    historial_chat: NotRequired[List[Dict[str, str]]]
+    historial_chat: List[Dict[str, str]]
 
     texto_adicional_usuario: Optional[str]
 
     # --- RESULTADOS DE LA CADENA DE PROCESAMIENTO ---
-    resultado_triaje: Optional[Dict[str, Any]]
+    resultado_triaje: str 
     
     
     # Estos campos almacenaran los resultados de los agentes especializados.

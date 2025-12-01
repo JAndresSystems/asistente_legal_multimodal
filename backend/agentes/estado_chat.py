@@ -1,6 +1,7 @@
 # backend/agentes/estado_chat.py
 
-from typing import TypedDict, Optional
+from typing import TypedDict, List, Dict, Any, Optional
+
 
 class EstadoChat(TypedDict):
     """
@@ -19,3 +20,5 @@ class EstadoChat(TypedDict):
 
     # Campo que el agente llenara con su resultado.
     respuesta_agente: Optional[str]
+
+    historial_chat: List[Dict[str, str]]

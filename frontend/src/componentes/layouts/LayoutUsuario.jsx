@@ -7,36 +7,53 @@ import VistaDetalleCaso from '../usuario/VistaDetalleCaso/VistaDetalleCaso';
 import VistaChat from '../usuario/VistaChat/VistaChat';
 import VistaProgresoAnalisis from '../usuario/VistaProgresoAnalisis/VistaProgresoAnalisis';
 
-// --- INICIO DE LA MODIFICACION: Añadir importación para el logout ---
+// (MODIFICACIÓN) Importamos la nueva función de API y el hook de autenticación
 import { useAuth } from '../../contextos/ContextoAutenticacion';
-// --- FIN DE LA MODIFICACION ---
+import { apiCrearCasoInicial } from '../../servicios/api/ciudadano';
 
 function LayoutUsuario() {
   const [vistaActual, setVistaActual] = useState('VISTA_DASHBOARD_USUARIO');
   const [casoId, setCasoId] = useState(null);
   const [agenteActivo, setAgenteActivo] = useState('recepcionista');
   
-  // --- INICIO DE LA MODIFICACION: Añadir lógica para el logout ---
   const { logout } = useAuth();
-  // --- FIN DE LA MODIFICACION ---
 
-  // --- Manejadores de Navegación (Sin cambios en su lógica interna) ---
-  const manejarIrAChat = () => {
-    setAgenteActivo('recepcionista');
-    setVistaActual('VISTA_CHAT');
+  // --- (NUEVA LÓGICA) Manejador para el flujo de registro directo ---
+  const manejarIniciarRegistroDirecto = async () => {
+    try {
+      console.log("LayoutUsuario: Iniciando creación de un nuevo caso...");
+      // 1. Llamamos a la API para crear un caso "esqueleto"
+      const nuevoCaso = await apiCrearCasoInicial();
+      console.log(`LayoutUsuario: Caso creado con éxito. ID: ${nuevoCaso.id}`);
+
+      // 2. Guardamos el ID del nuevo caso
+      setCasoId(nuevoCaso.id);
+      
+      // 3. Configuramos el chat para que inicie en modo triaje
+      setAgenteActivo('triaje_descripcion');
+      
+      // 4. Cambiamos la vista para mostrar el chat
+      setVistaActual('VISTA_CHAT');
+
+    } catch (err) {
+      console.error("LayoutUsuario: Error al crear el caso inicial:", err);
+      // TODO: Mostrar un mensaje de error al usuario en la UI
+    }
   };
+
+  // --- Manejadores de Navegación (Ajustados para el nuevo flujo) ---
   const manejarVerDetalles = (id) => { 
     setCasoId(id); 
     setVistaActual('VISTA_DETALLE_CASO_USUARIO'); 
   };
   const manejarVolverAlDashboard = () => {
-    setAgenteActivo('recepcionista');
+    setAgenteActivo('recepcionista'); // Reseteamos el agente por si acaso
+    setCasoId(null); // Limpiamos el ID del caso
     setVistaActual('VISTA_DASHBOARD_USUARIO');
   };
-  const manejarInicioDeTriaje = () => {
-    setAgenteActivo('triaje_descripcion');
-  };
   const manejarCasoCreado = (id) => {
+    // Esta función ahora es menos crítica, pero la mantenemos por si el chat
+    // necesitara confirmar el ID del caso que ya le pasamos.
     setCasoId(id);
     setAgenteActivo('triaje_evidencias');
   };
@@ -44,7 +61,8 @@ function LayoutUsuario() {
     if (fueAdmisible) {
       setVistaActual('VISTA_PROGRESO_ANALISIS');
     } else {
-      setAgenteActivo('recepcionista');
+      // Si el caso es rechazado, volvemos al dashboard
+      manejarVolverAlDashboard();
     }
   };
   const manejarAnalisisCompletado = () => setVistaActual('VISTA_DETALLE_CASO_USUARIO');
@@ -56,10 +74,13 @@ function LayoutUsuario() {
         return <VistaChat 
           agenteInicial={agenteActivo}
           casoIdActual={casoId}
-          onIniciarTriaje={manejarInicioDeTriaje}
           onCasoCreado={manejarCasoCreado} 
           onTriajeTerminado={manejarAnalisisIniciado} 
-          onVolverAlDashboard={manejarVolverAlDashboard} 
+          onVolverAlDashboard={manejarVolverAlDashboard}
+          onVerInforme={() => manejarVerDetalles(casoId)}
+          // (MODIFICACIÓN) Deshabilitamos el botón de "iniciar" dentro del chat
+          // porque el proceso ya fue iniciado desde el dashboard.
+          mostrarBotonRegistrar={false}
         />;
       
       case 'VISTA_PROGRESO_ANALISIS':
@@ -78,13 +99,13 @@ function LayoutUsuario() {
       case 'VISTA_DASHBOARD_USUARIO':
       default:
         return <DashboardUsuario 
-          onIniciarNuevoCaso={manejarIrAChat} 
+          // (MODIFICACIÓN CLAVE) El botón ahora llama a nuestro nuevo manejador
+          onIniciarNuevoCaso={manejarIniciarRegistroDirecto} 
           onVerDetalles={manejarVerDetalles} 
         />;
     }
   };
 
-  // --- estructura de Layout con cabecera ---
   return (
     <div>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 2rem", backgroundColor: "#005a4b", color: "white" }}>
@@ -96,7 +117,6 @@ function LayoutUsuario() {
       </main>
     </div>
   );
-  
 }
 
 export default LayoutUsuario;
