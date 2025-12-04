@@ -1,10 +1,8 @@
-// frontend/src/componentes/usuario/VistaChat/VistaChat.jsx
-
 import React from 'react';
 import { useChatLogic } from './useChatLogic';
 import './VistaChat.css';
 
-// ... (El componente Sugerencias y SubidorDeEvidencias no cambian, se mantienen igual)
+// Componente auxiliar para sugerencias rápidas
 const Sugerencias = ({ onSugerenciaClick }) => (
     <div className="contenedor-sugerencias">
       <button onClick={() => onSugerenciaClick("¿Qué servicios ofrecen?")} className="boton-sugerencia">¿Qué servicios ofrecen?</button>
@@ -13,6 +11,7 @@ const Sugerencias = ({ onSugerenciaClick }) => (
     </div>
 );
   
+// Componente auxiliar para la gestión de archivos
 const SubidorDeEvidencias = ({ 
     archivos, 
     onSeleccionArchivos, 
@@ -29,36 +28,29 @@ const SubidorDeEvidencias = ({
             archivos.map((archivo, i) => (
               <div key={i} className="archivo-item">
                 <span>{archivo.name}</span>
-                <button 
-                  onClick={() => onEliminarArchivo(i)} 
-                  className="boton-eliminar-archivo"
-                  title="Eliminar archivo"
-                >
-                  &times;
-                </button>
+                <button onClick={() => onEliminarArchivo(i)} className="boton-eliminar-archivo" title="Eliminar">&times;</button>
               </div>
             ))
-          ) : ( <p>Adjunta archivos o graba un audio si es necesario.</p> )}
+          ) : ( <p className="texto-ayuda-subida">Adjunta archivos o graba un audio si es necesario.</p> )}
         </div>
+        
         {audioUrl && ( <div className="reproductor-audio-chat"><audio src={audioUrl} controls /></div> )}
+        
         <div className="botones-evidencia-contenedor">
           <input type="file" id="seleccion-archivo-chat" multiple onChange={onSeleccionArchivos} style={{ display: 'none' }} />
-          <label htmlFor="seleccion-archivo-chat" className="boton-accion-evidencia">Adjuntar Archivo</label>
+          <label htmlFor="seleccion-archivo-chat" className="boton-accion-evidencia">📎 Adjuntar Archivo</label>
           {!grabando ? (
-              <button onClick={onIniciarGrabacion} className="boton-accion-evidencia">Grabar Audio</button>
+              <button onClick={onIniciarGrabacion} className="boton-accion-evidencia">🎤 Grabar Audio</button>
           ) : (
-              <button onClick={onDetenerGrabacion} className="boton-accion-evidencia detener">Detener</button>
+              <button onClick={onDetenerGrabacion} className="boton-accion-evidencia detener">⏹ Detener</button>
           )}
         </div>
       </div>
     );
 };
 
-
-// (MODIFICACIÓN) El componente principal ahora recibe las nuevas props para controlar la visibilidad de los botones.
 function VistaChat({ mostrarBotonRegistrar = true, mostrarBotonVolver = true, ...props }) {
   
-  // Usamos el Hook para obtener toda la logica y el estado.
   const {
     mensajes,
     entradaUsuario,
@@ -70,7 +62,7 @@ function VistaChat({ mostrarBotonRegistrar = true, mostrarBotonVolver = true, ..
     setArchivosParaSubir,
     grabando,
     audioUrl,
-    triajeFinalizado,
+    triajeFinalizado, // Este booleano controla qué interfaz se muestra abajo
     finalDeMensajesRef,
     textareaRef,
     manejarEnvioUnificado,
@@ -83,24 +75,33 @@ function VistaChat({ mostrarBotonRegistrar = true, mostrarBotonVolver = true, ..
   
   const manejarEnvioFormulario = (e) => { e.preventDefault(); manejarEnvioUnificado(); };
 
-  return (
+ return (
     <div className="contenedor-chat">
+      {/* 1. Área de Historial de Mensajes */}
       <div className="historial-mensajes">
         {mensajes.map((mensaje, indice) => (
           <div key={indice} className={`mensaje ${mensaje.autor}`}>
             <p>{mensaje.texto}</p>
           </div>
         ))}
+        
         {modoAgente === 'recepcionista' && mostrarSugerencias && <Sugerencias onSugerenciaClick={manejarClickSugerencia} />}
         
-        {estaProcesando && <div className="mensaje agente"><p>...</p></div>}
+        {estaProcesando && (
+            <div className="mensaje agente">
+                <div className="indicador-escribiendo">
+                    <span>.</span><span>.</span><span>.</span>
+                </div>
+            </div>
+        )}
         <div ref={finalDeMensajesRef} />
       </div>
 
+      {/* 2. Área de Acciones (Condicional) */}
       <div className="area-acciones-chat">
         
         {!triajeFinalizado ? (
-          // ===== ESTADO: CHAT ACTIVO =====
+          // A. MODO ACTIVO: Formulario de chat y subida de archivos
           <>
             {modoAgente === 'triaje_evidencias' && (
               <SubidorDeEvidencias 
@@ -124,13 +125,15 @@ function VistaChat({ mostrarBotonRegistrar = true, mostrarBotonVolver = true, ..
                   rows={1}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); manejarEnvioFormulario(e); } }}
               />
-              <button type="submit" disabled={estaProcesando}>Enviar</button>
+              <button type="submit" disabled={estaProcesando || (entradaUsuario.trim() === '' && archivosParaSubir.length === 0)}>
+                Enviar
+              </button>
             </form>
 
             <div className="contenedor-acciones-secundarias">
               {modoAgente === 'recepcionista' && mostrarBotonRegistrar && (
                 <button onClick={props.onIniciarTriaje} className="boton-principal-iniciar">
-                  Tengo un caso y quiero registrarlo
+                  Registrar Nuevo Caso
                 </button>
               )}
               
@@ -142,24 +145,16 @@ function VistaChat({ mostrarBotonRegistrar = true, mostrarBotonVolver = true, ..
             </div>
           </>
         ) : (
-          // ===== ESTADO: TRIAJE FINALIZADO (LA GUÍA PARA EL USUARIO) =====
+          // B. MODO FINALIZADO: Bloque de éxito (Estilizado vía CSS)
           <div className="triaje-finalizado-info">
-            <h4>¡El primer paso ha finalizado!</h4>
+            <h3>¡Proceso Completado!</h3>
             <p>
-              Su caso ha sido admitido y pre-asignado a nuestro equipo. Toda la información, el estado actual y los resultados de los agentes internos se encuentran en el informe detallado.
+              Su caso ha sido registrado y analizado exitosamente.
             </p>
-            <p><strong>Presione el siguiente botón para continuar.</strong></p>
-            <button 
-              onClick={props.onVerInforme} 
-              className="boton-principal-informe"
-            >
-              Ir al Informe Detallado del Caso
+            
+            <button onClick={props.onVerInforme} className="boton-principal-informe">
+              Ver Informe Final del Caso
             </button>
-             {mostrarBotonVolver && (
-                <button onClick={props.onVolverAlDashboard} className="boton-secundario-volver">
-                  Volver al Panel
-                </button>
-              )}
           </div>
         )}
       </div>

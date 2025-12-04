@@ -1,34 +1,42 @@
-// frontend/src/componentes/VistaChat/useChatLogic.js
-
 import { useState, useEffect, useRef } from 'react';
 import { chatearConAgente, subirEvidencia, analizarCaso } from '../../../servicios/api/ciudadano';
 
-// (MODIFICACIÓN CLAVE) La función 'limpiarYParsearJSON' ya no es necesaria y se elimina.
-
 export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTriajeTerminado }) => {
-  // ... (el resto del hook hasta manejarEnvioUnificado no cambia)
+  
+  // --- Funciones Auxiliares ---
   const obtenerMensajeInicial = (agente) => {
     if (agente === 'triaje_descripcion') {
       return { autor: 'agente', texto: 'He creado un borrador para su caso. Para continuar, por favor describa de la forma más detallada posible los hechos en un solo mensaje.' };
     }
     return { autor: 'agente', texto: '¡Hola! Soy el Asistente Legal virtual. Estoy aquí para resolver tus dudas sobre el Consultorio Jurídico.' };
   };
+
+  // --- Estado del Hook ---
   const [mensajes, setMensajes] = useState([obtenerMensajeInicial(agenteInicial)]);
   const [entradaUsuario, setEntradaUsuario] = useState('');
   const [estaProcesando, setEstaProcesando] = useState(false);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(true);
   const [modoAgente, setModoAgente] = useState(agenteInicial);
+  
+  // Estado para archivos y audio
   const [archivosParaSubir, setArchivosParaSubir] = useState([]);
   const [grabando, setGrabando] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const mediaRecorderRef = useRef(null);
   const chunksDeAudioRef = useRef([]);
+
+  // Estado de finalización
   const [triajeFinalizado, setTriajeFinalizado] = useState(false);
-  const [mostrarBotonInforme, setMostrarBotonInforme] = useState(false);
+  
+  // Refs para UI
   const finalDeMensajesRef = useRef(null);
   const textareaRef = useRef(null);
 
-  useEffect(() => { finalDeMensajesRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [mensajes]);
+  // --- Efectos ---
+  useEffect(() => { 
+    finalDeMensajesRef.current?.scrollIntoView({ behavior: 'smooth' }); 
+  }, [mensajes]);
+
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
@@ -42,10 +50,6 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
   useEffect(() => {
     if (agenteInicial !== modoAgente) {
       setModoAgente(agenteInicial);
-      // if (agenteInicial === 'triaje_evidencias') {
-      //   const nuevoMensaje = { autor: 'agente', texto: 'He recibido la descripción de su caso. Ahora, por favor, adjunte todos los archivos de evidencia que tenga (documentos, imágenes) o grabe un audio con su narración.' };
-      //   setMensajes(anteriores => [...anteriores, nuevoMensaje]);
-      // } elseif...
        if (agenteInicial === 'recepcionista') {
         setTriajeFinalizado(false);
         setMostrarSugerencias(true);
@@ -53,87 +57,120 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
     }
   }, [agenteInicial, modoAgente]);
 
+  // --- LÓGICA PRINCIPAL DE ENVÍO ---
   const manejarEnvioUnificado = async (textoOpcional = null) => {
+    
+    if (triajeFinalizado) return;
+
     const textoAEnviar = (textoOpcional !== null ? textoOpcional : entradaUsuario).trim();
+    
+    // Validaciones básicas
     if (!textoAEnviar && archivosParaSubir.length === 0) return;
+    
     if (modoAgente === 'triaje_descripcion' && textoAEnviar.length < 20) {
-        setMensajes(anteriores => [...anteriores, { autor: 'usuario', texto: textoAEnviar }, { autor: 'agente', texto: 'Por favor, describe tu caso con más detalle para poder ayudarte mejor. Una buena descripción es fundamental.' }]);
+        setMensajes(anteriores => [...anteriores, { autor: 'usuario', texto: textoAEnviar }, { autor: 'agente', texto: 'Por favor, describe tu caso con más detalle (mínimo 20 caracteres) para poder ayudarte mejor.' }]);
         setEntradaUsuario('');
         return;
     }
+
+    // Preparar UI para envío
     if (mostrarSugerencias) setMostrarSugerencias(false);
     setEstaProcesando(true);
-    if (textoAEnviar) { setMensajes(anteriores => [...anteriores, { autor: 'usuario', texto: textoAEnviar }]); }
-    if (archivosParaSubir.length > 0) { const nombres = archivosParaSubir.map(f => f.name).join(', '); setMensajes(anteriores => [...anteriores, { autor: 'usuario', texto: `(Adjuntando archivo(s): ${nombres})` }]);}
+    
+    if (textoAEnviar) { 
+        setMensajes(anteriores => [...anteriores, { autor: 'usuario', texto: textoAEnviar }]); 
+    }
+    
+    if (archivosParaSubir.length > 0) { 
+        const nombres = archivosParaSubir.map(f => f.name).join(', '); 
+        setMensajes(anteriores => [...anteriores, { autor: 'usuario', texto: `(Adjuntando archivo(s): ${nombres})` }]);
+    }
+    
     setEntradaUsuario('');
 
     try {
+      // 1. MODO RECEPCIONISTA (Chat General)
       if (modoAgente === 'recepcionista') {
         const historialParaEnviar = mensajes.slice(0, -1);
         const respuestaDelApi = await chatearConAgente(textoAEnviar, historialParaEnviar);
         
-        // --- INICIO DE LA CORRECCIÓN CLAVE ---
-        // El backend ahora devuelve un objeto plano. Ya no necesitamos acceder a ".respuesta_agente".
-        // La propia 'respuestaDelApi' es el objeto que contiene el texto y la bandera de triaje.
-        const textoRespuesta = respuestaDelApi.respuesta_texto;
-        setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: textoRespuesta }]);
+        setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: respuestaDelApi.respuesta_texto }]);
         
         if (respuestaDelApi.iniciar_triaje) {
-            const mensajeGuia = { autor: 'agente', texto: "Para continuar, por favor utilice el botón 'Registrar Nuevo Caso' en el panel." };
-            setMensajes(anteriores => [...anteriores, mensajeGuia]);
+            setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: "Para continuar, por favor utilice el botón 'Registrar Nuevo Caso' en el panel." }]);
         }
-        // --- FIN DE LA CORRECCIÓN CLAVE ---
       
+      // 2. MODO TRIAJE: DESCRIPCIÓN INICIAL
       } else if (modoAgente === 'triaje_descripcion') {
         const resultadoDelPaso = await analizarCaso(casoIdActual, textoAEnviar);
-        if (resultadoDelPaso.respuesta_para_usuario) { setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: resultadoDelPaso.respuesta_para_usuario }]); }
+        if (resultadoDelPaso.respuesta_para_usuario) { 
+            setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: resultadoDelPaso.respuesta_para_usuario }]); 
+        }
+        // Notificamos al padre que el caso se ha creado/inicializado
         onCasoCreado(casoIdActual);
       
+      // 3. MODO TRIAJE: EVIDENCIAS (El Bucle Principal)
       } else if (modoAgente === 'triaje_evidencias') {
+        
+        // A. Subir archivos primero si existen
         if (archivosParaSubir.length > 0) {
           await Promise.all(archivosParaSubir.map(archivo => subirEvidencia(casoIdActual, archivo)));
           setArchivosParaSubir([]);
           setAudioUrl(null);
         }
+        
+        // B. Enviar texto y detonar análisis
         const resultadoDelPaso = await analizarCaso(casoIdActual, textoAEnviar);
-        if (resultadoDelPaso.respuesta_para_usuario) { setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: resultadoDelPaso.respuesta_para_usuario }]); }
         const flujoTerminado = resultadoDelPaso.flujo_terminado || false;
+
         if (flujoTerminado) {
-            setTriajeFinalizado(true);
             const casoFueAdmitido = resultadoDelPaso.caso_admitido || false;
-            onTriajeTerminado(casoFueAdmitido);
+            
             if (casoFueAdmitido) {
-                setMostrarBotonInforme(true);
+                // CASO ÉXITO: Bloqueamos el chat y mostramos mensaje final
+                const mensajeGuiaFinal = { 
+                    autor: 'agente', 
+                    texto: '¡Buenas noticias! Hemos reunido toda la información necesaria. Su caso ha sido admitido y asignado a nuestro equipo. El chat ha finalizado. Por favor, utilice el botón a continuación para ver el informe.' 
+                };
+                setMensajes(anteriores => [...anteriores, mensajeGuiaFinal]);
+                setTriajeFinalizado(true); // Esto activará el cambio de UI en VistaChat
             } else {
-                // Si fue rechazado, añadimos un mensaje guía general.
-                const mensajeGuia = { autor: 'agente', texto: "Puede volver a su panel o iniciar un nuevo registro si lo desea." };
-                setMensajes(anteriores => [...anteriores, mensajeGuia]);
+                // CASO RECHAZO: Mostramos la razón y sugerimos volver
+                if (resultadoDelPaso.respuesta_para_usuario) { 
+                    setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: resultadoDelPaso.respuesta_para_usuario }]); 
+                }
+                setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: "Puede volver a su panel principal." }]);
             }
-            // --- FIN DE LA CORRECCIÓN CLAVE 2 ---
+            
+            // Notificamos a LayoutUsuario (pero LayoutUsuario NO cambiará la vista si es admisible)
+            onTriajeTerminado(casoFueAdmitido);
+            
+        } else {
+            // FLUJO CONTINÚA: Simplemente mostramos la respuesta del agente
+            if (resultadoDelPaso.respuesta_para_usuario) {
+                setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: resultadoDelPaso.respuesta_para_usuario }]);
+            }
         }
       }
     } catch (error) { 
-      console.error("Error en el proceso de chat unificado:", error);
-      const mensajeError = { autor: 'agente', texto: 'Lo siento, ocurrió un error inesperado al procesar tu solicitud. Por favor, intenta de nuevo.' };
-      setMensajes(anteriores => [...anteriores, mensajeError]);
+      console.error("Error en useChatLogic:", error);
+      setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: 'Ocurrió un error de conexión. Por favor intente nuevamente.' }]);
     }
     
     setEstaProcesando(false);
   };
-  
-  // El resto del archivo (manejarClickSugerencia, manejarEliminarArchivo, grabación, etc.)
-  // no necesita cambios y permanece exactamente igual.
-  
+
+  // --- Manejadores de UI Auxiliares ---
   const manejarClickSugerencia = (texto) => { manejarEnvioUnificado(texto); };
+  
   const manejarEliminarArchivo = (indiceAEliminar) => {
     const archivo = archivosParaSubir[indiceAEliminar];
     if (archivo.name.startsWith('grabacion-') && audioUrl) {
       setAudioUrl(null);
     }
-    setArchivosParaSubir(anteriores => 
-      anteriores.filter((_, indice) => indice !== indiceAEliminar)
-    );
+    setArchivosParaSubir(anteriores => anteriores.filter((_, indice) => indice !== indiceAEliminar));
   };
+
   const iniciarGrabacion = async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -154,28 +191,25 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
         setGrabando(true);
         setAudioUrl(null);
     } catch (error) {
-        console.error("Error al acceder al microfono:", error);
-        alert("No se pudo acceder al microfono.");
+        console.error("Error micrófono:", error);
+        alert("No se pudo acceder al micrófono.");
     }
   };
+
   const detenerGrabacion = () => {
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
       setGrabando(false);
     }
   };
+
   const obtenerPlaceholder = () => {
-    if (modoAgente === 'recepcionista') return "Escribe tu pregunta aqui...";
-    if (modoAgente === 'triaje_descripcion') return "Describe los hechos de tu caso aqui...";
-    if (modoAgente === 'triaje_evidencias' && !triajeFinalizado) return "Responde al agente o adjunta mas archivos y presiona Enviar...";
-    if (triajeFinalizado) return "El proceso ha finalizado. Puede hacer otra pregunta general.";
+    if (modoAgente === 'recepcionista') return "Escribe tu pregunta aquí...";
+    if (modoAgente === 'triaje_descripcion') return "Describe los hechos detalladamente...";
+    if (modoAgente === 'triaje_evidencias' && !triajeFinalizado) return "Responde o adjunta archivos...";
+    if (triajeFinalizado) return "Proceso finalizado.";
     return "";
   };
-
-
-
-
-  
 
   return {
     mensajes,
@@ -189,7 +223,6 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
     grabando,
     audioUrl,
     triajeFinalizado,
-    mostrarBotonInforme,
     finalDeMensajesRef,
     textareaRef,
     manejarEnvioUnificado,

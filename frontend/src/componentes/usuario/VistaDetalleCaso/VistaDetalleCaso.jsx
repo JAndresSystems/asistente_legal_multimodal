@@ -1,5 +1,3 @@
-// Ubicación: C:\react\asistente_legal_multimodal\frontend\src\componentes\usuario\VistaDetalleCaso\VistaDetalleCaso.jsx
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { obtenerDetallesCaso ,  apiDescargarReportePDF, apiCrearNotaUsuario } from '../../../servicios/api';
 import FormularioSubirEvidencia from '../FormularioSubirEvidencia/FormularioSubirEvidencia';
@@ -69,6 +67,36 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
     console.log("Evidencia subida. Refrescando datos del caso...");
     cargarDatosDelCaso();
   };
+
+  // --- FUNCIÓN DE COLORES MEJORADA ---
+  const obtenerEstiloEstado = (estado) => {
+    if (!estado) return {};
+    
+    // Normalizamos el string para que coincida aunque venga con guiones bajos o espacios
+    const estadoNormalizado = estado.toLowerCase().replace('_', ' ');
+
+    switch (estadoNormalizado) {
+      case 'en revision':
+      case 'en_revision':
+        return { backgroundColor: '#17a2b8', color: 'white' }; // Azul Informativo
+      
+      case 'pendiente aceptacion':
+      case 'pendiente_aceptacion':
+        return { backgroundColor: '#ffc107', color: 'black' }; // Amarillo/Naranja (Espera)
+      
+      case 'asignado':
+        return { backgroundColor: '#28a745', color: 'white' }; // Verde (Éxito)
+      
+      case 'rechazado':
+        return { backgroundColor: '#dc3545', color: 'white' }; // Rojo (Error)
+      
+      case 'cerrado':
+        return { backgroundColor: '#6c757d', color: 'white' }; // Gris (Neutro)
+      
+      default:
+        return { backgroundColor: '#e2e6ea', color: '#333' }; // Gris claro por defecto
+    }
+  };
   
   if (estaCargando) return <div className="detalle-contenedor"><p>Cargando información del caso...</p></div>;
   if (error) return <div className="detalle-contenedor"><p className="mensaje-error">{error}</p><button onClick={onVolverAlDashboard}>&larr; Volver</button></div>;
@@ -76,7 +104,6 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
   
   const URL_BASE_BACKEND = "http://127.0.0.1:8000";
 
-  // --- INICIO DE LA MODIFICACIÓN ---
   // Lógica para unificar notas y evidencias en una sola línea de tiempo
   const eventosDocumento = (caso.evidencias || []).map(ev => ({ tipo: 'documento', ...ev }));
   const eventosNota = (caso.notas || []).map(nota => ({ tipo: 'nota', ...nota }));
@@ -86,7 +113,6 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
     const fechaB = b.fecha_creacion ? new Date(b.fecha_creacion) : new Date(0);
     return fechaB - fechaA; // Orden descendente
   });
-  // --- FIN DE LA MODIFICACIÓN ---
 
   return (
     <div className="detalle-contenedor">
@@ -102,7 +128,13 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
       <div className="seccion-detalle">
         <h2>Resumen del Caso</h2>
         <div className="info-resumen">
-          <div className="info-item"><strong>Estado Actual:</strong><span className={`estado-caso ${caso.estado}`}>{caso.estado.replace('_', ' ')}</span></div>
+          {/* APLICAMOS LA FUNCIÓN DE ESTILO AQUÍ */}
+          <div className="info-item">
+            <strong>Estado Actual:</strong>
+            <span className={`estado-caso`} style={obtenerEstiloEstado(caso.estado)}>
+                {caso.estado.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </span>
+          </div>
           <div className="info-item"><strong>Área Asignada:</strong><span>{caso.area_asignada || 'Pendiente'}</span></div>
           <div className="info-item"><strong>Estudiante a Cargo:</strong><span>{caso.estudiante_asignado || 'Pendiente'}</span></div>
           <div className="info-item"><strong>Asesor Supervisor:</strong><span>{caso.asesor_asignado || 'Pendiente'}</span></div>
@@ -114,7 +146,6 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
         <p className="descripcion-hechos">{caso.descripcion_hechos}</p>
       </div>
       
-      {/* --- INICIO DE LA MODIFICACIÓN --- */}
       <div className="seccion-detalle">
         <h2>Línea de Tiempo y Comunicaciones</h2>
         <div className="linea-de-tiempo-usuario">
@@ -148,7 +179,6 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
           {errorNota && <p className="mensaje-error">{errorNota}</p>}
         </form>
       </div>
-      {/* --- FIN DE LA MODIFICACIÓN --- */}
 
       {caso.reporte_consolidado && (
         <div className="seccion-detalle">

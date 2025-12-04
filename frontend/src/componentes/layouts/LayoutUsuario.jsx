@@ -1,4 +1,4 @@
-// C:\react\asistente_legal_multimodal\frontend\src\componentes\layouts\LayoutUsuario.jsx
+//C:\react\asistente_legal_multimodal\frontend\src\componentes\layouts\LayoutUsuario.jsx
 import React, { useState } from 'react';
 
 // Vistas que este layout controla
@@ -7,7 +7,7 @@ import VistaDetalleCaso from '../usuario/VistaDetalleCaso/VistaDetalleCaso';
 import VistaChat from '../usuario/VistaChat/VistaChat';
 import VistaProgresoAnalisis from '../usuario/VistaProgresoAnalisis/VistaProgresoAnalisis';
 
-// (MODIFICACIÓN) Importamos la nueva función de API y el hook de autenticación
+// Contexto y Servicios
 import { useAuth } from '../../contextos/ContextoAutenticacion';
 import { apiCrearCasoInicial } from '../../servicios/api/ciudadano';
 
@@ -18,7 +18,7 @@ function LayoutUsuario() {
   
   const { logout } = useAuth();
 
-  // --- (NUEVA LÓGICA) Manejador para el flujo de registro directo ---
+  // --- Manejador para el flujo de registro directo (Nuevo Flujo) ---
   const manejarIniciarRegistroDirecto = async () => {
     try {
       console.log("LayoutUsuario: Iniciando creación de un nuevo caso...");
@@ -32,39 +32,48 @@ function LayoutUsuario() {
       // 3. Configuramos el chat para que inicie en modo triaje
       setAgenteActivo('triaje_descripcion');
       
-      // 4. Cambiamos la vista para mostrar el chat
+      // 4. Cambiamos la vista para mostrar el chat inmediatamente
       setVistaActual('VISTA_CHAT');
 
     } catch (err) {
       console.error("LayoutUsuario: Error al crear el caso inicial:", err);
-      // TODO: Mostrar un mensaje de error al usuario en la UI
+      alert("Hubo un error al iniciar el caso. Por favor, intente nuevamente.");
     }
   };
 
-  // --- Manejadores de Navegación (Ajustados para el nuevo flujo) ---
+  // --- Manejadores de Navegación ---
   const manejarVerDetalles = (id) => { 
     setCasoId(id); 
     setVistaActual('VISTA_DETALLE_CASO_USUARIO'); 
   };
+
   const manejarVolverAlDashboard = () => {
-    setAgenteActivo('recepcionista'); // Reseteamos el agente por si acaso
+    setAgenteActivo('recepcionista'); // Reseteamos el agente
     setCasoId(null); // Limpiamos el ID del caso
     setVistaActual('VISTA_DASHBOARD_USUARIO');
   };
+
   const manejarCasoCreado = (id) => {
-    // Esta función ahora es menos crítica, pero la mantenemos por si el chat
-    // necesitara confirmar el ID del caso que ya le pasamos.
+    // Mantener sincronizado el ID si el chat lo requiere
     setCasoId(id);
     setAgenteActivo('triaje_evidencias');
   };
+
+  // --- CORRECCIÓN CRÍTICA: Control del Fin del Análisis ---
   const manejarAnalisisIniciado = (fueAdmisible) => {
-    if (fueAdmisible) {
-      setVistaActual('VISTA_PROGRESO_ANALISIS');
-    } else {
-      // Si el caso es rechazado, volvemos al dashboard
+    console.log(`LayoutUsuario: El triaje ha terminado. ¿Fue admisible? ${fueAdmisible}`);
+    
+    // Si el caso es ADMISIBLE, NO cambiamos de vista.
+    // Dejamos que VistaChat muestre el bloque final con el botón "Ver Informe Final".
+    
+    if (!fueAdmisible) {
+      // Solo si el caso es rechazado, devolvemos al usuario al dashboard automáticamente.
+      // Opcionalmente, VistaChat podría manejar esto mostrando un mensaje de rechazo,
+      // pero esta redirección es una salvaguarda segura.
       manejarVolverAlDashboard();
     }
   };
+
   const manejarAnalisisCompletado = () => setVistaActual('VISTA_DETALLE_CASO_USUARIO');
 
   // --- Función para renderizar el contenido principal ---
@@ -77,9 +86,9 @@ function LayoutUsuario() {
           onCasoCreado={manejarCasoCreado} 
           onTriajeTerminado={manejarAnalisisIniciado} 
           onVolverAlDashboard={manejarVolverAlDashboard}
+          // Esta es la conexión clave: El botón "Ver Informe" del chat llamará a esto:
           onVerInforme={() => manejarVerDetalles(casoId)}
-          // (MODIFICACIÓN) Deshabilitamos el botón de "iniciar" dentro del chat
-          // porque el proceso ya fue iniciado desde el dashboard.
+          // Deshabilitamos el botón de registro manual dentro del chat (ya se creó el caso)
           mostrarBotonRegistrar={false}
         />;
       
@@ -99,7 +108,6 @@ function LayoutUsuario() {
       case 'VISTA_DASHBOARD_USUARIO':
       default:
         return <DashboardUsuario 
-          // (MODIFICACIÓN CLAVE) El botón ahora llama a nuestro nuevo manejador
           onIniciarNuevoCaso={manejarIniciarRegistroDirecto} 
           onVerDetalles={manejarVerDetalles} 
         />;
@@ -110,7 +118,9 @@ function LayoutUsuario() {
     <div>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 2rem", backgroundColor: "#005a4b", color: "white" }}>
         <h1>Portal del Ciudadano</h1>
-        <button onClick={logout}>Cerrar Sesión</button>
+        <button onClick={logout} style={{ backgroundColor: "transparent", border: "1px solid white", color: "white", padding: "0.5rem 1rem", cursor: "pointer" }}>
+          Cerrar Sesión
+        </button>
       </header>
       <main>
         {renderizarContenido()}

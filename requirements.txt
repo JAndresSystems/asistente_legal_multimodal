@@ -57,3 +57,4 @@ resend==0.8.0
 langchain-chroma
 
 PyMuPDF
+

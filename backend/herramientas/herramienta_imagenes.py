@@ -1,5 +1,4 @@
 # backend/herramientas/herramienta_imagenes.py
-
 from PIL import Image
 import io
 
@@ -19,21 +18,13 @@ def comprimir_imagen_si_es_necesario(ruta_archivo: str, max_size_kb: int = 512, 
             buffer_en_memoria = io.BytesIO()
             img.save(buffer_en_memoria, format='JPEG', quality=calidad, optimize=True)
             
-            # Si el tamaño de la imagen comprimida es menor que el original, usamos la comprimida
-            # (Esta logica es una simplificacion, para el caso real, siempre la usaremos)
-            # En un futuro, se puede comparar tamaños para ser mas eficiente.
-            
-            # Devolvemos la ruta original, pero la idea es que la proxima funcion
-            # lea los bytes del buffer en lugar del archivo original.
-            # Por simplicidad ahora, vamos a sobrescribir el archivo con su version comprimida
-            
-            ruta_comprimida = f"{ruta_archivo.split('.')[0]}_comprimido.jpg"
-            with open(ruta_comprimida, "wb") as f:
+            # Sobreescribe el archivo original con su version comprimida
+            with open(ruta_archivo, "wb") as f:
                 f.write(buffer_en_memoria.getvalue())
 
-            print(f"--- [COMPRESOR] Imagen {ruta_archivo} comprimida y guardada en {ruta_comprimida}")
-            return ruta_comprimida
+            print(f"--- [COMPRESOR] Imagen {ruta_archivo} comprimida exitosamente")
+            return ruta_archivo
 
     except Exception as e:
-        print(f"--- [COMPRESOR] ADVERTENCIA: No se pudo comprimir la imagen {ruta_archivo}. Error: {e}. Se usara el original.")
+        print(f"--- [COMPRESOR] ADVERTENCIA: No se pudo comprimir la imagen {ruta_archivo}. Error: {e}. Se usará el original.")
         return ruta_archivo

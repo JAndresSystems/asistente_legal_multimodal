@@ -1,5 +1,7 @@
 # backend/agentes/nodos_del_grafo.py
 import json
+import mimetypes # <-- Importante para detectar tipos de archivo
+from pathlib import Path # <-- Para manejar rutas de archivos
 from sqlmodel import Session, select, func
 from typing import Dict, Any, List, Optional
 
@@ -9,9 +11,6 @@ from ..herramientas.herramienta_rag import buscar_en_base_de_conocimiento
 from ..base_de_datos import motor # Eliminamos importaciones no usadas
 from ..api.modelos_compartidos import (
     Caso, Asignacion, Estudiante, Asesor, EstadoCaso, AreaEspecialidad)# Eliminamos importaciones no usadas
-
-
-
 
 def _formatear_historial(historial: List[Dict[str, str]]) -> str:
     """Función utilitaria para convertir el historial en un string legible para el LLM."""
@@ -24,16 +23,50 @@ def _formatear_historial(historial: List[Dict[str, str]]) -> str:
         texto_formateado += f"{rol}: {mensaje.get('texto')}\n"
     return texto_formateado.strip()
 
-
-
-# --- INICIO DEL CAMBIO FINAL Y DEFINITIVO ---
+# --- NUEVA FUNCIÓN DE APOYO PARA ANALIZAR AUDIOS ---
+def _extraer_info_de_audios(rutas_archivos: List[str]) -> str:
+    """
+    Toma una lista de rutas de archivos, identifica los audios,
+    los transcribe y devuelve un string con la información extraída.
+    """
+    info_multimodal = ""
+    for ruta in rutas_archivos:
+        tipo_mime, _ = mimetypes.guess_type(ruta)
+        if tipo_mime and tipo_mime.startswith('audio/'):
+            print(f"--- [FUNCION APOYO] Procesando audio: {ruta}")
+            try:
+                # Usamos la herramienta de análisis de audio para transcribir
+                resultado_audio = analizar_evidencia_con_gemini(
+                    prompt_usuario="Escucha atentamente el audio y proporciona una transcripción completa del contenido hablado. Tambien resume brevemente los puntos clave mencionados, especialmente si se menciona la condición socioeconómica (estrato, Sisbén, etc.).",
+                    archivos_locales=[ruta]
+                )
+                
+                if "error" not in resultado_audio:
+                    transcripcion = resultado_audio.get("transcripcion_completa", "")
+                    resumen_audio = resultado_audio.get("resumen_puntos_clave", "")
+                    if transcripcion:
+                        info_multimodal += f"\n\n[Transcripción de {Path(ruta).name}]: {transcripcion}"
+                        if resumen_audio:
+                            info_multimodal += f"\n[Resumen de {Path(ruta).name}]: {resumen_audio}"
+                        print(f"--- [FUNCION APOYO] Audio transcrito: {Path(ruta).name}")
+                else:
+                    print(f"--- [FUNCION APOYO] ERROR al transcribir audio '{ruta}': {resultado_audio.get('error', 'Error desconocido')}")
+                    
+            except Exception as e:
+                print(f"--- [FUNCION APOYO] ERROR inesperado al procesar audio '{ruta}': {e}")
+    
+    return info_multimodal.lstrip("\n") # Quitamos el salto de línea inicial si no hay info
+# --- FIN DE LA FUNCIÓN DE APOYO ---
 
 # --- INICIO DEL CAMBIO FINAL Y DEFINITIVO ---
 
 def nodo_agente_triaje(estado: dict) -> dict:
     """
     Nodo principal del Agente de Triaje ("Camila").
-    VERSIÓN FUSIONADA CON ESPECIFICIDAD, FLEXIBILIDAD Y TRANSFERENCIA DE MEMORIA.
+    VERSIÓN CORREGIDA: Lógica estricta de validación de hechos y uso de RAG para justificación.
+    MEJORA: Ahora analiza activamente el contenido de los audios para extraer información crítica
+    y la incluye en el contexto del prompt. Tambien analiza imagenes/PDFs buscando documentos clave
+    como Sisben o cedula, actualizando su estado interno y respondiendo explicitamente sobre ellos.
     """
     print("\n--- [AGENTE TRIAJE] Iniciando ejecucion del nodo ---")
     
@@ -42,59 +75,146 @@ def nodo_agente_triaje(estado: dict) -> dict:
     historial_chat = estado.get("historial_chat", [])
     
     ultimo_mensaje_usuario = ""
-    historial_anterior = []
+    # Recuperamos el último mensaje para detectar la intención de cierre
     if historial_chat:
         ultimo_mensaje_usuario = historial_chat[-1].get("texto", "")
-        historial_anterior = historial_chat[:-1]
+
+    # --- ANALISIS ACTIVO DE CONTENIDO MULTIMEDIA (AUDIOS, IMAGENES, PDFs) ---
+    # Procesamos audios para obtener transcripciones y agregarlas al contexto
+    info_audios_extraida = _extraer_info_de_audios(rutas_archivos)
+    
+    # Procesamos imagenes/PDFs buscando info critica (esto es un ejemplo simple)
+    info_documentos_extraida = ""
+    sisben_visto = False
+    cedula_vista = False
+    estrato_detectado = None
+    for ruta in rutas_archivos:
+        tipo_mime, _ = mimetypes.guess_type(ruta)
+        if tipo_mime and (tipo_mime.startswith('image/') or tipo_mime == 'application/pdf'):
+            print(f"--- [AGENTE TRIAJE] Analizando documento: {ruta}")
+            try:
+                # Usamos la herramienta de análisis de documentos para extraer info
+                resultado_doc = analizar_evidencia_con_gemini(
+                    prompt_usuario="Analiza este documento. Si es un certificado del Sisbén, extrae el estrato y el nombre del titular. Si es una cédula, extrae el número y el nombre. Resume brevemente los datos clave.",
+                    archivos_locales=[ruta]
+                )
+                
+                if "error" not in resultado_doc:
+                    tipo_doc_identificado = resultado_doc.get("tipo_documento_identificado", "")
+                    partes_doc = resultado_doc.get("partes_involucradas", [])
+                    resumen_objeto = resultado_doc.get("resumen_del_objeto", "")
+                    
+                    if "Sisbén" in tipo_doc_identificado or "sisben" in resumen_objeto.lower():
+                        sisben_visto = True
+                        # Intentamos extraer el estrato del resumen o de las partes
+                        for parte in partes_doc:
+                            if "estrato" in parte.lower():
+                                import re
+                                match = re.search(r'estrato\s*(\d+)', parte.lower())
+                                if match:
+                                    estrato_detectado = match.group(1)
+                                    break
+                        info_documentos_extraida += f"\n[Documento Analizado: {Path(ruta).name}] Certificado Sisbén detectado. Estrato: {estrato_detectado}. Nombre en documento: {partes_doc[0] if partes_doc else 'No identificado'}. "
+                        print(f"--- [AGENTE TRIAJE] Sisbén detectado en {ruta}, Estrato: {estrato_detectado}")
+                    
+                    elif "Cédula" in tipo_doc_identificado or "Identidad" in resumen_objeto:
+                        cedula_vista = True
+                        info_documentos_extraida += f"\n[Documento Analizado: {Path(ruta).name}] Cédula de ciudadanía detectada. Nombre en documento: {partes_doc[0] if partes_doc else 'No identificado'}. "
+                        print(f"--- [AGENTE TRIAJE] Cédula detectada en {ruta}")
+                    
+                    if resumen_objeto:
+                         info_documentos_extraida += f"\n[Resumen de {Path(ruta).name}]: {resumen_objeto}. "
+                        
+                else:
+                     print(f"--- [AGENTE TRIAJE] ERROR al analizar documento '{ruta}': {resultado_doc.get('error', 'Error desconocido')}")
+                    
+            except Exception as e:
+                print(f"--- [AGENTE TRIAJE] ERROR inesperado al procesar documento '{ruta}': {e}")
+    
+    # Actualizamos la descripción de hechos con la info de los audios y documentos
+    descripcion_hechos_completa = descripcion_hechos
+    if info_audios_extraida:
+        descripcion_hechos_completa += "\n\nInformación extraída de audios:\n" + info_audios_extraida
+        print(f"--- [AGENTE TRIAJE] Descripción de hechos actualizada con info de audios.")
+    if info_documentos_extraida:
+        descripcion_hechos_completa += "\n\nInformación extraída de documentos:\n" + info_documentos_extraida
+        print(f"--- [AGENTE TRIAJE] Descripción de hechos actualizada con info de documentos.")
 
     try:
-        consulta_contexto = f"Reglas de admisibilidad (Ley 2113 de 2021) y documentos para un caso sobre: {descripcion_hechos}"
+        # Construimos una consulta enriquecida para el RAG
+        # Usamos la descripción actualizada que incluye info de audios y documentos
+        consulta_contexto = f"Reglas de admisibilidad (Ley 2113 de 2021) y Requisitos legales y documentos obligatorios para casos de: {descripcion_hechos_completa}"
         contexto_rag = buscar_en_base_de_conocimiento(consulta=consulta_contexto)
         contexto_completo = "\n\n---\n\n".join(contexto_rag)
-        print(f"--- [AGENTE TRIAJE] Contexto legal y documental recuperado de RAG vectorial.")
+        print(f"--- [AGENTE TRIAJE] Contexto legal recuperado (RAG): {len(contexto_rag)} fragmentos.")
     except Exception as e:
         print(f"--- [AGENTE TRIAJE] ERROR: Fallo al buscar en RAG: {e}")
         contexto_completo = "No se pudo recuperar el contexto legal."
 
-    # --- INICIO DE LA REINGENIERÍA FINAL DEL PROMPT ---
+    # --- INICIO DEL PROMPT CORREGIDO Y RAZONADO ---
     prompt_sistema_triaje = f"""
-    Eres "Camila", un agente de IA de triaje en FASE DE PRUEBAS. Tu principio rector es la MÁXIMA FLEXIBILIDAD. NO uses la palabra "oficial".
+    Eres "Camila", un agente de triaje jurídico experto, estricto pero amable. Tu función es determinar si un caso puede ser admitido en un consultorio jurídico según la Ley 2113 de 2021.
 
-    --- CONTEXTO LEGAL Y GUÍA DOCUMENTAL (Tu Guía Maestra) ---
+    --- TUS HERRAMIENTAS DE VERDAD (CONTEXTO LEGAL RAG) ---
     {contexto_completo}
-    --- FIN DEL CONTEXTO LEGAL ---
+    --- FIN CONTEXTO ---
 
-    --- ESTADO ACTUAL DEL CASO (Tu Memoria) ---
-    1.  **Descripción Inicial de los Hechos:** "{descripcion_hechos}"
-    2.  **ÚLTIMO MENSAJE DEL USUARIO (Tu Foco Principal):** "{ultimo_mensaje_usuario}"
-    3.  **Archivos recibidos en esta interacción:** {len(rutas_archivos)} adjuntos.
+    --- INFORMACIÓN EXTRAÍDA DE AUDIOS (si aplica) ---
+    {info_audios_extraida}
+    --- FIN INFORMACIÓN EXTRAÍDA ---
 
-    --- PROCESO DE RAZONAMIENTO JERÁRQUICO (INQUEBRANTABLE) ---
+    --- INFORMACIÓN EXTRAÍDA DE DOCUMENTOS (si aplica) ---
+    {info_documentos_extraida}
+    --- FIN INFORMACIÓN EXTRAÍDA ---
 
-    **REGLA 1 (MÁXIMA PRIORIDAD): MANEJO DE LA DECLARACIÓN FINAL**
-    - Si el usuario dice "no tengo más", "eso es todo", etc., ANULA todas las demás reglas.
-    - **DECISIÓN FORZADA:** Tu "decision_triaje" DEBE SER "ADMISSIBLE".
+    --- ESTADO DEL CASO ---
+    1. Hechos del Caso: "{descripcion_hechos_completa}"
+    2. Archivos Entregados: {len(rutas_archivos)} archivos ({[Path(r).name for r in rutas_archivos]}).
+    3. Lo que acaba de decir el usuario: "{ultimo_mensaje_usuario}"
 
-    **REGLA 2 (PROCESO NORMAL):**
-    *   **SI ES EL PRIMER CONTACTO:** Tu decisión es "FALTA_INFORMACION". USA TU GUÍA PARA LISTAR EXPLÍCITAMENTE los documentos que necesitas (ej. Cédula, Sisbén, recivo de servicios publico). No seas vago.
-    *   **SI ES UNA RESPUESTA DEL USUARIO:** Si sube CUALQUIER archivo, considéralo ENTREGADO. Si ya tienes "algo" para cada documento que pediste, tu decisión DEBE SER "ADMISSIBLE".
+    --- REGLAS DE ADMISIBILIDAD LEGAL (VERIFICA ESTO ESTRUCTURADAMENTE) ---
 
-    --- CAMPO CLAVE PARA EL SIGUIENTE AGENTE (OBLIGATORIO) ---
-    - **hechos_clave:** SI LA DECISIÓN ES "ADMISSIBLE", DEBES crear un resumen corto y preciso de la "Descripción Inicial de los Hechos" para que el siguiente agente pueda clasificar el caso. ESTE CAMPO NO PUEDE ESTAR VACÍO.
+    1. **VALIDACIÓN DE EXISTENCIA (CRÍTICO):**
+    - Si el campo "Hechos del Caso" está VACÍO o es trivial (ej. "hola", "ayuda"), y el usuario dice "no tengo más datos", TU DECISIÓN DEBE SER "NO_ADMISSIBLE".
+    - Razón: No se puede abrir un expediente jurídico sin hechos fácticos.
+    - Mensaje: Explica que sin una narración de los hechos es jurídicamente imposible ayudarle.
 
-    --- FORMATO DE SALIDA OBLIGATORIO (JSON VÁLIDO) ---
+    2. **VERIFICACIÓN DE DOCUMENTOS OBLIGATORIOS:**
+    - Para admisión, se requiere EVIDENCIA de la condición socioeconómica del solicitante (Sisbén o recibo de servicio público).
+    - EVALÚA SI ESTA INFORMACIÓN YA FUE PROPORCIONADA EN LOS DOCUMENTOS ANALIZADOS: Se detectó Sisbén (Estrato {estrato_detectado}) o se mencionó en audios.
+    - EVALÚA SI LA CÉDULA YA FUE VISTA: Se detectó cédula en documentos subidos.
+    - Si NO tienes evidencia de la condición socioeconómica (y no fue detectada arriba) o no tienes la cédula (y no fue detectada arriba), TU DECISIÓN DEBE SER "FALTA_INFORMACION".
+    - Mensaje: "Para poder continuar con su caso, necesitamos que nos proporcione un documento que acredite su condición socioeconómica, como su certificado del Sisbén o un recibo de servicio público (agua, luz, gas) reciente." o "También necesitamos su cédula de ciudadanía.". Incluye explícitamente si ya viste un documento (por ejemplo: "Ya vi el certificado del Sisbén que adjuntó, donde se confirma que es estrato {estrato_detectado}."). Si viste un audio donde dijo su estrato, menciona: "Ya escuché en el audio que usted mencionó ser estrato {estrato_detectado}."
+
+    3. **ANÁLISIS DE CIERRE FORZADO ("No tengo más"):**
+    - Si el usuario indica que NO tiene más pruebas/datos...
+    - ...PERO SÍ tienes hechos claros, al menos 1 documento relevante (contrato, cédula -si fue vista-, etc.) Y evidencia de condición socioeconómica (si fue vista o mencionada), DECISIÓN -> "ADMISSIBLE".
+    - ...Y los hechos son confusos, no hay NINGUNA evidencia obligatoria o falta evidencia de condición socioeconómica (y no fue detectada), DECISIÓN -> "NO_ADMISSIBLE".
+
+    4. **ANÁLISIS DE PROGRESO (Flujo Normal):**
+    - Si tienes hechos claros pero faltan documentos mencionados en tu Contexto Legal (ej. Cédula -si no fue vista-, IPAT, Historia Clínica) o falta evidencia de condición socioeconómica (si no fue detectada), DECISIÓN -> "FALTA_INFORMACION".
+    - Pide Específicamente lo que falta basándote en la ley.
+
+    5. **ANÁLISIS DE CONTENIDO MULTIMEDIA:**
+    - Si hay audios entre los archivos, debes interpretar su contenido para identificar información relevante como la condición socioeconómica del usuario, declaraciones importantes o hechos adicionales.
+    - Si un audio revela que el usuario es de estrato 7 o afirma no tener Sisbén, esto es CRÍTICO para la decisión de admisibilidad.
+
+    --- FORMATO DE RESPUESTA OBLIGATORIO ---
+    DEBES RESPONDER ÚNICAMENTE CON UN OBJETO JSON CON ESTA ESTRUCTURA EXACTA:
     {{
-        "resumen_evidencia": "Descripción CONCISA de los archivos recibidos.",
+        "resumen_evidencia": "Resumen técnico de lo recibido, incluyendo análisis del contenido de audios y documentos si los hubiera. Menciona específicamente si se encontró información sobre condición socioeconómica o cédula en los documentos o audios.",
         "decision_triaje": "ADMISSIBLE | NO_ADMISSIBLE | FALTA_INFORMACION",
-        "justificacion": "Explicación BREVE de tu decisión.",
-        "mensaje_para_usuario": "Mensaje AMIGABLE y CORTO. Si admites el caso, debe ser de aceptación. Si pides documentos, DEBES ser específico.",
-        "hechos_clave": "Resumen CONCISO de los hechos para el siguiente agente. NO PUEDE ESTAR VACÍO SI LA DECISIÓN ES ADMISSIBLE."
+        "justificacion": "Análisis interno técnico citando la ley o el motivo. Debe incluir análisis de condición socioeconómica y fundamentación legal basada en el contexto RAG. NO cites nombres de archivos, sino las leyes y artículos específicos como 'Ley 2113 de 2021, Artículo 8' o 'Ley 2113 de 2021, Capítulo II'. Menciona si se encontró información sobre condición socioeconómica o cédula en los documentos o audios y cómo afectó la decisión.",
+        "mensaje_para_usuario": "EXPLICACIÓN CLARA PARA EL CIUDADANO. Si ACEPTAS: Di 'Tu caso fue aceptado porque [Razón basada en hechos/ley]'. Si RECHAZAS: Di 'No podemos aceptar el caso porque [Razón: faltan hechos/documentos/condición socioeconómica]'. Si PIDE MÁS INFO: Di 'Necesitamos [documento específico] para continuar.' y MENCIONA EXPLÍCITAMENTE si YA SE DETECTÓ ALGUNO (por ejemplo: 'Ya vi el certificado del Sisbén donde se confirma que es estrato {estrato_detectado}.' o 'Ya escuché en el audio que mencionó ser estrato {estrato_detectado}.').",
+        "hechos_clave": "Resumen jurídico de los hechos (MÁX 2 PÁRRAFOS). Si decides ADMISSIBLE, este campo NO puede estar vacío."
     }}
+    NO AGREGUES NADA MÁS QUE EL OBJETO JSON. NO USES MARCADORES DE CÓDIGO. RESPONDE DIRECTAMENTE CON EL JSON.
     """
-    # --- FIN DE LA REINGENIERÍA FINAL DEL PROMPT ---
+    # --- FIN DEL PROMPT ---
     
     try:
         print(f"--- [AGENTE TRIAJE] Invocando herramienta multimodal con {len(rutas_archivos)} archivos...")
+        # La herramienta analiza el prompt (que ahora incluye info de docs/audios) y los archivos
         resultado_analisis = analizar_evidencia_con_gemini(
             prompt_usuario=prompt_sistema_triaje,
             archivos_locales=rutas_archivos
@@ -104,23 +224,37 @@ def nodo_agente_triaje(estado: dict) -> dict:
         if "error" in resultado_analisis:
             raise Exception(f"La herramienta de análisis devolvió un error: {resultado_analisis['error']}")
         
-        # INYECCIÓN DE SEGURIDAD PARA ASEGURAR EL FLUJO
-        if resultado_analisis.get("decision_triaje") == "ADMISSIBLE" and not resultado_analisis.get("hechos_clave"):
-            resultado_analisis["hechos_clave"] = descripcion_hechos[:500]
-            print("--- [AGENTE TRIAJE] ADVERTENCIA: LLM no generó 'hechos_clave'. Usando fallback.")
-            
+        # --- SALVAGUARDA DE COHERENCIA ---
+        decision = resultado_analisis.get("decision_triaje")
+        hechos = resultado_analisis.get("hechos_clave")
+        
+        # Si el agente dice ADMISSIBLE pero no generó hechos (porque estaba vacío), corregimos a NO_ADMISSIBLE
+        if decision == "ADMISSIBLE" and (not hechos or len(hechos) < 10):
+            print("--- [AGENTE TRIAJE] CORRECCIÓN AUTOMÁTICA: Admisible sin hechos -> Cambiando a NO_ADMISSIBLE.")
+            resultado_analisis["decision_triaje"] = "NO_ADMISSIBLE"
+            resultado_analisis["mensaje_para_usuario"] = "He revisado la información, pero no encontré una descripción clara de los hechos del caso. Sin narración de lo sucedido, no podemos proceder legalmente. Por favor, descríbeme qué ocurrió."
+            resultado_analisis["justificacion"] = "Fallo de consistencia: Se intentó admitir un caso sin descripción de hechos válida."
+
+        # Si hay hechos pero el agente olvidó llenarlos en el JSON, usamos el del estado
+        elif decision == "ADMISSIBLE" and not hechos:
+             resultado_analisis["hechos_clave"] = descripcion_hechos_completa
+
         return {"resultado_triaje": resultado_analisis}
 
     except Exception as e:
         print(f"--- [AGENTE TRIAJE] ERROR CRÍTICO en el nodo: {e}")
         resultado_contingencia = {
-            "resumen_evidencia": "Fallo crítico.",
-            "decision_triaje": "NO_ADMISSIBLE",
-            "justificacion": f"Error inesperado: {str(e)}",
-            "mensaje_para_usuario": "Lo siento, encontré un error técnico y no puedo continuar.",
-            "hechos_clave": "Error"
+            "resumen_evidencia": "Error técnico durante el análisis.",
+            "decision_triaje": "FALTA_INFORMACION", # Default seguro: pedir que intente de nuevo
+            "justificacion": f"Excepción no controlada: {str(e)}",
+            "mensaje_para_usuario": "Lo siento, tuve un problema técnico analizando tus archivos. ¿Podrías intentar describir los hechos nuevamente o subir los documentos de uno en uno?",
+            "hechos_clave": ""
         }
         return {"resultado_triaje": resultado_contingencia}
+
+# --- FIN DEL CAMBIO FINAL Y DEFINITIVO ---
+
+# ... (El resto del archivo nodos_del_grafo.py permanece igual) ...
 
 # --- FIN DEL CAMBIO FINAL Y DEFINITIVO ---
 
@@ -466,15 +600,20 @@ def nodo_preparar_respuesta_aceptacion(estado: EstadoDelGrafo) -> Dict[str, Any]
     """
     print("\n--- [AGENTE ACEPTACIÓN] Iniciando ejecucion del nodo ---")
     
-    justificacion_aceptacion = estado.get("resultado_triaje", {}).get("justificacion", "Su caso ha sido admitido.")
+    resultado_triaje = estado.get("resultado_triaje", {})
+    justificacion_aceptacion = resultado_triaje.get("justificacion", "Su caso ha sido admitido.")
+    mensaje_usuario = resultado_triaje.get("mensaje_para_usuario", "")
     
+    # Extraemos la justificación legal específica del agente de triaje
+    # que está basada en la base de datos de conocimiento (Chroma DB)
     mensaje_final_usuario = (
-        f"¡Buenas noticias! {justificacion_aceptacion} "
-        "Hemos reunido toda la información necesaria. A partir de este momento, nuestro equipo interno comenzará el proceso de clasificación y asignación a un estudiante. "
+        f"¡Buenas noticias! {mensaje_usuario} "
+        "Hemos verificado que su caso cumple con los requisitos de admisibilidad según la Ley 2113 de 2021. "
+        "A partir de este momento, nuestro equipo interno comenzará el proceso de clasificación y asignación a un estudiante. "
         "Puede seguir el estado de su caso desde su panel principal."
     )
     
-    print(f"--- [AGENTE ACEPTACIÓN] Mensaje final preparado.")
+    print(f"--- [AGENTE ACEPTACIÓN] Mensaje final preparado basado en justificación legal: {justificacion_aceptacion}")
     
     # Le decimos al frontend que el flujo TERMINÓ y que el caso SÍ fue admitido.
     return {
