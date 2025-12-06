@@ -1,30 +1,27 @@
-//C:\react\asistente_legal_multimodal\frontend\src\componentes\asesor\DashboardAsesor\DashboardAsesor.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-// 1. Importamos la nueva funcion de la API
 import { apiObtenerDashboardAsesor } from '../../../servicios/api';
 import { useAuth } from '../../../contextos/ContextoAutenticacion';
 import styles from './DashboardAsesor.module.css';
 
 const DashboardAsesor = ({ onVerExpediente }) => {
-   const { usuario } = useAuth();
+  const { usuario } = useAuth();
   const [casosSupervisados, setCasosSupervisados] = useState([]);
-  // 2. Añadimos un nuevo estado para las métricas
   const [metricas, setMetricas] = useState([]);
   const [estaCargando, setEstaCargando] = useState(true);
   const [error, setError] = useState(null);
 
-  // 3. Actualizamos la función de carga de datos
+  // --- ESTADO PARA FILTROS ---
+  const [filtroActual, setFiltroActual] = useState('todos'); // 'todos', 'alertas', 'pendientes'
+
   const cargarDashboardData = useCallback(async () => {
     try {
       setEstaCargando(true);
       setError(null);
-      // Llamamos a la nueva función que devuelve el objeto completo
       const data = await apiObtenerDashboardAsesor();
       setCasosSupervisados(data.casos_supervisados);
       setMetricas(data.metricas_carga_trabajo);
     } catch (err) {
-      setError(err.message || "Ocurrió un error al cargar los datos del dashboard.");
-      console.error(err);
+      setError(err.message || "Error cargando dashboard.");
     } finally {
       setEstaCargando(false);
     }
@@ -34,67 +31,111 @@ const DashboardAsesor = ({ onVerExpediente }) => {
     cargarDashboardData();
   }, [cargarDashboardData]);
 
-  if (estaCargando) {
-    return <div className={styles.contenedorCentrado}>Cargando datos del dashboard...</div>;
-  }
+  // --- LÓGICA DE FILTRADO ---
+  const obtenerCasosFiltrados = () => {
+    if (filtroActual === 'alertas') {
+      return casosSupervisados.filter(c => c.tiene_alerta);
+    }
+    if (filtroActual === 'pendientes') {
+      return casosSupervisados.filter(c => c.estado === 'pendiente_aceptacion' || c.estado === 'en_revision');
+    }
+    return casosSupervisados;
+  };
 
-  if (error) {
-    return <div className={`${styles.contenedorCentrado} ${styles.error}`}>{error}</div>;
-  }
+  const casosVisibles = obtenerCasosFiltrados();
+
+  if (estaCargando) return <div className={styles.contenedorCentrado}>Cargando panel de control...</div>;
+  if (error) return <div className={`${styles.contenedorCentrado} ${styles.error}`}>{error}</div>;
 
   return (
     <div className={styles.dashboardContenedor}>
        <div className={styles.saludoContenedor}>
-        <h2 className={styles.titulo}>Bienvenido de nuevo, {usuario?.nombre_completo}</h2>
-        <p className={styles.subtitulo}>Este es su panel de supervisión de casos.</p>
+        <h2 className={styles.titulo}>Bienvenido, Dr. {usuario?.nombre?.split(' ')[0]}</h2>
+        <p className={styles.subtitulo}>Panel de Supervisión y Control.</p>
       </div>
-      <h2 className={styles.titulo}>Casos Asignados al Asesor</h2>
-      
-      {/* 4. Añadimos el nuevo panel de métricas */}
+
+      {/* --- PANEL DE MÉTRICAS --- */}
       <div className={styles.panelMetricas}>
-        <h3>Reporte de Casos</h3>
+        <h3>Carga de Trabajo del Equipo</h3>
         {metricas.length > 0 ? (
           <ul className={styles.listaMetricas}>
-            {metricas.map((metrica, index) => (
-              <li key={index} className={styles.itemMetrica}>
+            {metricas.map((metrica, i) => (
+              <li key={i} className={styles.itemMetrica}>
                 <span className={styles.nombreEstudiante}>{metrica.nombre_estudiante}</span>
-                <span className={styles.cargaTrabajo}>{metrica.casos_asignados} caso(s)</span>
+                <div className={styles.barraProgresoFondo}>
+                    <div 
+                        className={styles.barraProgresoRelleno} 
+                        style={{width: `${Math.min(metrica.casos_asignados * 10, 100)}%`}}
+                    ></div>
+                </div>
+                <span className={styles.cargaTrabajo}>{metrica.casos_asignados} activos</span>
               </li>
             ))}
           </ul>
-        ) : (
-          <p>No hay estudiantes con casos activos bajo su supervisión.</p>
-        )}
+        ) : <p>Sin métricas disponibles.</p>}
       </div>
 
       <div className={styles.panelCasos}>
-        <h3>Detalle de Casos Asignados</h3>
-        {casosSupervisados.length === 0 ? (
-          <p>No hay casos asignados a sus estudiantes en este momento.</p>
+        <div className={styles.cabeceraTabla}>
+            <h3>Expedientes Supervisados</h3>
+            
+            {/* --- BOTONES DE FILTRO --- */}
+            <div className={styles.filtros}>
+                <button 
+                    className={`${styles.btnFiltro} ${filtroActual === 'todos' ? styles.activo : ''}`}
+                    onClick={() => setFiltroActual('todos')}
+                >
+                    Todos ({casosSupervisados.length})
+                </button>
+                <button 
+                    className={`${styles.btnFiltro} ${filtroActual === 'pendientes' ? styles.activo : ''}`}
+                    onClick={() => setFiltroActual('pendientes')}
+                >
+                    Pendientes ({casosSupervisados.filter(c => c.estado === 'pendiente_aceptacion').length})
+                </button>
+                <button 
+                    className={`${styles.btnFiltro} ${filtroActual === 'alertas' ? styles.activo : ''} ${styles.alerta}`}
+                    onClick={() => setFiltroActual('alertas')}
+                >
+                    🚨 Con Alertas ({casosSupervisados.filter(c => c.tiene_alerta).length})
+                </button>
+            </div>
+        </div>
+
+        {casosVisibles.length === 0 ? (
+          <div className={styles.vacio}>No hay casos que coincidan con este filtro.</div>
         ) : (
           <table className={styles.tablaCasos}>
             <thead>
               <tr>
-                <th>ID Caso</th>
-                <th>Estudiante a Cargo</th>
-                <th>Estado del Caso</th>
-                <th>Fecha de Creación</th>
-                <th>Acciones</th>
+                <th>Estado</th>
+                <th>ID</th>
+                <th>Estudiante</th>
+                <th>Etapa</th>
+                <th>Fecha</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
-              {casosSupervisados.map((caso) => (
-                <tr key={caso.id}>
-                  <td>{caso.id}</td>
+              {casosVisibles.map((caso) => (
+                <tr key={caso.id} className={caso.tiene_alerta ? styles.filaAlerta : ''}>
+                  <td className={styles.celdaIcono}>
+                    {caso.tiene_alerta && <span title="¡Atención Requerida!" className={styles.iconoAlerta}>🚨</span>}
+                  </td>
+                  <td>#{caso.id}</td>
                   <td>{caso.nombre_estudiante}</td>
-                  <td>{caso.estado}</td>
+                  <td>
+                    <span className={`${styles.etiquetaEstado} ${styles[caso.estado]}`}>
+                        {caso.estado.replace('_', ' ')}
+                    </span>
+                  </td>
                   <td>{new Date(caso.fecha_creacion).toLocaleDateString()}</td>
                   <td>
                     <button 
                       className={styles.botonAccion}
                       onClick={() => onVerExpediente(caso.id)}
                     >
-                      Ver Expediente
+                      Revisar
                     </button>
                   </td>
                 </tr>

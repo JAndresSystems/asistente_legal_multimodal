@@ -292,6 +292,7 @@ class CasoSupervisadoLectura(SQLModel):
     estado: str
     fecha_creacion: datetime
     nombre_estudiante: str
+    tiene_alerta: bool = False
 
 
 class EstudianteLecturaSimple(SQLModel):

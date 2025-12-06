@@ -200,3 +200,87 @@
   color: #6c757d;
   font-size: 1.1rem;
 }
+
+
+
+
+
+/* --- ESTILOS DE FILTROS Y ALERTAS --- */
+
+.cabeceraTabla {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.filtros {
+    display: flex;
+    gap: 10px;
+}
+
+.btnFiltro {
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    background: white;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.btnFiltro:hover {
+    background: #f0f0f0;
+}
+
+.btnFiltro.activo {
+    background-color: #1c3b57;
+    color: white;
+    border-color: #1c3b57;
+}
+
+.btnFiltro.alerta.activo {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.filaAlerta {
+    background-color: #fff5f5; /* Fondo rojizo suave */
+    border-left: 4px solid #dc3545;
+}
+
+.iconoAlerta {
+    font-size: 1.2rem;
+    animation: palpitar 2s infinite;
+}
+
+.etiquetaEstado {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.etiquetaEstado.pendiente_aceptacion {
+    background-color: #ffc107;
+    color: #333;
+}
+
+.etiquetaEstado.asignado {
+    background-color: #28a745;
+    color: white;
+}
+
+.etiquetaEstado.cerrado {
+    background-color: #6c757d;
+    color: white;
+}
+
+@keyframes palpitar {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}

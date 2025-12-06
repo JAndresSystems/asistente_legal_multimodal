@@ -46,15 +46,13 @@ def obtener_asesor_actual(cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
 @router_asesor.get("/dashboard", response_model=DashboardAsesorData)
 def obtener_dashboard_asesor(
     sesion: Session = Depends(obtener_sesion),
-    # Ahora usamos nuestra nueva dependencia para obtener el asesor de forma segura.
     asesor_actual: Asesor = Depends(obtener_asesor_actual)
 ):
     """
-    Endpoint para que un asesor obtenga los datos de su dashboard:
-    1. La lista de todos los casos que supervisa.
-    2. Las métricas de carga de trabajo de sus estudiantes.
+    Endpoint Dashboard Asesor:
+    Calcula métricas y detecta ALERTAS del sistema en los casos.
     """
-    # Consulta 1: Obtener la lista detallada de casos supervisados
+    # 1. Obtener casos supervisados
     query_casos = (
         select(Caso, Estudiante.nombre_completo)
         .join(Asignacion, Caso.id == Asignacion.id_caso)
@@ -63,12 +61,32 @@ def obtener_dashboard_asesor(
         .order_by(Caso.fecha_creacion.desc())
     )
     resultados_casos = sesion.exec(query_casos).all()
-    casos_supervisados = [
-        CasoSupervisadoLectura(id=c.id, descripcion_hechos=c.descripcion_hechos, estado=c.estado, fecha_creacion=c.fecha_creacion, nombre_estudiante=ne)
-        for c, ne in resultados_casos
-    ]
+    
+    lista_procesada = []
+    
+    # 2. Procesar cada caso para detectar alertas
+    for caso, nombre_est in resultados_casos:
+        # Lógica de detección: Buscamos notas creadas por el sistema (rol='sistema')
+        # que contengan la palabra 'ALERTA' o el emoji.
+        tiene_alerta = False
+        if caso.notas:
+            for nota in caso.notas:
+                if nota.rol_autor == "sistema" and ("ALERTA" in nota.contenido or "🚨" in nota.contenido):
+                    tiene_alerta = True
+                    break
+        
+        lista_procesada.append(
+            CasoSupervisadoLectura(
+                id=caso.id, 
+                descripcion_hechos=caso.descripcion_hechos, 
+                estado=caso.estado, 
+                fecha_creacion=caso.fecha_creacion, 
+                nombre_estudiante=nombre_est,
+                tiene_alerta=tiene_alerta # <--- Aquí inyectamos la bandera
+            )
+        )
 
-    # Consulta 2: Calcular las métricas de carga de trabajo
+    # 3. Métricas (Igual que antes)
     estados_activos = [EstadoCaso.ASIGNADO.value, EstadoCaso.PENDIENTE_ACEPTACION.value]
     query_metricas = (
         select(Estudiante.nombre_completo, func.count(Caso.id).label("total_casos"))
@@ -82,8 +100,7 @@ def obtener_dashboard_asesor(
     metricas_raw = sesion.exec(query_metricas).all()
     metricas = [MetricaEstudiante(nombre_estudiante=nombre, casos_asignados=total) for nombre, total in metricas_raw]
     
-    return DashboardAsesorData(casos_supervisados=casos_supervisados, metricas_carga_trabajo=metricas)
-
+    return DashboardAsesorData(casos_supervisados=lista_procesada, metricas_carga_trabajo=metricas)
 
 @router_asesor.get("/expedientes/{id_caso}", response_model=CasoDetalleUsuario)
 def obtener_detalle_expediente_asesor(
