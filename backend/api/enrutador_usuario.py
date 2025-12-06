@@ -12,8 +12,10 @@ from .modelos_compartidos import (
     Caso, CasoCreacion, Evidencia, Nota, NotaCreacion, NotaLectura, 
     SolicitudAnalisis, Cuenta, CasoLecturaUsuario, EstadoCaso, CasoDetalleUsuario,
     EvidenciaLecturaSimple, CasoLecturaConEvidencias,
-    RespuestaChat
+    RespuestaChat,PreguntaChat 
 )
+
+from ..agentes.agente_orientacion import invocar_agente_orientacion
 from ..tareas import procesar_evidencia_sincrono
 from ..seguridad.jwt_manager import obtener_cuenta_actual
 
@@ -174,12 +176,17 @@ def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_ses
 
 @router.get("/{id_caso}", response_model=CasoDetalleUsuario)
 def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
+    """
+    Obtiene los detalles del caso.
+    MODIFICADO: Incluye filtro de seguridad para que el ciudadano NO vea notas internas.
+    """
     caso = sesion.get(Caso, id_caso)
     if not caso or (not cuenta_actual.usuario or caso.id_usuario != cuenta_actual.usuario.id):
         raise HTTPException(status_code=404, detail="Caso no encontrado o sin permisos.")
 
     respuesta = CasoDetalleUsuario.model_validate(caso)
     
+    # Datos de Asignación
     if caso.asignaciones:
         asignacion = caso.asignaciones[0]
         if asignacion.estudiante:
@@ -189,11 +196,22 @@ def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion),
         if asignacion.asesor:
             respuesta.asesor_asignado = asignacion.asesor.nombre_completo
 
+    # --- BLOQUE DE NOTAS CON FILTRO DE PRIVACIDAD ---
     if caso.notas:
         notas_con_autor = []
         for nota in sorted(caso.notas, key=lambda n: n.fecha_creacion, reverse=True):
+            
+            # --- FILTRO DE SEGURIDAD ---
+            # Si quien consulta es un CIUDADANO (rol='usuario'), 
+            # ocultamos notas de 'estudiante' o 'asesor'.
+            if cuenta_actual.rol == 'usuario' and nota.rol_autor not in ['usuario', 'sistema']:
+                continue 
+            # ---------------------------
+
             nota_api = NotaLectura.model_validate(nota)
             cuenta_autor = sesion.get(Cuenta, nota.id_cuenta_autor)
+            
+            # Formateo del nombre del autor
             if cuenta_autor:
                 if cuenta_autor.rol == 'usuario' and cuenta_autor.usuario:
                     nota_api.autor_nombre = "Tú" if cuenta_autor.id == cuenta_actual.id else cuenta_autor.usuario.nombre
@@ -203,9 +221,11 @@ def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion),
                     nota_api.autor_nombre = f"Estudiante: {cuenta_autor.estudiante.nombre_completo}"
                 elif cuenta_autor.rol == 'sistema':
                     nota_api.autor_nombre = "Sistema"
+            
             notas_con_autor.append(nota_api)
         respuesta.notas = notas_con_autor
     
+    # Datos de Evidencias
     if caso.evidencias:
         evidencias_con_autor = []
         for ev in caso.evidencias:
@@ -341,3 +361,66 @@ def crear_nota_usuario(
     respuesta_api.autor_nombre = caso.usuario.nombre
     
     return respuesta_api
+
+
+
+
+
+
+# --- NUEVO ENDPOINT: CHAT DE ORIENTACIÓN (FALLBACK) ---
+@router.post("/{id_caso}/chat-orientacion", response_model=Dict[str, Any])
+def conversar_con_orientador(
+    id_caso: int,
+    solicitud: PreguntaChat, 
+    sesion: Session = Depends(obtener_sesion),
+    cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
+):
+    # 1. Validar
+    if not cuenta_actual.usuario:
+        raise HTTPException(status_code=403, detail="Acceso denegado.")
+    caso = sesion.get(Caso, id_caso)
+    if not caso or caso.id_usuario != cuenta_actual.usuario.id:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+
+    # 2. Historial Usuario
+    if not caso.historial_conversacion: caso.historial_conversacion = []
+    historial = list(caso.historial_conversacion)
+    
+    historial.append({
+        "autor": "usuario",
+        "texto": solicitud.pregunta,
+        "tipo": "chat_orientacion"
+    })
+    caso.historial_conversacion = historial
+
+    # 3. Invocar al Agente (Detecta si hay queja)
+    respuesta_agente = invocar_agente_orientacion(caso_db=caso, pregunta_usuario=solicitud.pregunta)
+    texto_resp = respuesta_agente.get("respuesta_texto", "Error.")
+    
+    # --- LOGICA DE ALERTA AUTOMÁTICA ---
+    if respuesta_agente.get("escalar_a_admin"):
+        motivo = respuesta_agente.get("motivo_alerta", "Queja de usuario en chat")
+        print(f"⚠️ [ALERTA] Usuario {cuenta_actual.email} solicita atención en caso {id_caso}: {motivo}")
+        
+        # Creamos una NOTA DE SISTEMA visible para asesores/admin
+        nueva_alerta = Nota(
+            id_caso=id_caso,
+            contenido=f"🚨 [ALERTA AUTOMÁTICA DEL CHAT] El usuario ha reportado un problema: '{motivo}'. Se requiere revisión del Asesor.",
+            id_cuenta_autor=cuenta_actual.id, # Vinculado al usuario
+            rol_autor="sistema" # Marcado como sistema para filtrado y visibilidad administrativa
+        )
+        sesion.add(nueva_alerta)
+    # -----------------------------------
+
+    # 4. Guardar Respuesta en Historial
+    historial.append({
+        "autor": "agente_orientacion",
+        "texto": texto_resp,
+        "tipo": "chat_orientacion"
+    })
+    
+    caso.historial_conversacion = historial
+    sesion.add(caso)
+    sesion.commit()
+    
+    return respuesta_agente

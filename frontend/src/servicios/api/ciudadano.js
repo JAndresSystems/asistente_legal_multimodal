@@ -235,3 +235,47 @@ export const apiCrearCasoInicial = async () => {
   // Reutilizamos la función 'crearNuevoCaso' que ya maneja la lógica de fetch.
   return await crearNuevoCaso(datos); 
 };
+
+
+
+export const enviarMensajeOrientacion = async (casoId, pregunta) => {
+  
+  // 1. RECUPERACIÓN CORRECTA DEL TOKEN
+  // CORRECCIÓN: Tu ContextoAutenticacion usa 'authToken'. Lo ponemos de primero.
+  let token = localStorage.getItem('authToken') || localStorage.getItem('token_auth') || localStorage.getItem('token');
+
+  // Diagnóstico en consola (puedes borrarlo después si quieres)
+  console.log("--- DEBUG TOKEN ---");
+  console.log("Token encontrado:", token ? "SÍ (Oculto por seguridad)" : "NO");
+
+  if (!token) {
+    console.error("API Error: No se encontró el token 'authToken' en localStorage.");
+    throw new Error("No hay sesión activa. Por favor recarga la página o inicia sesión.");
+  }
+
+  try {
+    const respuesta = await fetch(`http://127.0.0.1:8000/api/casos/${casoId}/chat-orientacion`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // 2. Enviar el token correctamente
+        'Authorization': `Bearer ${token}` 
+      },
+      body: JSON.stringify({ pregunta: pregunta })
+    });
+
+    if (respuesta.status === 401) {
+        throw new Error("Tu sesión ha expirado. Por favor inicia sesión nuevamente.");
+    }
+
+    if (!respuesta.ok) {
+      const errorData = await respuesta.json();
+      throw new Error(errorData.detail || 'Error interno del servidor');
+    }
+
+    return await respuesta.json();
+  } catch (error) {
+    console.error("Fallo en la petición al orientador:", error);
+    throw error;
+  }
+};
