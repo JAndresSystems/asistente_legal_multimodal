@@ -352,50 +352,72 @@ const handleGenerarDocumento = async (e) => {
         {errorAccion && <p className="error-texto error-accion">{errorAccion}</p>}
         <div className="linea-de-tiempo-contenedor">
           {lineaDeTiempo.length > 0 ? (
-            lineaDeTiempo.map((item, index) => (
-              <div key={`${item.tipo}-${item.id || index}`} className="linea-de-tiempo-item">
-                
-                {item.tipo === 'documento' && (
-                  <>
-                    <span className="icono">📄</span>
-                    <div className="contenido">
-                     <p>
-                        <strong>Documento:</strong> <a href={`${baseURL}${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer">{item.nombre_archivo}</a>
-                      </p>
-                      <small>Subido por: {item.autor_nombre || 'No disponible'}</small>
-                      <div className="documento-acciones">
-                        <span className={`estado-documento estado-${item.estado.replace('_', '-')}`}>{item.estado.replace('_', ' ')}</span>
-                        
-                        {item.estado === 'subido' && (
-                          <button 
-                            onClick={() => handleEnviarParaRevision(item.id)}
-                            className="boton-accion-doc"
-                            disabled={enviandoRevisionId === item.id}
-                          >
-                            {enviandoRevisionId === item.id ? 'Enviando...' : 'Enviar a Revisión'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
+            lineaDeTiempo.map((item, index) => {
+              
+              // --- LÓGICA DE DETECCIÓN ---
+              const esAlerta = item.rol_autor === 'sistema' && (item.contenido.includes('ALERTA') || item.contenido.includes('🚨'));
+              const esNotaInterna = item.tipo === 'nota' && (item.rol_autor === 'asesor' || item.rol_autor === 'estudiante');
+              
+              let claseItem = "linea-de-tiempo-item";
+              if (esAlerta) claseItem += " alerta-sistema";
+              else if (esNotaInterna) claseItem += " nota-interna";
 
-                {item.tipo === 'nota' && (
-                  <>
-                    <span className="icono">📝</span>
-                    <div className="contenido">
-                       <p><strong>
-                        {item.rol_autor === 'sistema' 
-                          ? 'Notificación del Sistema:' 
-                          : `Nota de ${item.autor_nombre || item.rol_autor}:`}
-                      </strong></p>
-                      <p>{item.contenido}</p>
-                      <small>Añadida el {new Date(item.fecha_creacion).toLocaleString('es-CO')}</small>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))
+              return (
+                <div key={`${item.tipo}-${item.id || index}`} className={claseItem}>
+                  
+                  {item.tipo === 'documento' && (
+                    <>
+                      <span className="icono">📄</span>
+                      <div className="contenido">
+                       <p>
+                          <strong>Documento:</strong> <a href={`${baseURL}${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer">{item.nombre_archivo}</a>
+                        </p>
+                        <small>Subido por: {item.autor_nombre || 'No disponible'}</small>
+                        <div className="documento-acciones">
+                          <span className={`estado-documento estado-${item.estado.replace('_', '-')}`}>{item.estado.replace('_', ' ')}</span>
+                          
+                          {item.estado === 'subido' && (
+                            <button 
+                              onClick={() => handleEnviarParaRevision(item.id)}
+                              className="boton-accion-doc"
+                              disabled={enviandoRevisionId === item.id}
+                            >
+                              {enviandoRevisionId === item.id ? 'Enviando...' : 'Enviar a Revisión'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {item.tipo === 'nota' && (
+                    <>
+                      {/* --- ICONO DINÁMICO --- */}
+                      <span className={`icono ${esAlerta ? 'alerta' : ''}`}>
+                        {esAlerta ? '🚨' : (esNotaInterna ? '💬' : '📝')}
+                      </span>
+                      
+                      <div className="contenido">
+                         {esAlerta && <span className="titulo-alerta">⚠️ ATENCIÓN REQUERIDA</span>}
+                         
+                         <p><strong>
+                          {esAlerta 
+                            ? 'Sistema de Monitoreo:' 
+                            : `Nota de ${item.autor_nombre || item.rol_autor}:`}
+                        </strong></p>
+                        
+                        <p>{item.contenido}</p>
+                        
+                        <small>
+                            {new Date(item.fecha_creacion).toLocaleString('es-CO')}
+                            {esNotaInterna && ' (Interno)'}
+                        </small>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })
           ) : <p>No hay documentos ni notas en este expediente.</p>}
         </div>
 
