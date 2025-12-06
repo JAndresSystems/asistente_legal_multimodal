@@ -158,10 +158,10 @@
   border-radius: 8px;
 }
 
-
+/* 
 .resumen {
   
-}
+} */
 
 
 
@@ -368,4 +368,47 @@
   padding: 1rem;
   border-radius: 5px;
   margin-bottom: 1rem;
+}
+
+
+/* --- ESTILOS DE ALERTA DEL SISTEMA --- */
+.itemTimeline.alertaSistema {
+    border-left: 4px solid #dc3545;
+    background-color: #fff5f5;
+    animation: fadeIn 0.5s ease-in;
+}
+
+.iconoAlerta {
+    background-color: #dc3545;
+    color: white;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+}
+
+.tituloAlerta {
+    color: #dc3545;
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+}
+
+/* --- ESTILOS DE NOTAS INTERNAS (Chat Interno) --- */
+.itemTimeline.notaInterna {
+    border-left: 4px solid #17a2b8; /* Azul informativo */
+    background-color: #f0f8ff;
+}
+
+.iconoInterno {
+    background-color: #17a2b8;
+    color: white;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

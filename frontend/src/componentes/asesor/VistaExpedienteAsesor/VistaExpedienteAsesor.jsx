@@ -238,44 +238,71 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
           <h3>Línea de Tiempo del Expediente</h3>
           {errorAccionDoc && <p className={`${styles.error} ${styles.errorAccionDoc}`}>{errorAccionDoc}</p>}
           <div className={styles.lineaDeTiempo}>
-            {expediente.lineaDeTiempo.map((item, index) => (
-              <div key={index} className={styles.itemTimeline}>
-                <div className={`${styles.iconoTimeline} ${item.rol_autor === 'asesor' ? styles.iconoAsesor : ''}`}>
-                  {item.tipo === 'documento' ? '📄' : '📝'}
-                </div>
-                <div className={styles.contenidoItem}>
-                  {item.tipo === 'documento' ? (
-                    <>
-                      <p><strong>Documento:</strong> {item.nombre_archivo}</p>
-                      {/* LÍNEA AÑADIDA: Muestra quién subió el archivo */}
-                      <p className={styles.autorInfo}>Subido por: {item.autor_nombre || 'No disponible'}</p>
-                      <a href={`http://127.0.0.1:8000${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer" className={styles.enlaceDescarga}>Descargar</a>
-                      <div className={styles.documentoEstadoContenedor}>
-                        <span className={`${styles.estadoDocumento} ${styles['estado-' + item.estado.replace('_', '-')]}`}>{item.estado.replace('_', ' ')}</span>
+            {expediente.lineaDeTiempo.map((item, index) => {
+              
+              // --- LÓGICA DE VISUALIZACIÓN INTELIGENTE ---
+              const esAlerta = item.rol_autor === 'sistema' && (item.contenido.includes('ALERTA') || item.contenido.includes('🚨'));
+              const esNotaInterna = item.tipo === 'nota' && (item.rol_autor === 'asesor' || item.rol_autor === 'estudiante');
+              
+              let claseItem = styles.itemTimeline;
+              if (esAlerta) claseItem += ` ${styles.alertaSistema}`;
+              else if (esNotaInterna) claseItem += ` ${styles.notaInterna}`;
+
+              return (
+                <div key={index} className={claseItem}>
+                  
+                  {/* --- ICONO DINÁMICO --- */}
+                  <div className={`${styles.iconoTimeline} ${esAlerta ? styles.iconoAlerta : (esNotaInterna ? styles.iconoInterno : '')}`}>
+                    {esAlerta ? '🚨' : (item.tipo === 'documento' ? '📄' : '💬')}
+                  </div>
+
+                  <div className={styles.contenidoItem}>
+                    {item.tipo === 'documento' ? (
+                      <>
+                        <p><strong>Documento:</strong> {item.nombre_archivo}</p>
+                        <p className={styles.autorInfo}>Subido por: {item.autor_nombre || 'No disponible'}</p>
+                        <a href={`http://127.0.0.1:8000${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer" className={styles.enlaceDescarga}>Descargar</a>
                         
-                        {item.estado === 'en_revision' && (
-                          <div className={styles.botonesRevision}>
-                            <button onClick={() => handleAprobar(item.id)} className={styles.botonAprobar} disabled={procesandoDocId === item.id}>
-                              {procesandoDocId === item.id ? '...' : 'Aprobar'}
-                            </button>
-                            <button onClick={() => handleSolicitarCambios(item.id)} className={styles.botonRechazar} disabled={procesandoDocId === item.id}>
-                              {procesandoDocId === item.id ? '...' : 'Solicitar Cambios'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* LÓGICA MODIFICADA: Muestra el nombre del autor de la nota */}
-                      <p><strong>Nota de {item.autor_nombre || item.rol_autor}:</strong></p>
-                      <p className={styles.contenidoNota}>{item.contenido}</p>
-                      <span className={styles.fechaNota}>Añadida el {new Date(item.fecha).toLocaleString()}</span>
-                    </>
-                  )}
+                        <div className={styles.documentoEstadoContenedor}>
+                          <span className={`${styles.estadoDocumento} ${styles['estado-' + item.estado.replace('_', '-')]}`}>
+                            {item.estado.replace('_', ' ')}
+                          </span>
+                          
+                          {item.estado === 'en_revision' && (
+                            <div className={styles.botonesRevision}>
+                              <button onClick={() => handleAprobar(item.id)} className={styles.botonAprobar} disabled={procesandoDocId === item.id}>
+                                {procesandoDocId === item.id ? '...' : 'Aprobar'}
+                              </button>
+                              <button onClick={() => handleSolicitarCambios(item.id)} className={styles.botonRechazar} disabled={procesandoDocId === item.id}>
+                                {procesandoDocId === item.id ? '...' : 'Solicitar Cambios'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* --- FORMATO DE NOTA/ALERTA --- */}
+                        {esAlerta && <span className={styles.tituloAlerta}>⚠️ ALERTA DE USUARIO</span>}
+                        
+                        <p>
+                            <strong>
+                                {esAlerta ? 'Sistema de Monitoreo' : `Nota de ${item.autor_nombre || item.rol_autor}`}
+                            </strong>
+                        </p>
+                        
+                        <p className={styles.contenidoNota}>{item.contenido}</p>
+                        
+                        <span className={styles.fechaNota}>
+                            {new Date(item.fecha).toLocaleString()} 
+                            {esNotaInterna && ' (Visible solo para equipo interno)'}
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           
           <AsistenteJuridico idCaso={expedienteId} />
