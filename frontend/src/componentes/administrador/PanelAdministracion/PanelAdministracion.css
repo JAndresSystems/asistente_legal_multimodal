@@ -218,3 +218,79 @@
   color: #495057;
   font-size: 1.1rem;
 }
+
+
+
+
+
+/* --- ESTILOS DE PESTAÑAS --- */
+.admin-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 0;
+}
+
+.tab-btn {
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #555;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    color: #333;
+    background-color: #f9f9f9;
+}
+
+.tab-btn.active {
+    color: #005a4b;
+    border-bottom-color: #005a4b;
+    font-weight: bold;
+}
+
+.admin-contenido-pestana {
+    animation: fadeIn 0.3s ease-in;
+}
+
+/* --- BADGES DE ROL --- */
+.badge-rol {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+.badge-rol.estudiante { background-color: #e3f2fd; color: #0d47a1; }
+.badge-rol.asesor { background-color: #fff3e0; color: #e65100; }
+
+/* --- FORM GRID --- */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+.boton-crear-personal {
+    grid-column: span 2;
+    background-color: #005a4b;
+    color: white;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+}
+
+
+.indicador-carga {
+    text-align: center;
+    color: #666;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    font-style: italic;
+}

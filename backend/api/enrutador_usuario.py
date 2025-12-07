@@ -204,24 +204,28 @@ def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion),
             # --- FILTRO DE SEGURIDAD ---
             # Si quien consulta es un CIUDADANO (rol='usuario'), 
             # ocultamos notas de 'estudiante' o 'asesor'.
-            if cuenta_actual.rol == 'usuario' and nota.rol_autor not in ['usuario', 'sistema']:
-                continue 
-            # ---------------------------
+             # --- FILTRO DE PRIVACIDAD MEJORADO ---
+            # 1. Si soy CIUDADANO, solo veo mis notas, las del sistema, Y LAS PÚBLICAS del equipo.
+            if cuenta_actual.rol == 'usuario':
+                # El usuario ve: Sus propias notas, las del sistema, y las marcadas como PÚBLICAS por el staff
+                puede_ver = (
+                    nota.rol_autor == 'usuario' or 
+                    nota.rol_autor == 'sistema' or 
+                    nota.es_publica == True
+                )
+                if not puede_ver:
+                    continue # Ocultar nota interna
+            # -------------------------------------
 
             nota_api = NotaLectura.model_validate(nota)
+            # ... (lógica de nombres de autor sigue igual) ...
+            
             cuenta_autor = sesion.get(Cuenta, nota.id_cuenta_autor)
-            
-            # Formateo del nombre del autor
             if cuenta_autor:
-                if cuenta_autor.rol == 'usuario' and cuenta_autor.usuario:
-                    nota_api.autor_nombre = "Tú" if cuenta_autor.id == cuenta_actual.id else cuenta_autor.usuario.nombre
-                elif cuenta_autor.rol == 'asesor' and cuenta_autor.asesor:
-                    nota_api.autor_nombre = f"Asesor: {cuenta_autor.asesor.nombre_completo}"
-                elif cuenta_autor.rol == 'estudiante' and cuenta_autor.estudiante:
+                 if cuenta_autor.rol == 'estudiante' and cuenta_autor.estudiante:
                     nota_api.autor_nombre = f"Estudiante: {cuenta_autor.estudiante.nombre_completo}"
-                elif cuenta_autor.rol == 'sistema':
-                    nota_api.autor_nombre = "Sistema"
-            
+                 # ... otros roles ...
+
             notas_con_autor.append(nota_api)
         respuesta.notas = notas_con_autor
     

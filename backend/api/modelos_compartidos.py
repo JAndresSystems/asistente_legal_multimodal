@@ -112,8 +112,14 @@ class Nota(SQLModel, table=True):
     id_caso: int = Field(foreign_key="caso.id")
     id_cuenta_autor: int = Field(foreign_key="cuenta.id")
 
+    # 1. Privacidad: Si es True, el Usuario ciudadano puede verla. Si es False, solo equipo interno.
+    es_publica: bool = Field(default=False) # False = Solo equipo interno, True = Visible al usuario
+    id_evidencia: Optional[int] = Field(default=None, foreign_key="evidencia.id") # Para hilos
+
     caso: "Caso" = Relationship(back_populates="notas")
-    autor: "Cuenta" = Relationship()    
+    autor: "Cuenta" = Relationship() 
+     # Relación opcional para acceder al documento padre
+    evidencia: Optional["Evidencia"] = Relationship()
 
 class Caso(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -186,7 +192,9 @@ class NotaCreacion(SQLModel):
     """
     Modelo para validar los datos que llegan al crear una nueva nota.
     """
-    contenido: str    
+    contenido: str
+    es_publica: bool = False # Por defecto es privado (interno)
+    id_evidencia: Optional[int] = None # Opcional, para atar el comentario a un doc
 
 class EvidenciaLectura(SQLModel):
     id: int
@@ -231,6 +239,7 @@ class NotaLectura(SQLModel):
     fecha_creacion: datetime
     rol_autor: str  # Añadido para identificar si es nota de estudiante o asesor
     autor_nombre: Optional[str] = None
+    es_publica: bool = False # <--- AGREGAR ESTO PARA QUE EL FRONTEND LO VEA
     # En el futuro podríamos añadir: autor_nombre: str
 
 

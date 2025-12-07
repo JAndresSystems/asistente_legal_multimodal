@@ -142,16 +142,27 @@ export const apiSubirDocumentoEstudiante = async (idCaso, archivo) => {
   }
 };
 
-export const apiCrearNotaEstudiante = async (idCaso, contenido) => {
-  console.log(`API: Estudiante creando nota en el caso ${idCaso}`);
-  const cuerpoDeLaPeticion = { contenido: contenido };
+/**
+ * Permite al estudiante crear una nota.
+ * Ahora soporta el parámetro 'esPublica' para definir si el usuario puede verla.
+ */
+export const apiCrearNotaEstudiante = async (idCaso, contenido, esPublica = false) => {
+  console.log(`API: Estudiante creando nota en el caso ${idCaso}. Pública: ${esPublica}`);
+  
+  // Construimos el cuerpo con el nuevo campo
+  const cuerpoDeLaPeticion = { 
+      contenido: contenido,
+      es_publica: esPublica 
+  };
+
   try {
-    // MODIFICACION: Se añade /api
+    // Usamos URL_BASE_BACKEND como en tu código original
     const respuesta = await fetch(`${URL_BASE_BACKEND}/api/expedientes/${idCaso}/crear-nota`, {
       method: 'POST',
-      headers: obtenerCabeceras(),
+      headers: obtenerCabeceras(), // Usamos tu función helper para los headers/token
       body: JSON.stringify(cuerpoDeLaPeticion),
     });
+
     if (!respuesta.ok) {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);

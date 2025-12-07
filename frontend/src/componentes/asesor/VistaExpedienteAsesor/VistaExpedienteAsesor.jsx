@@ -257,34 +257,40 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
           <div className={styles.lineaDeTiempo}>
             {expediente.lineaDeTiempo.map((item, index) => {
               
-              // --- LÓGICA DE VISUALIZACIÓN INTELIGENTE ---
+              // --- LÓGICA DE VISUALIZACIÓN MEJORADA ---
               const esAlerta = item.rol_autor === 'sistema' && (item.contenido.includes('ALERTA') || item.contenido.includes('🚨'));
-              const esNotaInterna = item.tipo === 'nota' && (item.rol_autor === 'asesor' || item.rol_autor === 'estudiante');
               
+              // Verificamos si es una nota creada por el equipo (Estudiante o Asesor)
+              const esNotaEquipo = item.tipo === 'nota' && (item.rol_autor === 'asesor' || item.rol_autor === 'estudiante');
+              
+              // Diferenciamos Pública vs Privada
+              const esPublica = item.es_publica === true;
+
               let claseItem = styles.itemTimeline;
-              if (esAlerta) claseItem += ` ${styles.alertaSistema}`;
-              else if (esNotaInterna) claseItem += ` ${styles.notaInterna}`;
+              if (esAlerta) {
+                  claseItem += ` ${styles.alertaSistema}`;
+              } else if (esNotaEquipo) {
+                  // Si es pública le ponemos una clase, si es privada otra
+                  claseItem += esPublica ? ` ${styles.notaPublica}` : ` ${styles.notaInterna}`;
+              }
 
               return (
                 <div key={index} className={claseItem}>
                   
                   {/* --- ICONO DINÁMICO --- */}
-                  <div className={`${styles.iconoTimeline} ${esAlerta ? styles.iconoAlerta : (esNotaInterna ? styles.iconoInterno : '')}`}>
-                    {esAlerta ? '🚨' : (item.tipo === 'documento' ? '📄' : '💬')}
+                  <div className={`${styles.iconoTimeline} ${esAlerta ? styles.iconoAlerta : (esNotaEquipo ? (esPublica ? styles.iconoPublico : styles.iconoInterno) : '')}`}>
+                    {esAlerta ? '🚨' : (item.tipo === 'documento' ? '📄' : (esPublica ? '📢' : '🔒'))}
                   </div>
 
                   <div className={styles.contenidoItem}>
                     {item.tipo === 'documento' ? (
+                      /* ... (El bloque de documento se mantiene igual) ... */
                       <>
                         <p><strong>Documento:</strong> {item.nombre_archivo}</p>
                         <p className={styles.autorInfo}>Subido por: {item.autor_nombre || 'No disponible'}</p>
                         <a href={`http://127.0.0.1:8000${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer" className={styles.enlaceDescarga}>Descargar</a>
-                        
                         <div className={styles.documentoEstadoContenedor}>
-                          <span className={`${styles.estadoDocumento} ${styles['estado-' + item.estado.replace('_', '-')]}`}>
-                            {item.estado.replace('_', ' ')}
-                          </span>
-                          
+                          <span className={`${styles.estadoDocumento} ${styles['estado-' + item.estado.replace('_', '-')]}`}>{item.estado.replace('_', ' ')}</span>
                           {item.estado === 'en_revision' && (
                             <div className={styles.botonesRevision}>
                               <button onClick={() => handleAprobar(item.id)} className={styles.botonAprobar} disabled={procesandoDocId === item.id}>
@@ -299,12 +305,28 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
                       </>
                     ) : (
                       <>
-                        {/* --- FORMATO DE NOTA/ALERTA --- */}
+                        {/* --- FORMATO DE NOTA CORREGIDO --- */}
                         {esAlerta && <span className={styles.tituloAlerta}>⚠️ ALERTA DE USUARIO</span>}
                         
                         <p>
                             <strong>
-                                {esAlerta ? 'Sistema de Monitoreo' : `Nota de ${item.autor_nombre || item.rol_autor}`}
+                                {esAlerta 
+                                    ? 'Sistema de Monitoreo' 
+                                    : `Nota de ${item.autor_nombre || item.rol_autor}`}
+                                
+                                {/* Etiqueta visual al lado del nombre */}
+                                {esNotaEquipo && (
+                                    <span style={{
+                                        fontSize: '0.8rem', 
+                                        marginLeft: '10px', 
+                                        padding: '2px 6px', 
+                                        borderRadius: '4px',
+                                        backgroundColor: esPublica ? '#d4edda' : '#cce5ff',
+                                        color: esPublica ? '#155724' : '#004085'
+                                    }}>
+                                        {esPublica ? 'VISIBLE AL USUARIO' : 'INTERNO / PRIVADO'}
+                                    </span>
+                                )}
                             </strong>
                         </p>
                         
@@ -312,7 +334,6 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
                         
                         <span className={styles.fechaNota}>
                             {new Date(item.fecha).toLocaleString()} 
-                            {esNotaInterna && ' (Visible solo para equipo interno)'}
                         </span>
                       </>
                     )}

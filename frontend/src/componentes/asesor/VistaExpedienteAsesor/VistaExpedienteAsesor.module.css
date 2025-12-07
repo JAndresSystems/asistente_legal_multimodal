@@ -484,3 +484,27 @@
     border-radius: 6px;
     cursor: pointer;
 }
+
+
+
+/* --- ESTILOS DE VISIBILIDAD --- */
+
+/* Nota Privada (Azul) */
+.itemTimeline.notaInterna {
+    border-left: 4px solid #17a2b8;
+    background-color: #f0f8ff;
+}
+.iconoInterno {
+    background-color: #17a2b8;
+    color: white;
+}
+
+/* Nota Pública (Verde) */
+.itemTimeline.notaPublica {
+    border-left: 4px solid #28a745;
+    background-color: #f0fff4;
+}
+.iconoPublico {
+    background-color: #28a745;
+    color: white;
+}

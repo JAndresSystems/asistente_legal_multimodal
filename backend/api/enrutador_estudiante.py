@@ -187,20 +187,18 @@ def subir_documento_estudiante(
 
 
 
+
+
 @router.post("/{id_caso}/crear-nota", response_model=NotaLectura, status_code=status.HTTP_201_CREATED)
 def crear_nota_estudiante(
     id_caso: int,
-    solicitud: NotaCreacion,
+    solicitud: NotaCreacion, # Ahora recibe es_publica
     sesion: Session = Depends(obtener_sesion),
     cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
 ):
-    """
-    Permite a un estudiante añadir una nota de texto a un caso que ha aceptado.
-    """
     if not cuenta_actual.estudiante:
         raise HTTPException(status_code=403, detail="Solo los estudiantes pueden crear notas.")
 
-    # Validacion de seguridad: El estudiante debe estar asignado y haber aceptado el caso.
     asignacion = sesion.exec(
         select(Asignacion).where(
             Asignacion.id_caso == id_caso,
@@ -211,17 +209,26 @@ def crear_nota_estudiante(
     if not asignacion:
         raise HTTPException(status_code=403, detail="No tiene permiso para añadir notas a este caso.")
 
-    # Creación del objeto Nota en la base de datos
     nueva_nota = Nota(
         id_caso=id_caso,
         contenido=solicitud.contenido,
-        id_cuenta_autor=cuenta_actual.id
+        id_cuenta_autor=cuenta_actual.id,
+        rol_autor="estudiante", # Se marca como estudiante
+        es_publica=solicitud.es_publica, # <--- GUARDAMOS LA PRIVACIDAD
+        id_evidencia=solicitud.id_evidencia
     )
     sesion.add(nueva_nota)
     sesion.commit()
     sesion.refresh(nueva_nota)
     
-    return nueva_nota
+    # Mapeo manual para la respuesta
+    return NotaLectura(
+        id=nueva_nota.id,
+        contenido=nueva_nota.contenido,
+        fecha_creacion=nueva_nota.fecha_creacion,
+        rol_autor=nueva_nota.rol_autor,
+        autor_nombre="Tú"
+    )
 
 
 

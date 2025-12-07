@@ -125,7 +125,7 @@ const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
   const [errorAccion, setErrorAccion] = useState('');
 
   const [descargandoPDF, setDescargandoPDF] = useState(false);
-
+const [destinatarioNota, setDestinatarioNota] = useState('asesor'); // 'asesor' (privado) o 'usuario' (público)
   // const [asuntoNotificacion, setAsuntoNotificacion] = useState('');
   // const [mensajeNotificacion, setMensajeNotificacion] = useState('');
   // const [enviandoNotificacion, setEnviandoNotificacion] = useState(false);
@@ -228,24 +228,27 @@ const handleGenerarDocumento = async (e) => {
 
 
 
-  const handleCrearNota = async (e) => {
+const handleCrearNota = async (e) => {
     e.preventDefault();
-    if (!nuevaNota.trim()) {
-      setErrorNota("La nota no puede estar vacía.");
-      return;
-    }
+    if (!nuevaNota.trim()) return;
+    
     setCargandoNota(true);
-    setErrorNota('');
+    // Determinamos si es pública basándonos en el destinatario
+    const esPublica = destinatarioNota === 'usuario';
+    
     try {
-      await apiCrearNotaEstudiante(expedienteId, nuevaNota);
-      setNuevaNota(''); // Limpiar el textarea
-      await cargarExpediente(); // Refrescar la línea de tiempo
+      // Nota: apiCrearNotaEstudiante debe actualizarse para recibir el 3er parametro (esPublica)
+      // O pasar un objeto. Vamos a actualizar la llamada API primero.
+      await apiCrearNotaEstudiante(expedienteId, nuevaNota, esPublica); 
+      
+      setNuevaNota(''); 
+      await cargarExpediente();
     } catch (err) {
-      setErrorNota(err.message || 'Ocurrió un error al guardar la nota.');
+      setErrorNota(err.message);
     } finally {
       setCargandoNota(false);
     }
-  };
+};
 
 
   const handleEnviarParaRevision = async (idEvidencia) => {
@@ -435,19 +438,43 @@ const handleGenerarDocumento = async (e) => {
             {errorSubida && <p className="error-texto">{errorSubida}</p>}
           </form>
 
-          <form onSubmit={handleCrearNota} className="formulario-accion">
-            <h4>Añadir Nota</h4>
-            <textarea 
-              value={nuevaNota} 
-              onChange={(e) => setNuevaNota(e.target.value)} 
-              placeholder="Escriba su nota de seguimiento aquí..." 
-              disabled={cargandoNota} 
-            />
-            <button type="submit" disabled={cargandoNota}>
-              {cargandoNota ? 'Guardando...' : 'Guardar Nota'}
-            </button>
-            {errorNota && <p className="error-texto">{errorNota}</p>}
-          </form>
+          <form onSubmit={handleCrearNota} className="formulario-accion nota-box">
+        <h4>Redactar Mensaje</h4>
+        
+        {/* --- SELECTOR DE DESTINATARIO --- */}
+        <div className="selector-destinatario">
+            <label>Para:</label>
+            <div className="toggle-group">
+                <button 
+                    type="button"
+                    className={`toggle-btn ${destinatarioNota === 'asesor' ? 'active privado' : ''}`}
+                    onClick={() => setDestinatarioNota('asesor')}
+                >
+                    🔒 Asesor (Interno)
+                </button>
+                <button 
+                    type="button"
+                    className={`toggle-btn ${destinatarioNota === 'usuario' ? 'active publico' : ''}`}
+                    onClick={() => setDestinatarioNota('usuario')}
+                >
+                    📢 Usuario (Público)
+                </button>
+            </div>
+        </div>
+        {/* ------------------------------- */}
+
+        <textarea 
+          value={nuevaNota} 
+          onChange={(e) => setNuevaNota(e.target.value)} 
+          placeholder={destinatarioNota === 'asesor' ? "Nota interna para el supervisor..." : "Mensaje visible para el ciudadano..."}
+          disabled={cargandoNota} 
+          rows={4}
+        />
+        <button type="submit" disabled={cargandoNota} className={`btn-enviar ${destinatarioNota}`}>
+          {cargandoNota ? 'Enviando...' : `Enviar a ${destinatarioNota === 'usuario' ? 'Ciudadano' : 'Asesor'}`}
+        </button>
+        {errorNota && <p className="error-texto">{errorNota}</p>}
+      </form>
 
           {/* <form onSubmit={handleEnviarNotificacion} className="formulario-accion">
             <h4>Enviar Notificación al Usuario por Email</h4>
