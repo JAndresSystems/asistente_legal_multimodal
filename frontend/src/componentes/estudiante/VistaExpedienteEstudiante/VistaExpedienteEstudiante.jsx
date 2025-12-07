@@ -397,23 +397,39 @@ const handleCrearNota = async (e) => {
                     <>
                       {/* --- ICONO DINÁMICO --- */}
                       <span className={`icono ${esAlerta ? 'alerta' : ''}`}>
-                        {esAlerta ? '🚨' : (esNotaInterna ? '💬' : '📝')}
+                        {esAlerta ? '🚨' : (item.es_publica ? '📢' : '🔒')} 
+                        {/* 🔒 = Privado, 📢 = Público */}
                       </span>
                       
                       <div className="contenido">
                          {esAlerta && <span className="titulo-alerta">⚠️ ATENCIÓN REQUERIDA</span>}
                          
-                         <p><strong>
-                          {esAlerta 
-                            ? 'Sistema de Monitoreo:' 
-                            : `Nota de ${item.autor_nombre || item.rol_autor}:`}
-                        </strong></p>
+                         <p>
+                            <strong>
+                              {esAlerta ? 'Sistema:' : `Nota de ${item.autor_nombre || item.rol_autor}`}
+                              
+                              {/* ETIQUETA VISUAL */}
+                              {!esAlerta && (
+                                <span style={{
+                                    fontSize: '0.75rem', 
+                                    marginLeft: '8px', 
+                                    padding: '2px 6px', 
+                                    borderRadius: '4px',
+                                    backgroundColor: item.es_publica ? '#d4edda' : '#e2e3e5',
+                                    color: item.es_publica ? '#155724' : '#383d41',
+                                    border: '1px solid',
+                                    borderColor: item.es_publica ? '#c3e6cb' : '#d6d8db'
+                                }}>
+                                    {item.es_publica ? 'PÚBLICO (Visible al Usuario)' : 'INTERNO (Privado)'}
+                                </span>
+                              )}
+                            </strong>
+                         </p>
                         
                         <p>{item.contenido}</p>
                         
                         <small>
                             {new Date(item.fecha_creacion).toLocaleString('es-CO')}
-                            {esNotaInterna && ' (Interno)'}
                         </small>
                       </div>
                     </>

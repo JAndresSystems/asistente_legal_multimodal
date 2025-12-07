@@ -58,25 +58,36 @@ class PDF(FPDF):
 
 
 
-@router.get("/mis-asignaciones", response_model=List[CasoLecturaUsuario])
+@router.get("/mis-asignaciones", response_model=List[CasoEstudianteDashboard])
 def obtener_mis_asignaciones(sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
     if not hasattr(cuenta_actual, 'estudiante') or not cuenta_actual.estudiante:
         raise HTTPException(status_code=403, detail="Esta cuenta no tiene un perfil de estudiante asociado.")
     
     id_estudiante = cuenta_actual.estudiante.id
     
-    # Modificacion: Ahora obtenemos los casos de todas las asignaciones, sin importar su estado.
-    # El frontend se encargara de diferenciar entre 'pendiente' y 'aceptado'.
+    # Obtenemos las asignaciones (que contienen la nota)
     asignaciones = sesion.exec(
         select(Asignacion).where(Asignacion.id_estudiante == id_estudiante)
     ).all()
 
-    if not asignaciones:
-        return []
-        
-    ids_casos = [asig.id_caso for asig in asignaciones]
-    casos = sesion.exec(select(Caso).where(Caso.id.in_(ids_casos)).order_by(Caso.fecha_creacion.desc())).all()
-    return casos
+    resultados = []
+    for asig in asignaciones:
+        caso = sesion.get(Caso, asig.id_caso)
+        if caso:
+            resultados.append(
+                CasoEstudianteDashboard(
+                    id=caso.id,
+                    fecha_creacion=caso.fecha_creacion,
+                    estado=caso.estado,
+                    descripcion_hechos=caso.descripcion_hechos,
+                    # Extraemos la nota de la asignación
+                    calificacion=asig.calificacion,
+                    comentario_docente=asig.comentario_docente
+                )
+            )
+            
+    # Ordenamos por fecha descendente
+    return sorted(resultados, key=lambda x: x.fecha_creacion, reverse=True)
 
 
 

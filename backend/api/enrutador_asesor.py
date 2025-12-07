@@ -163,7 +163,8 @@ def obtener_detalle_expediente_asesor(
                 contenido=nota.contenido,
                 fecha_creacion=nota.fecha_creacion,
                 rol_autor=nota.rol_autor,
-                autor_nombre=autor_nombre
+                autor_nombre=autor_nombre,
+                es_publica=nota.es_publica 
             )
         )
     respuesta.notas = sorted(notas_enriquecidas, key=lambda n: n.fecha_creacion, reverse=True)

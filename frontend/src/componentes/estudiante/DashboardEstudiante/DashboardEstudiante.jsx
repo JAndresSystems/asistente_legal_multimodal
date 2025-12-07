@@ -1,7 +1,4 @@
-// frontend/src/componentes/estudiante/DashboardEstudiante/DashboardEstudiante.jsx
-
 import React, { useState, useEffect, useCallback } from 'react';
-
 import { apiObtenerMisAsignaciones, apiAceptarAsignacion, apiRechazarAsignacion } from '../../../servicios/api';
 import { useAuth } from '../../../contextos/ContextoAutenticacion';
 import './DashboardEstudiante.css';
@@ -11,11 +8,8 @@ function DashboardEstudiante({ onVerExpediente }) {
   const [listaDeCasos, setListaDeCasos] = useState([]);
   const [estaCargando, setEstaCargando] = useState(true);
   const [error, setError] = useState(null);
-  // ---Estado para manejar acciones en curso ---
-  const [procesandoId, setProcesandoId] = useState(null); // Guarda el ID del caso que se está aceptando/rechazando
+  const [procesandoId, setProcesandoId] = useState(null); 
   
-
-  // ---  carga de datos reutilizable ---
   const cargarAsignaciones = useCallback(async () => {
     try {
       setEstaCargando(true);
@@ -23,7 +17,7 @@ function DashboardEstudiante({ onVerExpediente }) {
       setListaDeCasos(casosAsignados);
     } catch (err) {
       console.error("Error al cargar las asignaciones:", err);
-      setError("No se pudieron cargar sus casos asignados. Verifique que su perfil de estudiante esté activo.");
+      setError("No se pudieron cargar sus casos asignados.");
     } finally {
       setEstaCargando(false);
     }
@@ -33,17 +27,13 @@ function DashboardEstudiante({ onVerExpediente }) {
     cargarAsignaciones();
   }, [cargarAsignaciones]);
   
-
-  // --- Funciones para manejar las acciones ---
   const handleAceptar = async (idCaso) => {
     setProcesandoId(idCaso);
     try {
       await apiAceptarAsignacion(idCaso);
-      // Recargamos la lista para que se actualice el estado del caso
       cargarAsignaciones();
     } catch (err) {
-      console.error("Error al aceptar el caso:", err);
-      setError(`Error al aceptar el caso ${idCaso}. Por favor, intente de nuevo.`);
+      alert(`Error: ${err.message}`);
     } finally {
       setProcesandoId(null);
     }
@@ -53,16 +43,25 @@ function DashboardEstudiante({ onVerExpediente }) {
     setProcesandoId(idCaso);
     try {
       await apiRechazarAsignacion(idCaso);
-      // Recargamos la lista para que el caso desaparezca o cambie de estado
       cargarAsignaciones();
     } catch (err) {
-      console.error("Error al rechazar el caso:", err);
-      setError(`Error al rechazar el caso ${idCaso}. Por favor, intente de nuevo.`);
+      alert(`Error: ${err.message}`);
     } finally {
       setProcesandoId(null);
     }
   };
 
+  // --- FUNCIÓN AUXILIAR PARA RENDERIZAR ESTRELLAS ---
+  const renderizarEstrellas = (calificacion) => {
+    if (!calificacion) return <span className="sin-calificacion">-</span>;
+    // Crea un array de N elementos y los mapea a estrellas
+    return (
+        <span className="estrellas">
+            {"★".repeat(calificacion)}
+            {"☆".repeat(5 - calificacion)}
+        </span>
+    );
+  };
 
   if (estaCargando && listaDeCasos.length === 0) {
     return <div className="dashboard-estudiante-contenedor"><p>Cargando sus asignaciones...</p></div>;
@@ -74,8 +73,8 @@ function DashboardEstudiante({ onVerExpediente }) {
   return (
     <div className="dashboard-estudiante-contenedor">
       <div className="dashboard-saludo">
-        <h2>Bienvenido de nuevo, {usuario?.nombre_completo}</h2>
-        <p>A continuación se muestran los casos pendientes y los que tiene a su cargo.</p>
+        <h2>Bienvenido, {usuario?.nombre_completo}</h2>
+        <p>Gestión académica y operativa de casos.</p>
       </div>
       <div className="dashboard-cabecera">
         <h1>Panel de Casos</h1>
@@ -87,22 +86,38 @@ function DashboardEstudiante({ onVerExpediente }) {
         <table className="tabla-casos-estudiante">
           <thead>
             <tr>
-              <th>ID Caso</th>
-              <th>Fecha de Creación</th>
+              <th>ID</th>
+              <th>Fecha</th>
               <th>Estado</th>
+              {/* --- NUEVA COLUMNA --- */}
+              <th>Evaluación</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {listaDeCasos.map((caso) => (
-              <tr key={caso.id}>
-                <td>{caso.id}</td>
+              <tr key={caso.id} className={caso.estado === 'cerrado' ? 'fila-cerrada' : ''}>
+                <td>#{caso.id}</td>
                 <td>{new Date(caso.fecha_creacion).toLocaleDateString('es-ES')}</td>
                 <td>
-                  <span className={`estado-caso estado-${caso.estado.replace('_', '-')}`}>{caso.estado.replace('_', ' ')}</span>
+                  <span className={`estado-caso estado-${caso.estado.replace('_', '-')}`}>
+                    {caso.estado.replace('_', ' ')}
+                  </span>
                 </td>
+                
+                {/* --- CELDA DE EVALUACIÓN --- */}
                 <td>
-                  {/* --- Lógica condicional de acciones --- */}
+                    {caso.estado === 'cerrado' ? (
+                        <div className="celda-evaluacion" title={caso.comentario_docente || "Sin comentario"}>
+                            {renderizarEstrellas(caso.calificacion)}
+                            {caso.calificacion && <span className="nota-numerica">({caso.calificacion}/5)</span>}
+                        </div>
+                    ) : (
+                        <span className="pendiente-eval">En curso</span>
+                    )}
+                </td>
+
+                <td>
                   <div className="acciones-contenedor">
                     {procesandoId === caso.id ? (
                       <span>Procesando...</span>
@@ -110,25 +125,20 @@ function DashboardEstudiante({ onVerExpediente }) {
                       <>
                         {caso.estado === 'pendiente_aceptacion' && (
                           <>
-                            <button onClick={() => handleAceptar(caso.id)} className="boton-accion aceptar">
-                              Aceptar
-                            </button>
-                            <button onClick={() => handleRechazar(caso.id)} className="boton-accion rechazar">
-                              Rechazar
-                            </button>
+                            <button onClick={() => handleAceptar(caso.id)} className="boton-accion aceptar">Aceptar</button>
+                            <button onClick={() => handleRechazar(caso.id)} className="boton-accion rechazar">Rechazar</button>
                           </>
                         )}
                         
-                        {caso.estado === 'asignado' && (
+                        {/* AHORA PERMITIMOS VER CASOS CERRADOS TAMBIÉN */}
+                        {(caso.estado === 'asignado' || caso.estado === 'cerrado') && (
                           <button onClick={() => onVerExpediente(caso.id)} className="boton-accion ver">
-                            Ver Expediente
+                            {caso.estado === 'cerrado' ? 'Ver Histórico' : 'Gestionar'}
                           </button>
                         )}
-                       
                       </>
                     )}
                   </div>
-               
                 </td>
               </tr>
             ))}

@@ -437,3 +437,18 @@ class NotificacionCreacion(SQLModel):
 class SolicitudCierreCaso(SQLModel):
     calificacion: int
     comentario: str
+
+
+
+class CasoEstudianteDashboard(SQLModel):
+    """
+    Modelo optimizado para el panel del estudiante.
+    Incluye la retroalimentación académica.
+    """
+    id: int
+    fecha_creacion: datetime
+    estado: str
+    descripcion_hechos: str
+    # --- DATOS DE EVALUACIÓN ---
+    calificacion: Optional[int] = None
+    comentario_docente: Optional[str] = None    

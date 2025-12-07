@@ -149,3 +149,35 @@
   font-size: 1rem;
 }
 
+
+
+
+/* --- ESTILOS DE EVALUACIÓN --- */
+
+.estrellas {
+    color: #ffc107; /* Color dorado */
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+}
+
+.nota-numerica {
+    margin-left: 5px;
+    font-weight: bold;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.celda-evaluacion {
+    cursor: help; /* Indica que hay un tooltip (el comentario) */
+}
+
+.fila-cerrada {
+    background-color: #f8f9fa;
+    opacity: 0.9;
+}
+
+.pendiente-eval {
+    color: #aaa;
+    font-style: italic;
+    font-size: 0.9rem;
+}
