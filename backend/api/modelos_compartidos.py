@@ -153,6 +153,8 @@ class Asignacion(SQLModel, table=True):
     id_estudiante: int = Field(foreign_key="estudiante.id")
     id_asesor: int = Field(foreign_key="asesor.id")
     estado: str = Field(default="pendiente", index=True)
+    calificacion: Optional[int] = Field(default=None) # Escala 1 a 5
+    comentario_docente: Optional[str] = Field(default=None, sa_column=Column(Text))
     caso: "Caso" = Relationship(back_populates="asignaciones")
     estudiante: "Estudiante" = Relationship(back_populates="asignaciones")
     asesor: "Asesor" = Relationship(back_populates="asignaciones")
@@ -420,3 +422,9 @@ class NotificacionCreacion(SQLModel):
     """
     asunto: str
     mensaje: str
+
+
+
+class SolicitudCierreCaso(SQLModel):
+    calificacion: int
+    comentario: str

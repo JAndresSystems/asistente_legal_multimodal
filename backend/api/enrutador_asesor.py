@@ -9,7 +9,7 @@ from .modelos_compartidos import (
     Cuenta, Asesor, Asignacion, Caso, Estudiante, Evidencia,
     EstudianteLecturaSimple, SolicitudReasignacion, CasoSupervisadoLectura,
     CasoDetalleUsuario, EvidenciaLecturaSimple, Nota, NotaCreacion, NotaLectura,
-    EstadoCaso, EstadoEvidencia, DashboardAsesorData, MetricaEstudiante
+    EstadoCaso, EstadoEvidencia, DashboardAsesorData, MetricaEstudiante,SolicitudCierreCaso 
 )
 
 # Se añade "/api" al prefijo para estandarizar todas las rutas del backend y
@@ -208,22 +208,53 @@ def crear_nota_asesor(
 @router_asesor.post("/expedientes/{id_caso}/finalizar", status_code=status.HTTP_200_OK)
 def finalizar_caso(
     id_caso: int,
+    datos_cierre: SolicitudCierreCaso, # <--- Ahora recibimos datos
     sesion: Session = Depends(obtener_sesion),
     asesor_actual: Asesor = Depends(obtener_asesor_actual)
 ):
-    """Permite a un asesor marcar un caso como 'cerrado'."""
-    asignacion = sesion.exec(select(Asignacion).where(Asignacion.id_caso == id_caso, Asignacion.id_asesor == asesor_actual.id)).first()
+    """
+    Cierra el caso y guarda la calificación del estudiante.
+    """
+    # 1. Buscar la asignación activa
+    asignacion = sesion.exec(
+        select(Asignacion).where(
+            Asignacion.id_caso == id_caso, 
+            Asignacion.id_asesor == asesor_actual.id
+        )
+    ).first()
+    
     if not asignacion:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tiene permiso para modificar este caso.")
 
+    # 2. Buscar el caso
     caso = sesion.get(Caso, id_caso)
     if not caso:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Caso no encontrado.")
     
+    # 3. Guardar la Evaluación Académica
+    if datos_cierre.calificacion < 1 or datos_cierre.calificacion > 5:
+        raise HTTPException(status_code=400, detail="La calificación debe ser entre 1 y 5.")
+
+    asignacion.calificacion = datos_cierre.calificacion
+    asignacion.comentario_docente = datos_cierre.comentario
+    
+    # 4. Cerrar el caso
     caso.estado = EstadoCaso.CERRADO.value
+    
+    # 5. Crear nota automática de cierre en el historial
+    nota_cierre = Nota(
+        id_caso=id_caso,
+        contenido=f"Caso finalizado por Supervisor. Calificación otorgada: {datos_cierre.calificacion}/5. Comentario: {datos_cierre.comentario}",
+        id_cuenta_autor=asesor_actual.cuenta.id, # Asumimos que la cuenta está linkeada
+        rol_autor="sistema" # Para que quede como registro oficial
+    )
+    
+    sesion.add(asignacion)
     sesion.add(caso)
+    sesion.add(nota_cierre)
     sesion.commit()
-    return {"mensaje": f"El caso #{id_caso} ha sido finalizado."}
+    
+    return {"mensaje": f"El caso #{id_caso} ha sido evaluado y cerrado exitosamente."}
 
 
 @router_asesor.get("/estudiantes-disponibles", response_model=List[EstudianteLecturaSimple])

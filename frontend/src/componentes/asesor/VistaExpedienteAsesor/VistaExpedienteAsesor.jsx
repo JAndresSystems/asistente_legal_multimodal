@@ -39,6 +39,12 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
  const [descargandoPDF, setDescargandoPDF] = useState(false);
 
 
+ // --- ESTADOS PARA MODAL DE CALIFICACIÓN ---
+  const [mostrarModalCalificacion, setMostrarModalCalificacion] = useState(false);
+  const [calificacion, setCalificacion] = useState(5);
+  const [comentarioCierre, setComentarioCierre] = useState("");
+
+
 
  const handleDescargarReporte = async () => {
     setDescargandoPDF(true);
@@ -116,13 +122,24 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
     }
   };
 
-  const handleFinalizarCaso = async () => {
-    if (!window.confirm("¿Está seguro de que desea marcar este caso como finalizado? Esta acción no se puede deshacer.")) return;
+  const handleClicFinalizar = () => {
+    // En lugar de cerrar directo, abrimos el modal
+    setMostrarModalCalificacion(true);
+  };
+
+  const confirmarCierre = async () => {
+    if (!comentarioCierre.trim()) {
+      alert("Por favor ingrese un comentario de retroalimentación para el estudiante.");
+      return;
+    }
+    
     setFinalizandoCaso(true);
     setErrorFinalizar(null);
     try {
-      await apiFinalizarCaso(expedienteId);
-      await cargarExpediente();
+      // Llamamos a la API con los nuevos datos
+      await apiFinalizarCaso(expedienteId, calificacion, comentarioCierre);
+      setMostrarModalCalificacion(false);
+      await cargarExpediente(); // Recargar para ver el estado cerrado
     } catch (err) {
       setErrorFinalizar(err.message || "Error al finalizar el caso.");
     } finally {
@@ -224,7 +241,7 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
           </button>
           <button 
             className={styles.botonFinalizar}
-            onClick={handleFinalizarCaso}
+            onClick={handleClicFinalizar}
             disabled={finalizandoCaso || expediente.estado === 'cerrado'}
           >
             {finalizandoCaso ? "Finalizando..." : "Finalizar Caso"}
@@ -375,6 +392,61 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
           </div>
         </div>
       </div>
+
+
+            {/* --- MODAL DE CALIFICACIÓN (NUEVO) --- */}
+      {mostrarModalCalificacion && (
+        <div className={styles.overlayModal}>
+            <div className={styles.modalCalificacion}>
+                <h3 className={styles.tituloModal}>Evaluación Final</h3>
+                <p>Califique el desempeño del estudiante para cerrar el caso.</p>
+                
+                <div className={styles.campoModal}>
+                    <label>Nota (1-5):</label>
+                    <select 
+                        value={calificacion} 
+                        onChange={(e) => setCalificacion(e.target.value)}
+                        className={styles.selectCalificacion}
+                    >
+                        <option value="5">5 - Excelente</option>
+                        <option value="4">4 - Bueno</option>
+                        <option value="3">3 - Aceptable</option>
+                        <option value="2">2 - Insuficiente</option>
+                        <option value="1">1 - Deficiente</option>
+                    </select>
+                </div>
+
+                <div className={styles.campoModal}>
+                    <label>Retroalimentación:</label>
+                    <textarea
+                        value={comentarioCierre}
+                        onChange={(e) => setComentarioCierre(e.target.value)}
+                        placeholder="Escriba sus comentarios para el estudiante..."
+                        rows="4"
+                        className={styles.textareaModal}
+                    />
+                </div>
+
+                <div className={styles.botonesModal}>
+                    <button 
+                        onClick={() => setMostrarModalCalificacion(false)} 
+                        className={styles.botonCancelar}
+                    >
+                        Cancelar
+                    </button>
+                    <button 
+                        onClick={confirmarCierre} 
+                        className={styles.botonConfirmar}
+                        disabled={finalizandoCaso}
+                    >
+                        {finalizandoCaso ? "Guardando..." : "Confirmar Cierre"}
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+
     </div>
   );
 };

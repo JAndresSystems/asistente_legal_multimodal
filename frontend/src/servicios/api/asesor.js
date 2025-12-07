@@ -78,24 +78,34 @@ export const apiCrearNotaAsesor = async (idCaso, contenido) => {
  * Llama al endpoint para que un asesor marque un caso como 'cerrado'.
  * @param {number} idCaso El ID del caso a finalizar.
  */
-export const apiFinalizarCaso = async (idCaso) => {
-  console.log(`API: Asesor solicitando finalizar el caso ID: ${idCaso}`);
-  try {
-    // MODIFICACION: Se añade /api al inicio de la ruta
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/expedientes/${idCaso}/finalizar`, {
-      method: 'POST',
-      headers: obtenerCabeceras(),
-    });
 
-    if (!respuesta.ok) {
-      const errorData = await respuesta.json();
-      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
-    }
-    return await respuesta.json();
-  } catch (error) {
-    console.error(`API: Error al finalizar el caso ${idCaso}:`, error);
-    throw error;
+export const apiFinalizarCaso = async (idCaso, calificacion, comentario) => {
+  console.log(`API: Finalizando caso ${idCaso} con nota ${calificacion}`);
+  
+  // --- CORRECCIÓN: Buscamos el token con el nombre correcto ('authToken') ---
+  const token = localStorage.getItem('authToken') || localStorage.getItem('token_auth');
+  
+  if (!token) {
+      throw new Error("No se encontró el token de sesión. Por favor inicie sesión nuevamente.");
   }
+
+  const respuesta = await fetch(`http://127.0.0.1:8000/api/asesor/expedientes/${idCaso}/finalizar`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}` // Ahora sí lleva el token real
+    },
+    body: JSON.stringify({
+        calificacion: parseInt(calificacion),
+        comentario: comentario
+    })
+  });
+
+  if (!respuesta.ok) {
+    const errorData = await respuesta.json();
+    throw new Error(errorData.detail || 'Error al finalizar el caso');
+  }
+  return await respuesta.json();
 };
 
 /**
