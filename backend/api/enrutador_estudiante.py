@@ -344,12 +344,15 @@ def obtener_detalle_expediente(id_caso: int, sesion: Session = Depends(obtener_s
         notas_con_autor = []
         for nota in sorted(caso.notas, key=lambda n: n.fecha_creacion, reverse=True):
             nota_api = NotaLectura.model_validate(nota)
+            
+            # --- CORRECCIÓN CRÍTICA: Asegurar que pase el ID de evidencia ---
+            nota_api.id_evidencia = nota.id_evidencia 
+            # --------------------------------------------------------------
+
             cuenta_autor = sesion.get(Cuenta, nota.id_cuenta_autor)
             if cuenta_autor:
-                # --- INICIO DE LA MODIFICACIÓN ---
                 if cuenta_autor.rol == 'usuario' and cuenta_autor.usuario:
                     nota_api.autor_nombre = cuenta_autor.usuario.nombre
-                # --- FIN DE LA MODIFICACIÓN ---
                 elif cuenta_autor.rol == 'asesor' and cuenta_autor.asesor:
                     nota_api.autor_nombre = cuenta_autor.asesor.nombre_completo
                 elif cuenta_autor.rol == 'estudiante' and cuenta_autor.estudiante:

@@ -1,0 +1,146 @@
+.documento-item-contenedor {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    padding: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.documento-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.icono-doc { font-size: 1.5rem; }
+
+.info-doc { flex: 1; }
+
+.acciones-doc { margin-top: 5px; display: flex; gap: 10px; }
+
+.btn-descargar, .btn-comentarios {
+    border: none; background: #f0f0f0; padding: 4px 10px; border-radius: 4px;
+    cursor: pointer; font-size: 0.85rem; text-decoration: none; color: #333;
+}
+
+.btn-comentarios:hover { background: #e0e0e0; }
+
+.badge-estado {
+    padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; text-transform: uppercase;
+}
+.badge-estado.subido { background: #e3f2fd; color: #007bff; }
+.badge-estado.en_revision { background: #fff3cd; color: #856404; }
+.badge-estado.aprobado { background: #d4edda; color: #155724; }
+.badge-estado.cambios_solicitados { background: #f8d7da; color: #721c24; }
+
+.botones-revision-mini { display: flex; gap: 5px; margin-top: 5px; }
+.btn-ok { background: #28a745; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; }
+.btn-x { background: #dc3545; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; }
+
+/* --- HILO --- */
+.hilo-comentarios {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #eee;
+    background: #fafafa;
+    border-radius: 0 0 8px 8px;
+    padding: 10px;
+}
+
+.burbuja-hilo {
+    padding: 8px 12px; margin-bottom: 8px; border-radius: 10px; font-size: 0.9rem;
+}
+.burbuja-hilo.asesor { background: #e3f2fd; margin-right: 20%; border-left: 3px solid #007bff; }
+.burbuja-hilo.estudiante { background: #fff3cd; margin-left: 20%; border-right: 3px solid #ffc107; }
+
+.form-hilo { display: flex; gap: 5px; margin-top: 10px; }
+.form-hilo input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+.form-hilo button { background: #005a4b; color: white; border: none; padding: 0 15px; border-radius: 4px; cursor: pointer; }
+
+
+
+/* Estilos actualizados para botones de texto */
+.btn-ok { 
+    background: #28a745; 
+    color: white; 
+    border: none; 
+    border-radius: 4px; /* Bordes suaves pero cuadrados */
+    padding: 5px 10px;  /* Espacio para el texto */
+    font-size: 0.85rem;
+    cursor: pointer; 
+    font-weight: 500;
+}
+
+.btn-x { 
+    background: #dc3545; 
+    color: white; 
+    border: none; 
+    border-radius: 4px; 
+    padding: 5px 10px;
+    font-size: 0.85rem;
+    cursor: pointer; 
+    font-weight: 500;
+}
+
+.btn-ok:hover { background: #218838; }
+.btn-x:hover { background: #c82333; }
+
+
+
+/* Agrega o reemplaza esto en frontend/src/componentes/compartidos/DocumentoConHilo.css */
+
+.metadata-doc {
+    display: flex;
+    gap: 8px;
+    color: #666;
+    margin-bottom: 5px;
+    align-items: center;
+}
+
+.separador {
+    font-size: 0.8rem;
+    color: #ccc;
+}
+
+.fecha-doc {
+    font-style: italic;
+}
+
+/* Mejoras en las burbujas del chat interno */
+.burbuja-hilo {
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    max-width: 90%;
+}
+
+.burbuja-hilo.asesor {
+    background: #e3f2fd;
+    margin-right: 10%; /* Alineado a la izquierda */
+    border-left: 4px solid #007bff;
+}
+
+.burbuja-hilo.estudiante {
+    background: #fff3cd;
+    margin-left: 10%; /* Alineado a la derecha visualmente o indentado */
+    border-right: 4px solid #ffc107;
+}
+
+.burbuja-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 0.8rem;
+    color: #555;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding-bottom: 4px;
+}
+
+.burbuja-fecha {
+    font-size: 0.75rem;
+    color: #888;
+}

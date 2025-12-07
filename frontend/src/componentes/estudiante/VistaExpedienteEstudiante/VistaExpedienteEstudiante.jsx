@@ -11,6 +11,7 @@ import { apiObtenerDetalleExpediente, apiConsultarAgenteJuridico, apiGenerarDocu
 // --- FIN DE LA MODIFICACION ---
 import ReactMarkdown from 'react-markdown'; 
 import './VistaExpedienteEstudiante.css';
+import DocumentoConHilo from '../../compartidos/DocumentoConHilo';
 
 // Componente auxiliar para mostrar el reporte JSON de forma legible y segura
 // const VisorReporteIA = ({ reporteJson }) => {
@@ -365,32 +366,48 @@ const handleCrearNota = async (e) => {
               if (esAlerta) claseItem += " alerta-sistema";
               else if (esNotaInterna) claseItem += " nota-interna";
 
+
+        const handleEnviarComentarioHilo = async (idEvidencia, texto) => {
+    try {
+      // Llamamos a la API enviando el ID del documento
+      // false = es nota interna (no pública para el ciudadano) dentro del hilo de revisión
+      await apiCrearNotaEstudiante(expedienteId, texto, false, idEvidencia);
+      await cargarExpediente(); // Recargar para ver el nuevo comentario
+    } catch (err) {
+      alert("Error al enviar comentario: " + err.message);
+    }
+  };      
+
+
+
               return (
                 <div key={`${item.tipo}-${item.id || index}`} className={claseItem}>
                   
                   {item.tipo === 'documento' && (
-                    <>
-                      <span className="icono">📄</span>
-                      <div className="contenido">
-                       <p>
-                          <strong>Documento:</strong> <a href={`${baseURL}${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer">{item.nombre_archivo}</a>
-                        </p>
-                        <small>Subido por: {item.autor_nombre || 'No disponible'}</small>
-                        <div className="documento-acciones">
-                          <span className={`estado-documento estado-${item.estado.replace('_', '-')}`}>{item.estado.replace('_', ' ')}</span>
-                          
-                          {item.estado === 'subido' && (
-                            <button 
-                              onClick={() => handleEnviarParaRevision(item.id)}
-                              className="boton-accion-doc"
-                              disabled={enviandoRevisionId === item.id}
-                            >
-                              {enviandoRevisionId === item.id ? 'Enviando...' : 'Enviar a Revisión'}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </>
+                    <div className="documento-wrapper">
+                        {/* 1. Renderizamos el documento con su hilo de comentarios */}
+                        <DocumentoConHilo 
+                            documento={item}
+                            notasRelacionadas={expediente.notas.filter(n => n.id_evidencia === item.id)}
+                            onEnviarComentario={handleEnviarComentarioHilo}
+                            baseURL={baseURL}
+                            esAsesor={false} // Eres estudiante
+                        />
+                        
+                        {/* 2. Mantenemos el botón de "Enviar a Revisión" justo debajo */}
+                        {item.estado === 'subido' && (
+                            <div style={{ marginTop: '-10px', marginBottom: '15px', marginLeft: '10px' }}>
+                                <button 
+                                    onClick={() => handleEnviarParaRevision(item.id)}
+                                    className="boton-accion-doc"
+                                    disabled={enviandoRevisionId === item.id}
+                                    style={{ fontSize: '0.85rem', padding: '5px 10px' }}
+                                >
+                                    {enviandoRevisionId === item.id ? 'Enviando...' : '📤 Enviar a Revisión'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
                   )}
 
                   {item.tipo === 'nota' && (

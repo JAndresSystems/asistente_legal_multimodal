@@ -241,6 +241,7 @@ class NotaLectura(SQLModel):
     autor_nombre: Optional[str] = None
     es_publica: bool = False # <--- AGREGAR ESTO PARA QUE EL FRONTEND LO VEA
     # En el futuro podríamos añadir: autor_nombre: str
+    id_evidencia: Optional[int] = None # <--- AGREGAR ESTA LÍNEA
 
 
 

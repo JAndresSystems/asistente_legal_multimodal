@@ -146,13 +146,14 @@ export const apiSubirDocumentoEstudiante = async (idCaso, archivo) => {
  * Permite al estudiante crear una nota.
  * Ahora soporta el parámetro 'esPublica' para definir si el usuario puede verla.
  */
-export const apiCrearNotaEstudiante = async (idCaso, contenido, esPublica = false) => {
+export const apiCrearNotaEstudiante = async (idCaso, contenido, esPublica = false, idEvidencia = null) => {
   console.log(`API: Estudiante creando nota en el caso ${idCaso}. Pública: ${esPublica}`);
   
   // Construimos el cuerpo con el nuevo campo
   const cuerpoDeLaPeticion = { 
       contenido: contenido,
-      es_publica: esPublica 
+      es_publica: esPublica,
+      id_evidencia: idEvidencia // <--- NUEVO
   };
 
   try {

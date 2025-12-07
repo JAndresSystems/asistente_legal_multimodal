@@ -14,7 +14,7 @@ import styles from './VistaExpedienteAsesor.module.css';
 import AsistenteJuridico from './AsistenteJuridico/AsistenteJuridico';
 // 1. Importamos el nuevo componente del Generador de Documentos
 import GeneradorDocumentos from './GeneradorDocumentos/GeneradorDocumentos';
-
+import DocumentoConHilo from '../../compartidos/DocumentoConHilo';
 const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
   // ==========================================================================
   // 1. DECLARACIÓN DE ESTADOS
@@ -34,7 +34,7 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
   const [reasignandoCaso, setReasignandoCaso] = useState(false);
   const [errorReasignacion, setErrorReasignacion] = useState(null);
 
-  const [procesandoDocId, setProcesandoDocId] = useState(null);
+
   const [errorAccionDoc, setErrorAccionDoc] = useState('');
  const [descargandoPDF, setDescargandoPDF] = useState(false);
 
@@ -186,31 +186,28 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
 
 
 
-  const handleAprobar = async (idEvidencia) => {
-    setProcesandoDocId(idEvidencia);
+const handleAprobar = async (idEvidencia) => {
+    // Quitamos setProcesandoDocId...
     setErrorAccionDoc('');
     try {
       await apiAprobarDocumento(idEvidencia);
       await cargarExpediente();
     } catch (err) {
       setErrorAccionDoc(err.message || 'Error al aprobar el documento.');
-    } finally {
-      setProcesandoDocId(null);
-    }
+    } 
+    // Quitamos el finally con setProcesandoDocId(null)...
   };
 
  
 
   const handleSolicitarCambios = async (idEvidencia) => {
-    setProcesandoDocId(idEvidencia);
+    // Quitamos setProcesandoDocId...
     setErrorAccionDoc('');
     try {
       await apiSolicitarCambiosDocumento(idEvidencia);
       await cargarExpediente();
     } catch (err) {
       setErrorAccionDoc(err.message || 'Error al solicitar cambios.');
-    } finally {
-      setProcesandoDocId(null);
     }
   };
 
@@ -221,6 +218,21 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
   if (estaCargando) return <div className={styles.contenedorCentrado}>Cargando detalles del expediente...</div>;
   if (error) return <div className={`${styles.contenedorCentrado} ${styles.error}`}>{error}</div>;
   if (!expediente) return <div className={styles.contenedorCentrado}>No se encontró la información del expediente.</div>;
+
+
+// --- MANEJADOR PARA COMENTARIOS EN HILO (ASESOR) ---
+  const handleEnviarComentarioHilo = async (idEvidencia, texto) => {
+    try {
+      // El asesor envía la nota atada al documento.
+      // false = nota interna (generalmente el feedback de documentos es para el estudiante)
+      await apiCrearNotaAsesor(expedienteId, texto, false, idEvidencia);
+      await cargarExpediente(); 
+    } catch (err) {
+      alert("Error al enviar comentario: " + err.message);
+    }
+  };
+
+
 
   return (
     <div className={styles.vistaContenedor}>
@@ -284,59 +296,65 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
 
                   <div className={styles.contenidoItem}>
                     {item.tipo === 'documento' ? (
-                      /* ... (El bloque de documento se mantiene igual) ... */
-                      <>
-                        <p><strong>Documento:</strong> {item.nombre_archivo}</p>
-                        <p className={styles.autorInfo}>Subido por: {item.autor_nombre || 'No disponible'}</p>
-                        <a href={`http://127.0.0.1:8000${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer" className={styles.enlaceDescarga}>Descargar</a>
-                        <div className={styles.documentoEstadoContenedor}>
-                          <span className={`${styles.estadoDocumento} ${styles['estado-' + item.estado.replace('_', '-')]}`}>{item.estado.replace('_', ' ')}</span>
-                          {item.estado === 'en_revision' && (
-                            <div className={styles.botonesRevision}>
-                              <button onClick={() => handleAprobar(item.id)} className={styles.botonAprobar} disabled={procesandoDocId === item.id}>
-                                {procesandoDocId === item.id ? '...' : 'Aprobar'}
-                              </button>
-                              <button onClick={() => handleSolicitarCambios(item.id)} className={styles.botonRechazar} disabled={procesandoDocId === item.id}>
-                                {procesandoDocId === item.id ? '...' : 'Solicitar Cambios'}
-                              </button>
-                            </div>
-                          )}
+                    
+                    /* --- 1. VISTA DE DOCUMENTO CON HILO DE COMENTARIOS --- */
+                    <DocumentoConHilo 
+                        key={item.id}
+                        documento={item}
+                        // Filtramos notas que pertenecen a este doc para mostrarlas en su hilo
+                        notasRelacionadas={expediente.notas.filter(n => n.id_evidencia === item.id)}
+                        onEnviarComentario={handleEnviarComentarioHilo}
+                        baseURL="http://127.0.0.1:8000"
+                        esAsesor={true} // Esto activa los botones de Aprobar/Rechazar dentro del componente
+                        onAprobar={handleAprobar}
+                        onSolicitarCambios={handleSolicitarCambios}
+                    />
+                    
+                  ) : (
+                    
+                    /* --- 2. VISTA DE NOTAS SUELTAS O ALERTAS --- */
+                    <>
+                        <div className={`${styles.iconoTimeline} ${esAlerta ? styles.iconoAlerta : (esNotaEquipo ? (esPublica ? styles.iconoPublico : styles.iconoInterno) : '')}`}>
+                            {/* Iconos: 🚨=Alerta, 📢=Público, 🔒=Privado */}
+                            {esAlerta ? '🚨' : (esPublica ? '📢' : '🔒')}
                         </div>
-                      </>
-                    ) : (
-                      <>
-                        {/* --- FORMATO DE NOTA CORREGIDO --- */}
-                        {esAlerta && <span className={styles.tituloAlerta}>⚠️ ALERTA DE USUARIO</span>}
-                        
-                        <p>
-                            <strong>
-                                {esAlerta 
-                                    ? 'Sistema de Monitoreo' 
-                                    : `Nota de ${item.autor_nombre || item.rol_autor}`}
-                                
-                                {/* Etiqueta visual al lado del nombre */}
-                                {esNotaEquipo && (
-                                    <span style={{
-                                        fontSize: '0.8rem', 
-                                        marginLeft: '10px', 
-                                        padding: '2px 6px', 
-                                        borderRadius: '4px',
-                                        backgroundColor: esPublica ? '#d4edda' : '#cce5ff',
-                                        color: esPublica ? '#155724' : '#004085'
-                                    }}>
-                                        {esPublica ? 'VISIBLE AL USUARIO' : 'INTERNO / PRIVADO'}
-                                    </span>
-                                )}
-                            </strong>
-                        </p>
-                        
-                        <p className={styles.contenidoNota}>{item.contenido}</p>
-                        
-                        <span className={styles.fechaNota}>
-                            {new Date(item.fecha).toLocaleString()} 
-                        </span>
-                      </>
-                    )}
+
+                        <div className={styles.contenidoItem}>
+                             
+                             {esAlerta && <span className={styles.tituloAlerta}>⚠️ ALERTA DE USUARIO</span>}
+                             
+                             <p>
+                                <strong>
+                                    {esAlerta 
+                                        ? 'Sistema de Monitoreo' 
+                                        : `Nota de ${item.autor_nombre || item.rol_autor}`}
+                                    
+                                    {/* Etiqueta visual explícita */}
+                                    {esNotaEquipo && (
+                                        <span style={{
+                                            fontSize: '0.75rem', 
+                                            marginLeft: '10px', 
+                                            padding: '2px 6px', 
+                                            borderRadius: '4px',
+                                            backgroundColor: esPublica ? '#d4edda' : '#cce5ff',
+                                            color: esPublica ? '#155724' : '#004085',
+                                            border: '1px solid',
+                                            borderColor: esPublica ? '#c3e6cb' : '#b8daff'
+                                        }}>
+                                            {esPublica ? 'VISIBLE AL USUARIO' : 'INTERNO / PRIVADO'}
+                                        </span>
+                                    )}
+                                </strong>
+                             </p>
+                             
+                             <p className={styles.contenidoNota}>{item.contenido}</p>
+                             
+                             <span className={styles.fechaNota}>
+                                {new Date(item.fecha).toLocaleString()}
+                             </span>
+                        </div>
+                    </>
+                  )}
                   </div>
                 </div>
               );

@@ -117,10 +117,6 @@ def obtener_detalle_expediente_asesor(
     if not caso:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expediente no encontrado.")
     
-    # =================================================================
-    # INICIO DE LA MODIFICACIÓN
-    # =================================================================
-    
     # Preparamos la respuesta base
     respuesta = CasoDetalleUsuario.model_validate(caso)
     
@@ -128,7 +124,7 @@ def obtener_detalle_expediente_asesor(
     evidencias_enriquecidas = []
     for ev in caso.evidencias:
         autor_nombre = "Autor Desconocido"
-        if ev.subido_por: # ev.subido_por es la 'Cuenta'
+        if ev.subido_por: 
             if ev.subido_por.rol == 'usuario' and ev.subido_por.usuario:
                 autor_nombre = f"Usuario: {ev.subido_por.usuario.nombre}"
             elif ev.subido_por.rol == 'estudiante' and ev.subido_por.estudiante:
@@ -149,7 +145,7 @@ def obtener_detalle_expediente_asesor(
     notas_enriquecidas = []
     for nota in caso.notas:
         autor_nombre = "Autor Desconocido"
-        if nota.autor: # nota.autor es la 'Cuenta'
+        if nota.autor: 
             if nota.autor.rol == 'usuario' and nota.autor.usuario:
                 autor_nombre = nota.autor.usuario.nombre
             elif nota.autor.rol == 'estudiante' and nota.autor.estudiante:
@@ -164,13 +160,15 @@ def obtener_detalle_expediente_asesor(
                 fecha_creacion=nota.fecha_creacion,
                 rol_autor=nota.rol_autor,
                 autor_nombre=autor_nombre,
-                es_publica=nota.es_publica 
+                es_publica=nota.es_publica,
+                # --- CORRECCIÓN CRÍTICA: Incluir el ID de evidencia ---
+                id_evidencia=nota.id_evidencia 
+                # -----------------------------------------------------
             )
         )
     respuesta.notas = sorted(notas_enriquecidas, key=lambda n: n.fecha_creacion, reverse=True)
 
-
-    # 3. Añadir información de la asignación (sin cambios, ya era correcto)
+    # 3. Añadir información de la asignación
     if caso.asignaciones:
         asignacion_info = caso.asignaciones[0]
         if asignacion_info.estudiante: respuesta.estudiante_asignado = asignacion_info.estudiante.nombre_completo
@@ -182,7 +180,7 @@ def obtener_detalle_expediente_asesor(
 @router_asesor.post("/expedientes/{id_caso}/crear-nota", response_model=NotaLectura, status_code=status.HTTP_201_CREATED)
 def crear_nota_asesor(
     id_caso: int,
-    solicitud: NotaCreacion,
+    solicitud: NotaCreacion, # Recibe contenido, es_publica e id_evidencia
     sesion: Session = Depends(obtener_sesion),
     asesor_actual: Asesor = Depends(obtener_asesor_actual),
     cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
@@ -191,18 +189,28 @@ def crear_nota_asesor(
     if not asignacion:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tiene permiso para añadir notas a este caso.")
 
-    nueva_nota = Nota(id_caso=id_caso, contenido=solicitud.contenido, id_cuenta_autor=cuenta_actual.id, rol_autor=cuenta_actual.rol)
+    nueva_nota = Nota(
+        id_caso=id_caso, 
+        contenido=solicitud.contenido, 
+        id_cuenta_autor=cuenta_actual.id, 
+        rol_autor=cuenta_actual.rol,
+        # --- NUEVOS CAMPOS ---
+        es_publica=solicitud.es_publica,
+        id_evidencia=solicitud.id_evidencia
+        # ---------------------
+    )
     sesion.add(nueva_nota)
     sesion.commit()
     sesion.refresh(nueva_nota)
     
-    # Devuelve el nombre del autor en la respuesta para actualizar la UI al instante
     return NotaLectura(
         id=nueva_nota.id,
         contenido=nueva_nota.contenido,
         fecha_creacion=nueva_nota.fecha_creacion,
         rol_autor=nueva_nota.rol_autor,
-        autor_nombre=asesor_actual.nombre_completo
+        autor_nombre=asesor_actual.nombre_completo,
+        es_publica=nueva_nota.es_publica,
+        id_evidencia=nueva_nota.id_evidencia
     )
 
 

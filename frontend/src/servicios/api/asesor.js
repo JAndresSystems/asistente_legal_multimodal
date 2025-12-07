@@ -53,25 +53,34 @@ export const apiObtenerDetalleExpedienteAsesor = async (idCaso) => {
  * @param {number} idCaso El ID del caso.
  * @param {string} contenido El texto de la nota.
  */
-export const apiCrearNotaAsesor = async (idCaso, contenido) => {
-  console.log(`API: Asesor creando nota en el caso ${idCaso}`);
-  try {
-    // MODIFICACION: Se añade /api al inicio de la ruta
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/expedientes/${idCaso}/crear-nota`, {
-      method: 'POST',
-      headers: obtenerCabeceras(),
-      body: JSON.stringify({ contenido: contenido }),
-    });
+// En frontend/src/servicios/api/asesor.js
 
-    if (!respuesta.ok) {
-      const errorData = await respuesta.json();
-      throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
-    }
-    return await respuesta.json();
-  } catch (error) {
-    console.error(`API: Error al crear la nota de supervisor para el caso ${idCaso}:`, error);
-    throw error;
+export const apiCrearNotaAsesor = async (idCaso, contenido, esPublica = false, idEvidencia = null) => {
+  // --- CORRECCIÓN DE SEGURIDAD: Buscar el token correcto ---
+  const token = localStorage.getItem('authToken') || localStorage.getItem('token_auth');
+  
+  if (!token) {
+      throw new Error("No se encontró sesión activa.");
   }
+
+  const response = await fetch(`http://127.0.0.1:8000/api/asesor/expedientes/${idCaso}/crear-nota`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}` // Ahora sí enviamos el token real
+    },
+    body: JSON.stringify({ 
+        contenido: contenido,
+        es_publica: esPublica,
+        id_evidencia: idEvidencia 
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Error al crear nota de asesor');
+  }
+  return await response.json();
 };
 
 /**
