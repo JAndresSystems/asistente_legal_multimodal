@@ -58,13 +58,15 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
   }, [agenteInicial, modoAgente]);
 
   // --- LÓGICA PRINCIPAL DE ENVÍO ---
+ // --- LÓGICA PRINCIPAL DE ENVÍO ---
+  // --- LÓGICA PRINCIPAL DE ENVÍO ---
   const manejarEnvioUnificado = async (textoOpcional = null) => {
     
     if (triajeFinalizado) return;
 
     const textoAEnviar = (textoOpcional !== null ? textoOpcional : entradaUsuario).trim();
     
-    // Validaciones básicas
+    // 1. Validaciones
     if (!textoAEnviar && archivosParaSubir.length === 0) return;
     
     if (modoAgente === 'triaje_descripcion' && textoAEnviar.length < 20) {
@@ -73,88 +75,88 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
         return;
     }
 
-    // Preparar UI para envío
+    // 2. Bloquear UI
     if (mostrarSugerencias) setMostrarSugerencias(false);
     setEstaProcesando(true);
-    
-    if (textoAEnviar) { 
-        setMensajes(anteriores => [...anteriores, { autor: 'usuario', texto: textoAEnviar }]); 
-    }
-    
-    if (archivosParaSubir.length > 0) { 
-        const nombres = archivosParaSubir.map(f => f.name).join(', '); 
-        setMensajes(anteriores => [...anteriores, { autor: 'usuario', texto: `(Adjuntando archivo(s): ${nombres})` }]);
-    }
-    
-    setEntradaUsuario('');
 
     try {
-      // 1. MODO RECEPCIONISTA (Chat General)
+      // --- CORRECCIÓN CLAVE AQUÍ ---
+      // Paso A: Si hay archivos, PRIMERO los subimos (esperamos a que estén en el servidor)
+      // Antes actualizábamos la vista primero, por eso daba error 404.
+      if (archivosParaSubir.length > 0) {
+         await Promise.all(archivosParaSubir.map(archivo => subirEvidencia(casoIdActual, archivo)));
+      }
+
+      // Paso B: AHORA SÍ, actualizamos la vista (El archivo ya existe en el backend)
+      const nuevosMensajesUsuario = [];
+      
+      if (textoAEnviar) { 
+          nuevosMensajesUsuario.push({ autor: 'usuario', texto: textoAEnviar }); 
+      }
+      
+      if (archivosParaSubir.length > 0) { 
+          const nombresArchivos = archivosParaSubir.map(f => f.name);
+          nuevosMensajesUsuario.push({ 
+              autor: 'usuario', 
+              texto: `(Adjuntando ${nombresArchivos.length} evidencia(s))`, 
+              archivos: nombresArchivos // El Visualizador ahora encontrará el archivo exitosamente
+          });
+          
+          // Limpiamos la cola de subida inmediatamente después de usarlos para el mensaje
+          setArchivosParaSubir([]);
+          setAudioUrl(null);
+      }
+
+      setMensajes(anteriores => [...anteriores, ...nuevosMensajesUsuario]);
+      setEntradaUsuario('');
+
+      // Paso C: Detonamos el análisis de la IA
       if (modoAgente === 'recepcionista') {
         const historialParaEnviar = mensajes.slice(0, -1);
         const respuestaDelApi = await chatearConAgente(textoAEnviar, historialParaEnviar);
-        
         setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: respuestaDelApi.respuesta_texto }]);
         
         if (respuestaDelApi.iniciar_triaje) {
             setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: "Para continuar, por favor utilice el botón 'Registrar Nuevo Caso' en el panel." }]);
         }
-      
-      // 2. MODO TRIAJE: DESCRIPCIÓN INICIAL
+
       } else if (modoAgente === 'triaje_descripcion') {
         const resultadoDelPaso = await analizarCaso(casoIdActual, textoAEnviar);
         if (resultadoDelPaso.respuesta_para_usuario) { 
             setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: resultadoDelPaso.respuesta_para_usuario }]); 
         }
-        // Notificamos al padre que el caso se ha creado/inicializado
         onCasoCreado(casoIdActual);
-      
-      // 3. MODO TRIAJE: EVIDENCIAS (El Bucle Principal)
+
       } else if (modoAgente === 'triaje_evidencias') {
-        
-        // A. Subir archivos primero si existen
-        if (archivosParaSubir.length > 0) {
-          await Promise.all(archivosParaSubir.map(archivo => subirEvidencia(casoIdActual, archivo)));
-          setArchivosParaSubir([]);
-          setAudioUrl(null);
-        }
-        
-        // B. Enviar texto y detonar análisis
+        // Ya subimos los archivos en el Paso A, así que solo llamamos a analizar
         const resultadoDelPaso = await analizarCaso(casoIdActual, textoAEnviar);
         const flujoTerminado = resultadoDelPaso.flujo_terminado || false;
 
         if (flujoTerminado) {
             const casoFueAdmitido = resultadoDelPaso.caso_admitido || false;
-            
             if (casoFueAdmitido) {
-                // CASO ÉXITO: Bloqueamos el chat y mostramos mensaje final
                 const mensajeGuiaFinal = { 
                     autor: 'agente', 
-                    texto: '¡Buenas noticias! Hemos reunido toda la información necesaria. Su caso ha sido admitido y asignado a nuestro equipo. El chat ha finalizado. Por favor, utilice el botón a continuación para ver el informe.' 
+                    texto: '¡Buenas noticias! Hemos reunido toda la información necesaria. Su caso ha sido admitido. El chat ha finalizado.' 
                 };
                 setMensajes(anteriores => [...anteriores, mensajeGuiaFinal]);
-                setTriajeFinalizado(true); // Esto activará el cambio de UI en VistaChat
+                setTriajeFinalizado(true);
             } else {
-                // CASO RECHAZO: Mostramos la razón y sugerimos volver
                 if (resultadoDelPaso.respuesta_para_usuario) { 
                     setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: resultadoDelPaso.respuesta_para_usuario }]); 
                 }
-                setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: "Puede volver a su panel principal." }]);
             }
-            
-            // Notificamos a LayoutUsuario (pero LayoutUsuario NO cambiará la vista si es admisible)
             onTriajeTerminado(casoFueAdmitido);
-            
         } else {
-            // FLUJO CONTINÚA: Simplemente mostramos la respuesta del agente
             if (resultadoDelPaso.respuesta_para_usuario) {
                 setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: resultadoDelPaso.respuesta_para_usuario }]);
             }
         }
       }
+
     } catch (error) { 
       console.error("Error en useChatLogic:", error);
-      setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: 'Ocurrió un error de conexión. Por favor intente nuevamente.' }]);
+      setMensajes(anteriores => [...anteriores, { autor: 'agente', texto: 'Ocurrió un error. Por favor intente nuevamente.' }]);
     }
     
     setEstaProcesando(false);
@@ -230,6 +232,7 @@ export const useChatLogic = ({ agenteInicial, casoIdActual, onCasoCreado, onTria
     manejarEliminarArchivo,
     iniciarGrabacion,
     detenerGrabacion,
-    obtenerPlaceholder
+    obtenerPlaceholder,
+    casoIdActual
   };
 };

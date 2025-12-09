@@ -1,6 +1,6 @@
 # Ubicación: backend/main.py
 
-import os # Importamos el módulo 'os'
+import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,12 +17,19 @@ from .api.enrutador_administrador import router as router_administrador
 from .api.enrutador_usuario import router as router_usuario
 from .api.enrutador_estudiante import router as router_estudiante
 
-# --- INICIO DE LA CORRECCIÓN #1 (ERROR DE ARRANQUE) ---
-# Nos aseguramos de que el directorio para archivos subidos exista ANTES de que FastAPI intente montarlo.
-# Esto soluciona el 'RuntimeError: Directory ... does not exist' durante el arranque en Render.
-DIRECTORIO_SUBIDAS = "backend/archivos_subidos"
+# --- INICIO DE LA CORRECCIÓN ROBUSTA DE RUTAS ---
+# 1. Obtenemos la ruta absoluta de la carpeta donde está ESTE archivo (main.py)
+# Esto garantiza que funcione igual en Windows, Linux y Render.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 2. Definimos la carpeta de subidas relativa a este archivo.
+# Resultado esperado: .../backend/archivos_subidos
+DIRECTORIO_SUBIDAS = os.path.join(BASE_DIR, "archivos_subidos")
+
+# 3. Creamos la carpeta si no existe para evitar errores de arranque
 os.makedirs(DIRECTORIO_SUBIDAS, exist_ok=True)
-# --- FIN DE LA CORRECCIÓN #1 ---
+print(f"INFO: Carpeta de archivos configurada en: {DIRECTORIO_SUBIDAS}")
+# --- FIN DE LA CORRECCIÓN ---
 
 
 @asynccontextmanager
@@ -39,12 +46,12 @@ aplicacion = FastAPI(
     lifespan=lifespan
 )
 
-# Ahora estamos 100% seguros de que el directorio existe antes de esta línea.
+# Montamos la carpeta estática usando la ruta absoluta calculada.
+# Esto permite acceder a http://localhost:8000/archivos_subidos/foto.png
 aplicacion.mount("/archivos_subidos", StaticFiles(directory=DIRECTORIO_SUBIDAS), name="archivos")
 
-# --- INICIO DE LA CORRECCIÓN #2 (ERROR DE CORS EN PRODUCCIÓN) ---
-# Leemos los orígenes permitidos desde la variable de entorno definida en render.yaml.
-# Esto permite que tanto el localhost (desarrollo) como el frontend de Render (producción) se conecten.
+# --- CONFIGURACIÓN DE CORS (Conexión Frontend-Backend) ---
+# Leemos los orígenes permitidos desde la variable de entorno o usamos localhost por defecto.
 origenes_permitidos = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
 print(f"INFO: Orígenes CORS permitidos: {origenes_permitidos}")
 
@@ -55,7 +62,6 @@ aplicacion.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# --- FIN DE LA CORRECCIÓN #2 ---
 
 print("INFO: Registrando enrutadores de la API...")
 aplicacion.include_router(router_auth)

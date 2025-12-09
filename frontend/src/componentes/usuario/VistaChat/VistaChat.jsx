@@ -1,6 +1,8 @@
+// Ubicación: src/componentes/usuario/VistaChat/VistaChat.jsx
 import React from 'react';
 import { useChatLogic } from './useChatLogic';
 import './VistaChat.css';
+import VisualizadorMultimedia from '../../compartidos/VisualizadorMultimedia';
 
 // Componente auxiliar para sugerencias rápidas
 const Sugerencias = ({ onSugerenciaClick }) => (
@@ -62,7 +64,7 @@ function VistaChat({ mostrarBotonRegistrar = true, mostrarBotonVolver = true, ..
     setArchivosParaSubir,
     grabando,
     audioUrl,
-    triajeFinalizado, // Este booleano controla qué interfaz se muestra abajo
+    triajeFinalizado, 
     finalDeMensajesRef,
     textareaRef,
     manejarEnvioUnificado,
@@ -70,7 +72,8 @@ function VistaChat({ mostrarBotonRegistrar = true, mostrarBotonVolver = true, ..
     iniciarGrabacion,
     detenerGrabacion,
     manejarEliminarArchivo,
-    obtenerPlaceholder
+    obtenerPlaceholder,
+    casoIdActual // <--- IMPORTANTE: Obtenemos el ID del caso del hook
   } = useChatLogic(props);
   
   const manejarEnvioFormulario = (e) => { e.preventDefault(); manejarEnvioUnificado(); };
@@ -81,7 +84,27 @@ function VistaChat({ mostrarBotonRegistrar = true, mostrarBotonVolver = true, ..
       <div className="historial-mensajes">
         {mensajes.map((mensaje, indice) => (
           <div key={indice} className={`mensaje ${mensaje.autor}`}>
+            
+            {/* Texto del mensaje */}
             <p>{mensaje.texto}</p>
+
+            {/* Si el mensaje tiene una lista de archivos, los mostramos visualmente */}
+            {mensaje.archivos && mensaje.archivos.length > 0 && (
+              <div 
+                className={`contenedor-multimedia-whatsapp ${
+                  mensaje.archivos.length === 1 ? 'grid-un-archivo' : 'grid-multiples-archivos'
+                }`}
+              >
+                {mensaje.archivos.map((nombreArchivo, i) => (
+                  <VisualizadorMultimedia 
+                    key={i} 
+                    nombreArchivo={nombreArchivo} 
+                    casoId={casoIdActual} 
+                  />
+                ))}
+              </div>
+            )}
+            
           </div>
         ))}
         
@@ -145,7 +168,7 @@ function VistaChat({ mostrarBotonRegistrar = true, mostrarBotonVolver = true, ..
             </div>
           </>
         ) : (
-          // B. MODO FINALIZADO: Bloque de éxito (Estilizado vía CSS)
+          // B. MODO FINALIZADO: Bloque de éxito
           <div className="triaje-finalizado-info">
             <h3>¡Proceso Completado!</h3>
             <p>

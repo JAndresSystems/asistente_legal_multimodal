@@ -1,5 +1,6 @@
 # backend/herramientas/herramienta_multimodal_gemini.py
 import os
+import time  # <--- NECESARIO PARA LA ESPERA
 import mimetypes
 from pathlib import Path
 from typing import List, Any, Dict
@@ -9,15 +10,32 @@ import google.generativeai as genai
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Definimos un umbral de tamaño (en bytes) para decidir entre inline_data y Files API
-# Ejemplo: 2 MB. Archivos por debajo de este tamaño se envían como inline_data si son compatibles.
-# Ajusta este valor según tus necesidades y tolerancia a latencia.
-TAMANO_UMBRAL_INLINE = 2 * 1024 * 1024  # 2 MB en bytes
+TAMANO_UMBRAL_INLINE = 2 * 1024 * 1024  # 2 MB
+
+def _esperar_archivo_activo(archivo_subido):
+    """
+    Función auxiliar crítica: Espera a que Google termine de procesar el archivo.
+    Sin esto, los videos o audios largos darán error 400 'Not ACTIVE'.
+    """
+    print(f"      [GOOGLE] Esperando a que el archivo {archivo_subido.name} esté activo...")
+    archivo = genai.get_file(archivo_subido.name)
+    
+    # Bucle de espera (Polling)
+    while archivo.state.name == "PROCESSING":
+        time.sleep(2) # Esperamos 2 segundos antes de volver a preguntar
+        archivo = genai.get_file(archivo_subido.name)
+        print(".", end="", flush=True) # Indicador visual de espera
+
+    if archivo.state.name != "ACTIVE":
+        raise Exception(f"El archivo falló al procesarse en Google. Estado: {archivo.state.name}")
+    
+    print(f"\n      [GOOGLE] Archivo {archivo_subido.name} listo (ACTIVE).")
+    return archivo
 
 def _subir_o_inline(ruta_archivo: str) -> Dict[str, Any]:
     """
     Decide si subir el archivo con Files API o usar inline_data.
     Devuelve un dict compatible con generate_content().
-    Ahora considera el tamaño del archivo para audios/vídeos pequeños.
     """
     path = Path(ruta_archivo)
     mime_type, _ = mimetypes.guess_type(ruta_archivo)
@@ -29,29 +47,24 @@ def _subir_o_inline(ruta_archivo: str) -> Dict[str, Any]:
     tamano_archivo = path.stat().st_size
 
     # Criterio: archivos grandes (>TAMANO_UMBRAL_INLINE) o audio/video grandes → Files API
-    # Los audios/vídeos pequeños ahora pueden usar inline_data para mayor velocidad.
     es_grande = tamano_archivo > TAMANO_UMBRAL_INLINE
-    es_audio_video = mime_type.startswith(('audio/', 'video/'))
 
-    # OPCIÓN 1: Usar Files API para archivos grandes o cualquier audio/video (comportamiento anterior)
-    # if es_grande or es_audio_video:
-
-    # OPCIÓN 2: Usar Files API solo para archivos grandes (independientemente del tipo)
-    # Esto permitiría audios/vídeos pequeños usar inline_data.
     if es_grande:
         try:
             print(f"      SUBIENDO con Files API: {path.name} ({mime_type}, {tamano_archivo} bytes)")
             uploaded = genai.upload_file(path=path, mime_type=mime_type)
-            # Devuelve dict con file_data (nuevo formato)
+            
+            # --- CORRECCIÓN CRÍTICA AQUÍ ---
+            # Esperamos a que el estado sea ACTIVE antes de devolverlo
+            _esperar_archivo_activo(uploaded)
+            # -------------------------------
+
             return {"file_data": {"file_uri": uploaded.uri, "mime_type": mime_type}}
         except Exception as e:
             print(f"      ERROR al subir archivo con Files API: {e}")
-            # Si falla la subida, podrías intentar inline_data como fallback, pero
-            # si era grande, es probable que inline_data también falle por tamaño.
-            # Por ahora, retornamos None si falla la subida.
             return None
     else:
-        # Si no es grande, usar inline_data (para imágenes, PDFs pequeños, y audios/vídeos pequeños)
+        # Si no es grande, usar inline_data (para imágenes, PDFs pequeños, audios cortos)
         try:
             with open(path, "rb") as f:
                 data = f.read()

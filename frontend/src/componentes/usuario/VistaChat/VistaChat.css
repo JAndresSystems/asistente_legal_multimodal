@@ -244,3 +244,25 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+
+/* src/componentes/usuario/VistaChat/VistaChat.css */
+
+/* ... tus estilos anteriores ... */
+
+/* --- Estilos para la Grilla Multimedia (Tipo WhatsApp) --- */
+.contenedor-multimedia-whatsapp {
+  display: grid;
+  gap: 4px; /* Espacio pequeñito entre fotos */
+  margin-top: 8px;
+  max-width: 280px; /* Ancho máximo para que no se vea gigante */
+}
+
+/* Modificadores de columnas */
+.grid-un-archivo {
+  grid-template-columns: 1fr;
+}
+
+.grid-multiples-archivos {
+  grid-template-columns: repeat(2, 1fr);
+}

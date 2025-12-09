@@ -1,0 +1,99 @@
+/* src/componentes/compartidos/VisualizadorMultimedia.css */
+
+/* --- Contenedor de Imagen (Thumbnail) --- */
+.vm-imagen-contenedor {
+  width: 100%;
+  height: 120px; /* Altura fija para uniformidad */
+  overflow: hidden;
+  border-radius: 8px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  position: relative;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.vm-imagen-contenedor:hover {
+  opacity: 0.9;
+}
+
+.vm-imagen {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Recorta la imagen para llenar el cuadro */
+  display: block;
+}
+
+/* --- Estado de Error --- */
+.vm-error {
+  height: auto !important; /* Sobrescribe la altura fija */
+  padding: 5px;
+  font-size: 10px;
+  color: #666;
+  background-color: #fff0f0;
+  border-color: #ffcccc;
+}
+
+/* --- Contenedor de Audio (Nota de Voz) --- */
+.vm-audio-contenedor {
+  grid-column: 1 / -1; /* Ocupa todo el ancho */
+  background-color: #f9f9f9;
+  border-radius: 15px;
+  padding: 5px 10px;
+  border: 1px solid #e0e0e0;
+  margin-top: 2px;
+}
+
+.vm-audio-player {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vm-audio-etiqueta {
+  font-size: 9px;
+  color: #888;
+  text-align: right;
+  margin-top: 2px;
+}
+
+/* --- Contenedor de Documentos (Tarjeta) --- */
+.vm-documento-contenedor {
+  grid-column: 1 / -1; /* Ocupa todo el ancho */
+  margin-top: 2px;
+}
+
+.vm-documento-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  text-decoration: none;
+  color: #333;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s;
+}
+
+.vm-documento-link:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.vm-doc-info {
+  overflow: hidden;
+}
+
+.vm-doc-nombre {
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.vm-doc-ext {
+  font-size: 10px;
+  color: #666;
+}
