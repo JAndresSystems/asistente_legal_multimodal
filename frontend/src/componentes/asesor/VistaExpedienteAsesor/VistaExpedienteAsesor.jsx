@@ -67,12 +67,33 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
       setError(null);
       const data = await apiObtenerDetalleExpedienteAsesor(expedienteId);
       
-      const lineaDeTiempo = [
-        ...(data.evidencias || []).map(e => ({ ...e, tipo: 'documento', fecha: new Date(data.fecha_creacion) })),
-        ...(data.notas || []).map(n => ({ ...n, tipo: 'nota', fecha: new Date(n.fecha_creacion) }))
-      ].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+      // --- INICIO CORRECCIÓN ---
+      
+      // 1. Documentos
+      const lineaDeTiempoDocs = (data.evidencias || []).map(e => ({ 
+          ...e, 
+          tipo: 'documento', 
+          // Aseguramos fecha válida
+          fechaSort: new Date(e.fecha_subida || data.fecha_creacion || 0) 
+      }));
 
-      setExpediente({ ...data, lineaDeTiempo });
+      // 2. Notas (CON FILTRO: id_evidencia === null)
+      const lineaDeTiempoNotas = (data.notas || [])
+          .filter(n => n.id_evidencia === null) // <--- ESTO ELIMINA LOS DUPLICADOS
+          .map(n => ({ 
+              ...n, 
+              tipo: 'nota', 
+              fechaSort: new Date(n.fecha_creacion || 0) 
+          }));
+
+      // 3. Unificar y Ordenar
+      const lineaDeTiempoOrdenada = [...lineaDeTiempoDocs, ...lineaDeTiempoNotas].sort((a, b) => {
+          return a.fechaSort - b.fechaSort; // Ascendente (Viejo -> Nuevo)
+      });
+
+      // --- FIN CORRECCIÓN ---
+
+      setExpediente({ ...data, lineaDeTiempo: lineaDeTiempoOrdenada });
     } catch (err) {
       setError(err.message || "Ocurrió un error al cargar el expediente.");
       console.error(err);
@@ -349,8 +370,8 @@ const handleAprobar = async (idEvidencia) => {
                              
                              <p className={styles.contenidoNota}>{item.contenido}</p>
                              
-                             <span className={styles.fechaNota}>
-                                {new Date(item.fecha).toLocaleString()}
+                            <span className={styles.fechaNota}>
+                                {item.fechaSort.toLocaleString()} {/* <--- ESTO ES LO NUEVO (fechaSort) */}
                              </span>
                         </div>
                     </>

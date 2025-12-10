@@ -149,6 +149,7 @@ class Evidencia(SQLModel, table=True):
     estado: str = Field(default=EstadoEvidencia.SUBIDO.value, index=True)
     tipo: str = Field(default="desconocido")
     reporte_analisis: Optional[str] = Field(default=None, sa_column=Column(Text))
+    es_publica: bool = Field(default=False)
     subido_por_id_cuenta: Optional[int] = Field(default=None, foreign_key="cuenta.id")
     caso: "Caso" = Relationship(back_populates="evidencias")
     subido_por: Optional["Cuenta"] = Relationship()

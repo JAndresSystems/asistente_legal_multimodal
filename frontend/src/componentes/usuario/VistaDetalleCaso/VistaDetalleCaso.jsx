@@ -15,12 +15,12 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
   const [enviandoNota, setEnviandoNota] = useState(false);
   const [errorNota, setErrorNota] = useState('');
 
-  // --- ESTADOS DEL CHAT FLOTANTE ---
-  const [chatAbierto, setChatAbierto] = useState(false); // ¿Está abierto o cerrado?
+  // Chat Flotante
+  const [chatAbierto, setChatAbierto] = useState(false);
   const [preguntaOrientacion, setPreguntaOrientacion] = useState('');
   const [cargandoOrientacion, setCargandoOrientacion] = useState(false);
   const [historialVisual, setHistorialVisual] = useState([]); 
-  const finalChatRef = useRef(null); // Para auto-scroll
+  const finalChatRef = useRef(null);
 
   const cargarDatosDelCaso = useCallback(async () => {
     if (!casoId) {
@@ -49,7 +49,6 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
     cargarDatosDelCaso();
   }, [cargarDatosDelCaso]);
 
-  // Auto-scroll al final del chat cuando llega un mensaje nuevo
   useEffect(() => {
     if (chatAbierto && finalChatRef.current) {
         finalChatRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -131,13 +130,29 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
   
   const URL_BASE_BACKEND = "http://127.0.0.1:8000";
 
-  const eventosDocumento = (caso.evidencias || []).map(ev => ({ tipo: 'documento', ...ev }));
-  const eventosNota = (caso.notas || []).map(nota => ({ tipo: 'nota', ...nota }));
-  const lineaDeTiempo = [...eventosDocumento, ...eventosNota].sort((a, b) => {
-    const fechaA = a.fecha_creacion ? new Date(a.fecha_creacion) : new Date(0);
-    const fechaB = b.fecha_creacion ? new Date(b.fecha_creacion) : new Date(0);
-    return fechaB - fechaA; 
+  // --- INICIO DE LA CORRECCIÓN DE LA LÍNEA DE TIEMPO (USUARIO) ---
+  
+  // 1. Documentos
+  const eventosDocumento = (caso.evidencias || []).map(ev => ({ 
+      tipo: 'documento', 
+      fechaSort: new Date(ev.fecha_subida || ev.fecha_creacion || 0),
+      ...ev 
+  }));
+
+  // 2. Notas (CON FILTRO)
+ const eventosNota = (caso.notas || [])
+    .filter(nota => nota.id_evidencia === null) // <--- Oculta notas que pertenecen a un documento
+    .map(nota => ({ 
+        tipo: 'nota', 
+        fechaSort: new Date(nota.fecha_creacion || 0),
+        ...nota 
+    }));
+
+  // 3. Unificar y Ordenar
+ const lineaDeTiempo = [...eventosDocumento, ...eventosNota].sort((a, b) => {
+    return a.fechaSort - b.fechaSort; 
   });
+  // --- FIN DE LA CORRECCIÓN ---
 
   return (
     <div className="detalle-contenedor">
@@ -169,8 +184,6 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
         <h2>Descripción de los Hechos</h2>
         <p className="descripcion-hechos">{caso.descripcion_hechos}</p>
       </div>
-
-      {/* --- ELIMINÉ LA SECCIÓN DE CHAT EN LÍNEA DE AQUÍ --- */}
       
       <div className="seccion-detalle">
         <h2>Línea de Tiempo y Comunicaciones</h2>
@@ -178,20 +191,43 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
           {lineaDeTiempo.length > 0 ? (
             lineaDeTiempo.map((item, index) => (
               <div key={`${item.tipo}-${item.id || index}`} className={`item-timeline-usuario item-autor-${item.rol_autor || 'documento'}`}>
+                
+                {/* --- RENDERIZADO DE NOTA SUELTA --- */}
                 {item.tipo === 'nota' && (
                   <>
                     <p className="autor-timeline"><strong>{item.autor_nombre || item.rol_autor}:</strong></p>
                     <p className="contenido-timeline">{item.contenido}</p>
-                    <p className="fecha-timeline">{new Date(item.fecha_creacion).toLocaleString('es-CO')}</p>
+                    <p className="fecha-timeline">{item.fechaSort.toLocaleString('es-CO')}</p>
                   </>
                 )}
+
+                {/* --- RENDERIZADO DE DOCUMENTO (CON HILO) --- */}
                 {item.tipo === 'documento' && (
-                  <>
-                    <p className="autor-timeline"><strong>Documento:</strong></p>
-                    <a href={`${URL_BASE_BACKEND}${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer" className="enlace-evidencia">
-                      {item.nombre_archivo}
-                    </a>
-                  </>
+                  <div className="tarjeta-documento-usuario">
+                    <p className="autor-timeline"><strong>Documento Subido:</strong> {item.autor_nombre}</p>
+                    <div className="info-doc-wrapper">
+                        <span style={{fontSize:'1.5rem', marginRight:'10px'}}>📄</span>
+                        <div>
+                            <a href={`${URL_BASE_BACKEND}${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer" className="enlace-evidencia">
+                            {item.nombre_archivo}
+                            </a>
+                            <p className="fecha-timeline">{item.fechaSort.toLocaleString('es-CO')}</p>
+                        </div>
+                    </div>
+
+                    {/* HILO DE COMENTARIOS ASOCIADOS A ESTE DOCUMENTO */}
+                    {caso.notas.filter(n => n.id_evidencia === item.id).length > 0 && (
+                        <div className="hilo-comentarios-doc">
+                            <hr style={{margin:'5px 0', border:'0', borderTop:'1px solid #eee'}}/>
+                            {caso.notas.filter(n => n.id_evidencia === item.id).map(subNota => (
+                                <div key={subNota.id} className="sub-comentario">
+                                    <strong>{subNota.autor_nombre}: </strong> 
+                                    <span>{subNota.contenido}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                  </div>
                 )}
               </div>
             ))
@@ -211,9 +247,7 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
             {enviandoNota ? 'Enviando...' : 'Enviar Mensaje'}
           </button>
           
-          {/* --- AGREGA ESTA LÍNEA PARA CORREGIR EL ERROR --- */}
           {errorNota && <p className="mensaje-error" style={{color: 'red', marginTop: '5px'}}>{errorNota}</p>}
-          {/* ----------------------------------------------- */}
           
         </form>
       </div>
@@ -231,9 +265,8 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
         <FormularioSubirEvidencia casoId={caso.id} onSubidaCompletada={manejarSubidaCompletada} />
       </div>
 
-      {/* --- WIDGET FLOTANTE DE ORIENTACIÓN --- */}
+      {/* WIDGET FLOTANTE */}
       <div className="widget-orientacion-contenedor">
-        
         {!chatAbierto && (
             <button className="boton-flotante-abrir" onClick={() => setChatAbierto(true)}>
                 💬 Asistente Virtual
@@ -280,7 +313,6 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
             </div>
         )}
       </div>
-      {/* -------------------------------------- */}
 
     </div>
   );

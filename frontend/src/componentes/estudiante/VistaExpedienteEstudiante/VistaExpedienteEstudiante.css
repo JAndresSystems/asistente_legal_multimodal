@@ -624,3 +624,29 @@
 
 .btn-enviar.asesor { background-color: #17a2b8; }
 .btn-enviar.usuario { background-color: #28a745; }
+
+
+
+/* frontend/src/componentes/estudiante/VistaExpedienteEstudiante/VistaExpedienteEstudiante.css */
+
+/* ... tus estilos anteriores ... */
+
+/* SEPARADOR DE FECHA */
+.separador-fecha {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+  color: #888;
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.separador-fecha::before,
+.separador-fecha::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #e0e0e0;
+  margin: 0 10px;
+}

@@ -127,10 +127,16 @@ const VistaExpedienteEstudiante = ({ expedienteId, onVolver }) => {
 
   const [descargandoPDF, setDescargandoPDF] = useState(false);
 const [destinatarioNota, setDestinatarioNota] = useState('asesor'); // 'asesor' (privado) o 'usuario' (público)
-  // const [asuntoNotificacion, setAsuntoNotificacion] = useState('');
+  const [destinatarioDoc, setDestinatarioDoc] = useState('asesor'); 
+// const [asuntoNotificacion, setAsuntoNotificacion] = useState('');
   // const [mensajeNotificacion, setMensajeNotificacion] = useState('');
   // const [enviandoNotificacion, setEnviandoNotificacion] = useState(false);
   // const [errorNotificacion, setErrorNotificacion] = useState('');
+
+
+
+
+
 
 const handleDescargarReporte = async () => {
     setDescargandoPDF(true);
@@ -214,12 +220,17 @@ const handleGenerarDocumento = async (e) => {
     }
     setCargandoSubida(true);
     setErrorSubida('');
+    
+    // Determinamos si es pública basándonos en el selector
+    const esPublica = destinatarioDoc === 'usuario';
+
     try {
-      await apiSubirDocumentoEstudiante(expedienteId, archivoASubir);
-      // Éxito! Limpiamos el input y recargamos los datos del expediente
+      // Pasamos el 3er argumento 'esPublica' a la API
+      await apiSubirDocumentoEstudiante(expedienteId, archivoASubir, esPublica);
+      
       setArchivoASubir(null);
-      e.target.reset(); // Limpia el formulario
-      await cargarExpediente(); // Refresca la lista de evidencias
+      e.target.reset(); 
+      await cargarExpediente(); 
     } catch (err) {
       setErrorSubida(err.message || 'Ocurrió un error al subir el archivo.');
     } finally {
@@ -305,20 +316,35 @@ const handleCrearNota = async (e) => {
 
 
 // --- INICIO DE LA MODIFICACION: Lógica para la Línea de Tiempo ---
-  const eventosDocumento = (expediente.evidencias || []).map(ev => ({
-    tipo: 'documento',
-    ...ev
-  }));
-  const eventosNota = (expediente.notas || []).map(nota => ({
-    tipo: 'nota',
-    ...nota
-  }));
+ const eventosDocumento = (expediente.evidencias || []).map(ev => {
+    // Intentamos obtener una fecha válida. Si no existe, usamos la fecha actual como fallback para que no rompa.
+    const fechaString = ev.fecha_subida || ev.fecha_creacion;
+    const fechaObj = fechaString ? new Date(fechaString) : new Date(); 
+    
+    return {
+      tipo: 'documento',
+      fechaSort: fechaObj, // Usamos esta fecha para ordenar
+      ...ev
+    };
+  });
+   const eventosNota = (expediente.notas || [])
+    // FILTRO CRÍTICO: Si 'id_evidencia' tiene un valor (no es null), NO lo mostramos aquí.
+    // (Porque ya se mostrará dentro de la tarjeta del documento correspondiente)
+    .filter(nota => nota.id_evidencia === null) 
+    .map(nota => {
+      const fechaString = nota.fecha_creacion;
+      const fechaObj = fechaString ? new Date(fechaString) : new Date();
+
+      return {
+        tipo: 'nota',
+        fechaSort: fechaObj,
+        ...nota
+      };
+    });
 
   // Combinamos y ordenamos por fecha. Los documentos sin fecha van al final.
-  const lineaDeTiempo = [...eventosDocumento, ...eventosNota].sort((a, b) => {
-    const fechaA = a.fecha_creacion ? new Date(a.fecha_creacion) : new Date(0);
-    const fechaB = b.fecha_creacion ? new Date(b.fecha_creacion) : new Date(0);
-    return fechaB - fechaA; // Orden descendente (más nuevo primero)
+   const lineaDeTiempo = [...eventosDocumento, ...eventosNota].sort((a, b) => {
+    return a.fechaSort - b.fechaSort;
   });
 
 
@@ -445,9 +471,10 @@ const handleCrearNota = async (e) => {
                         
                         <p>{item.contenido}</p>
                         
-                        <small>
-                            {new Date(item.fecha_creacion).toLocaleString('es-CO')}
-                        </small>
+                       <small>
+                        {/* Cambia item.fecha_creacion por item.fechaSort para asegurar que se vea */}
+                        {item.fechaSort.toLocaleString('es-CO')} 
+                    </small>
                       </div>
                     </>
                   )}
@@ -460,13 +487,37 @@ const handleCrearNota = async (e) => {
         <div className="formularios-accion-contenedor">
           <form onSubmit={handleSubirDocumento} className="formulario-accion">
             <h4>Añadir Documento</h4>
+            
+            {/* --- NUEVO SELECTOR DE PRIVACIDAD PARA DOCUMENTOS --- */}
+            <div className="selector-destinatario">
+                <label>Para:</label>
+                <div className="toggle-group">
+                    <button 
+                        type="button"
+                        className={`toggle-btn ${destinatarioDoc === 'asesor' ? 'active privado' : ''}`}
+                        onClick={() => setDestinatarioDoc('asesor')}
+                    >
+                        🔒 Asesor (Interno)
+                    </button>
+                    <button 
+                        type="button"
+                        className={`toggle-btn ${destinatarioDoc === 'usuario' ? 'active publico' : ''}`}
+                        onClick={() => setDestinatarioDoc('usuario')}
+                    >
+                        📢 Usuario (Público)
+                    </button>
+                </div>
+            </div>
+            {/* ---------------------------------------------------- */}
+
             <input 
               type="file" 
               onChange={(e) => setArchivoASubir(e.target.files[0])}
               disabled={cargandoSubida}
             />
-            <button type="submit" disabled={cargandoSubida}>
-              {cargandoSubida ? 'Subiendo...' : 'Subir Archivo'}
+            {/* Cambiamos el texto del botón para reflejar la acción */}
+            <button type="submit" disabled={cargandoSubida} className={`btn-enviar ${destinatarioDoc}`}>
+              {cargandoSubida ? 'Subiendo...' : `Subir para ${destinatarioDoc === 'usuario' ? 'Ciudadano' : 'Asesor'}`}
             </button>
             {errorSubida && <p className="error-texto">{errorSubida}</p>}
           </form>

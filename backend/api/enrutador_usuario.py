@@ -176,17 +176,13 @@ def crear_caso(caso_a_crear: CasoCreacion, sesion: Session = Depends(obtener_ses
 
 @router.get("/{id_caso}", response_model=CasoDetalleUsuario)
 def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion), cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)):
-    """
-    Obtiene los detalles del caso.
-    MODIFICADO: Incluye filtro de seguridad para que el ciudadano NO vea notas internas.
-    """
     caso = sesion.get(Caso, id_caso)
     if not caso or (not cuenta_actual.usuario or caso.id_usuario != cuenta_actual.usuario.id):
         raise HTTPException(status_code=404, detail="Caso no encontrado o sin permisos.")
 
     respuesta = CasoDetalleUsuario.model_validate(caso)
     
-    # Datos de Asignación
+    # Asignación (Se mantiene igual)
     if caso.asignaciones:
         asignacion = caso.asignaciones[0]
         if asignacion.estudiante:
@@ -196,54 +192,53 @@ def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion),
         if asignacion.asesor:
             respuesta.asesor_asignado = asignacion.asesor.nombre_completo
 
-    # --- BLOQUE DE NOTAS CON FILTRO DE PRIVACIDAD ---
+    # Notas (Se mantiene igual)
     if caso.notas:
         notas_con_autor = []
         for nota in sorted(caso.notas, key=lambda n: n.fecha_creacion, reverse=True):
-            
-            # --- FILTRO DE SEGURIDAD ---
-            # Si quien consulta es un CIUDADANO (rol='usuario'), 
-            # ocultamos notas de 'estudiante' o 'asesor'.
-             # --- FILTRO DE PRIVACIDAD MEJORADO ---
-            # 1. Si soy CIUDADANO, solo veo mis notas, las del sistema, Y LAS PÚBLICAS del equipo.
-            if cuenta_actual.rol == 'usuario':
-                # El usuario ve: Sus propias notas, las del sistema, y las marcadas como PÚBLICAS por el staff
-                puede_ver = (
-                    nota.rol_autor == 'usuario' or 
-                    nota.rol_autor == 'sistema' or 
-                    nota.es_publica == True
-                )
-                if not puede_ver:
-                    continue # Ocultar nota interna
-            # -------------------------------------
+            # Filtro de visibilidad para notas
+            es_visible = (nota.rol_autor == 'usuario' or nota.rol_autor == 'sistema' or getattr(nota, 'es_publica', True))
+            if not es_visible: continue
 
             nota_api = NotaLectura.model_validate(nota)
-            # ... (lógica de nombres de autor sigue igual) ...
-            
+            # ... lógica de nombres de autor ...
             cuenta_autor = sesion.get(Cuenta, nota.id_cuenta_autor)
             if cuenta_autor:
                  if cuenta_autor.rol == 'estudiante' and cuenta_autor.estudiante:
                     nota_api.autor_nombre = f"Estudiante: {cuenta_autor.estudiante.nombre_completo}"
-                 # ... otros roles ...
-
+                 elif cuenta_autor.rol == 'asesor' and cuenta_autor.asesor:
+                    nota_api.autor_nombre = f"Asesor: {cuenta_autor.asesor.nombre_completo}"
+                 elif cuenta_autor.rol == 'usuario':
+                    nota_api.autor_nombre = "Tú"
+                 elif cuenta_autor.rol == 'sistema':
+                    nota_api.autor_nombre = "Sistema"
             notas_con_autor.append(nota_api)
         respuesta.notas = notas_con_autor
     
-    # Datos de Evidencias
+    # --- FILTRO DE EVIDENCIAS (CORREGIDO) ---
     if caso.evidencias:
         evidencias_con_autor = []
         for ev in caso.evidencias:
-            evidencia_api = EvidenciaLecturaSimple.model_validate(ev)
-            evidencia_api.ruta_archivo = str(ev.ruta_archivo).replace("\\", "/").replace("backend/", "/")
+            # Usamos getattr para evitar el error si la BD no se actualizó bien
+            es_publica = getattr(ev, 'es_publica', False)
+            es_propia = ev.subido_por_id_cuenta == cuenta_actual.id
+            
+            # SOLO AGREGAR SI ES PÚBLICA O ES DEL PROPIO USUARIO
+            if es_publica or es_propia:
+                evidencia_api = EvidenciaLecturaSimple.model_validate(ev)
+                evidencia_api.ruta_archivo = str(ev.ruta_archivo).replace("\\", "/").replace("backend/", "/")
 
-            if ev.subido_por_id_cuenta:
-                cuenta_autor = sesion.get(Cuenta, ev.subido_por_id_cuenta)
-                if cuenta_autor:
-                    if cuenta_autor.rol == 'usuario' and cuenta_autor.usuario:
-                        evidencia_api.autor_nombre = "Tú" if cuenta_autor.id == cuenta_actual.id else cuenta_autor.usuario.nombre
-                    elif cuenta_autor.rol == 'estudiante' and cuenta_autor.estudiante:
-                        evidencia_api.autor_nombre = f"Estudiante: {cuenta_autor.estudiante.nombre_completo}"
-            evidencias_con_autor.append(evidencia_api)
+                if ev.subido_por_id_cuenta:
+                    cuenta_autor = sesion.get(Cuenta, ev.subido_por_id_cuenta)
+                    if cuenta_autor:
+                        if cuenta_autor.rol == 'usuario':
+                            evidencia_api.autor_nombre = "Tú"
+                        elif cuenta_autor.rol == 'estudiante' and cuenta_autor.estudiante:
+                            evidencia_api.autor_nombre = f"Estudiante: {cuenta_autor.estudiante.nombre_completo}"
+                        elif cuenta_autor.rol == 'asesor' and cuenta_autor.asesor:
+                            evidencia_api.autor_nombre = f"Asesor: {cuenta_autor.asesor.nombre_completo}"
+                
+                evidencias_con_autor.append(evidencia_api)
         respuesta.evidencias = evidencias_con_autor
             
     return respuesta

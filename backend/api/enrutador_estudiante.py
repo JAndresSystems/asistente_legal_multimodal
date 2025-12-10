@@ -2,7 +2,7 @@
 
 
 
-from fastapi import APIRouter, HTTPException, File, UploadFile, Depends, status
+from fastapi import APIRouter, HTTPException, File, UploadFile, Depends, status,Form 
 import shutil
 from pathlib import Path
 from sqlmodel import Session, select
@@ -152,16 +152,16 @@ def rechazar_asignacion(
 def subir_documento_estudiante(
     id_caso: int, 
     archivo: UploadFile = File(...), 
+    es_publica: bool = Form(False), # <--- AGREGADO: Recibe la privacidad (False por defecto)
     sesion: Session = Depends(obtener_sesion),
     cuenta_actual: Cuenta = Depends(obtener_cuenta_actual)
 ):
     """
-    Permite a un estudiante subir un documento a un caso que ha aceptado.
+    Permite a un estudiante subir un documento definiendo su privacidad.
     """
     if not cuenta_actual.estudiante:
         raise HTTPException(status_code=403, detail="Solo los estudiantes pueden subir documentos.")
 
-    # Validacion de seguridad: El estudiante debe estar asignado y haber aceptado el caso.
     asignacion = sesion.exec(
         select(Asignacion).where(
             Asignacion.id_caso == id_caso, 
@@ -173,7 +173,6 @@ def subir_documento_estudiante(
     if not asignacion:
         raise HTTPException(status_code=403, detail="No tiene permiso para subir documentos a este caso.")
 
-    # Lógica de guardado de archivo (similar a la del ciudadano)
     ruta_guardado_caso = Path("backend/archivos_subidos") / str(id_caso)
     ruta_guardado_caso.mkdir(parents=True, exist_ok=True)
     ruta_archivo_final = ruta_guardado_caso / archivo.filename
@@ -181,13 +180,13 @@ def subir_documento_estudiante(
     with open(ruta_archivo_final, "wb") as buffer:
         shutil.copyfileobj(archivo.file, buffer)
         
-    # Creación del registro en BD, incluyendo el autor de la subida.
     nueva_evidencia_db = Evidencia(
         id_caso=id_caso, 
         ruta_archivo=str(ruta_archivo_final), 
         nombre_archivo=archivo.filename,
         tipo=archivo.content_type,
-        subido_por_id_cuenta=cuenta_actual.id  # <-- CAMBIO CLAVE AQUI
+        subido_por_id_cuenta=cuenta_actual.id,
+        es_publica=es_publica # <--- GUARDAMOS LA PRIVACIDAD EN LA BASE DE DATOS
     )
   
     sesion.add(nueva_evidencia_db)

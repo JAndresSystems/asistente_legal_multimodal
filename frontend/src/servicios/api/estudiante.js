@@ -120,15 +120,19 @@ export const apiRechazarAsignacion = async (idCaso) => {
   }
 };
 
-export const apiSubirDocumentoEstudiante = async (idCaso, archivo) => {
-  console.log(`API: Estudiante subiendo el archivo '${archivo.name}' al caso ${idCaso}`);
+export const apiSubirDocumentoEstudiante = async (idCaso, archivo, esPublica = false) => {
+  console.log(`API: Estudiante subiendo archivo '${archivo.name}' al caso ${idCaso}. Público: ${esPublica}`);
+  
   const formData = new FormData();
   formData.append("archivo", archivo);
+  // Agregamos el campo es_publica al FormData. 
+  // Nota: FormData convierte booleanos a strings ("true"/"false"), el backend debe manejarlo.
+  formData.append("es_publica", esPublica); 
+
   try {
-    // MODIFICACION: Se añade /api
     const respuesta = await fetch(`${URL_BASE_BACKEND}/api/expedientes/${idCaso}/subir-documento`, {
       method: 'POST',
-      headers: obtenerCabeceras(true),
+      headers: obtenerCabeceras(true), // true indica que es multipart/form-data (sin Content-Type manual)
       body: formData,
     });
     if (!respuesta.ok) {
