@@ -21,14 +21,17 @@ services:
   - name: asistente-legal-backend
     type: web
     runtime: python
-    buildCommand: |
-      pip install -r requirements.txt
-      rm -rf chroma_db_data
-      python -m backend.scripts.ingestar_documentos
+    # --- CAMBIO 1: El build solo instala librerías (No toca la IA) ---
+    buildCommand: "pip install -r requirements.txt"
+    
+    # --- CAMBIO 2: Movemos la lógica de IA al arranque (Donde sí hay llaves) ---
     startCommand: |
       rm -rf backend/archivos_subidos/*
+      rm -rf chroma_db_data
+      python -m backend.scripts.ingestar_documentos
       python -m backend.seed_db
       uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT
+      
     healthCheckPath: /
     plan: free
     envVars:
@@ -39,9 +42,6 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: 3.11.5
-      # ESTRATEGIA DE ARRANQUE: Usamos "*" para permitir que el nuevo frontend 
-      # se conecte inmediatamente sin importar qué URL le asigne Render.
-      # Una vez desplegado, cambiaremos esto por la URL real por seguridad.
       - key: CORS_ORIGINS
         value: "*"
 
