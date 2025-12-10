@@ -1,4 +1,4 @@
-# render.yaml (Versión de Arranque - Diciembre 2025)
+# render.yaml (Versión FINAL PRODUCCIÓN - Conexión Exitosa)
 
 envVarGroups:
   - name: secrets
@@ -21,10 +21,10 @@ services:
   - name: asistente-legal-backend
     type: web
     runtime: python
-    # --- CAMBIO CRÍTICO: El build solo instala librerías (No toca la IA) ---
+    # El build solo instala librerías
     buildCommand: "pip install -r requirements.txt"
     
-    # --- CAMBIO CRÍTICO: Movemos la lógica de IA al arranque (Donde sí hay llaves) ---
+    # La lógica de IA y BD va al arranque
     startCommand: |
       rm -rf backend/archivos_subidos/*
       rm -rf chroma_db_data
@@ -42,10 +42,9 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: 3.11.5
-      # ESTRATEGIA DE ARRANQUE: Usamos "*" para permitir que el nuevo frontend 
-      # se conecte inmediatamente sin importar qué URL le asigne Render.
+      # CONFIGURACIÓN DE SEGURIDAD: Solo tu Frontend real puede hablar con el Backend
       - key: CORS_ORIGINS
-        value: "*"
+        value: "https://asistente-legal-frontend-897g.onrender.com,http://localhost:5173"
 
   # 2. Frontend (Rostro)
   - name: asistente-legal-frontend
@@ -59,7 +58,6 @@ services:
         source: /*
         destination: /index.html
     envVars:
-      # ESTRATEGIA DE ARRANQUE: Dejamos esto pendiente.
-      # Render generará la URL del backend al crear el servicio.
+      # CONEXIÓN NEURONAL: Aquí le decimos al Frontend dónde está su Backend real
       - key: VITE_URL_BASE_BACKEND
-        value: "https://PENDIENTE_DE_ACTUALIZAR_TRAS_DESPLIEGUE.onrender.com"
+        value: "https://asistente-legal-backend-897g.onrender.com"
