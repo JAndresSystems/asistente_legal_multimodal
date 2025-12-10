@@ -1,4 +1,4 @@
-# render.yaml (Versión Final con Health Check Corregido)
+# render.yaml (Versión de Arranque - Diciembre 2025)
 
 envVarGroups:
   - name: secrets
@@ -17,7 +17,7 @@ databases:
     plan: free
 
 services:
-  # 1. Backend (FastAPI + Uvicorn)
+  # 1. Backend (Cerebro)
   - name: asistente-legal-backend
     type: web
     runtime: python
@@ -29,11 +29,7 @@ services:
       rm -rf backend/archivos_subidos/*
       python -m backend.seed_db
       uvicorn backend.main:aplicacion --host 0.0.0.0 --port $PORT
-    # --- INICIO DE LA CORRECCIÓN CLAVE ---
-    # Apuntamos el health check a la ruta raíz "/", que sabemos que existe
-    # y devuelve una respuesta 200 OK.
     healthCheckPath: /
-    # --- FIN DE LA CORRECCIÓN CLAVE ---
     plan: free
     envVars:
       - fromGroup: secrets
@@ -43,10 +39,13 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: 3.11.5
+      # ESTRATEGIA DE ARRANQUE: Usamos "*" para permitir que el nuevo frontend 
+      # se conecte inmediatamente sin importar qué URL le asigne Render.
+      # Una vez desplegado, cambiaremos esto por la URL real por seguridad.
       - key: CORS_ORIGINS
-        value: "https://asistente-legal-frontend-8n9i.onrender.com,http://localhost:5173,http://127.0.0.1:5173"
+        value: "*"
 
-  # 2. Frontend (React + Vite)
+  # 2. Frontend (Rostro)
   - name: asistente-legal-frontend
     type: web
     runtime: static
@@ -58,5 +57,8 @@ services:
         source: /*
         destination: /index.html
     envVars:
+      # ESTRATEGIA DE ARRANQUE: Dejamos esto pendiente.
+      # Render generará la URL del backend al crear el servicio.
+      # El frontend cargará, pero dará error de red hasta que hagamos el PASO 4.
       - key: VITE_URL_BASE_BACKEND
-        value: "https://asistente-legal-backend-71ft.onrender.com"
+        value: "https://PENDIENTE_DE_ACTUALIZAR_TRAS_DESPLIEGUE.onrender.com"
