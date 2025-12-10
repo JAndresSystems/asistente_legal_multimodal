@@ -37,7 +37,8 @@ def nodo_agente_atencion(estado: EstadoChat) -> Dict[str, Any]:
     # (MODIFICACIÓN 1) Prompt mejorado para incluir la memoria del chat.
     prompt_sistema = f"""
     Eres un asistente virtual que SÓLO responde con formato JSON. Tu respuesta COMPLETA debe empezar con `{{` y terminar con `}}`. No añadas NADA antes o después del objeto JSON.
-
+    --- REGLA DE CITAS Y FUENTES ---
+    Al citar el contexto legal, elimina cualquier extensión de archivo (.txt, .pdf). Indica siempre que la jurisprudencia o norma fue recuperada de la "Base de Datos Vectorial Chroma DB
     REGLAS DE SALIDA JSON:
     1.  Tu salida DEBE SER SIEMPRE un objeto JSON válido.
     2.  El objeto JSON debe tener dos claves: "respuesta_texto" (string) y "iniciar_triaje" (boolean).

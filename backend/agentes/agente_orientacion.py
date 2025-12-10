@@ -45,7 +45,8 @@ def invocar_agente_orientacion(caso_db: Any, pregunta_usuario: str) -> Dict[str,
     # 3. Prompt con Lógica de Escalamiento
     prompt = f"""
     Eres el "Agente de Orientación" del Consultorio Jurídico.
-    
+    --- REGLA DE CITAS Y FUENTES ---
+    Al citar el contexto legal, elimina cualquier extensión de archivo (.txt, .pdf). Indica siempre que la jurisprudencia o norma fue recuperada de la "Base de Datos Vectorial Chroma DB
     --- DATOS DEL CASO ---
     {resumen_caso}
     --- CONTEXTO LEGAL ---

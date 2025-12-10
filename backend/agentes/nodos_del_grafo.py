@@ -155,6 +155,9 @@ def nodo_agente_triaje(estado: dict) -> dict:
     prompt_sistema_triaje = f"""
     Eres "Camila", un agente de triaje jurídico experto, estricto pero amable. Tu función es determinar si un caso puede ser admitido en un consultorio jurídico según la Ley 2113 de 2021.
 
+    --- REGLA DE CITAS Y FUENTES ---
+    Al citar el contexto legal, elimina cualquier extensión de archivo (.txt, .pdf). Indica siempre que la jurisprudencia o norma fue recuperada de la "Base de Datos Vectorial Chroma DB".
+
     --- TUS HERRAMIENTAS DE VERDAD (CONTEXTO LEGAL RAG) ---
     {contexto_completo}
     --- FIN CONTEXTO ---
@@ -199,13 +202,19 @@ def nodo_agente_triaje(estado: dict) -> dict:
     - Si hay audios entre los archivos, debes interpretar su contenido para identificar información relevante como la condición socioeconómica del usuario, declaraciones importantes o hechos adicionales.
     - Si un audio revela que el usuario es de estrato 7 o afirma no tener Sisbén, esto es CRÍTICO para la decisión de admisibilidad.
 
+    6. **CASOS EXCLUIDOS O RESTRINGIDOS (REGLA DE ORO - LEY 2113 DE 2021):**
+    - **Estado Civil:** Si el caso trata sobre matrimonio, divorcio, filiación, etc., TU DECISIÓN DEBE SER "NO_ADMISSIBLE". Razón: Son derechos irrenunciables e indisponibles.
+    - **Cuantía:** Si la pretensión supera los 50 SMLMV (Salarios Mínimos) en civil, TU DECISIÓN DEBE SER "NO_ADMISSIBLE" (salvo mínima cuantía).
+    - **Procedimientos Administrativos:** Casos ante Superintendencias, procesos sancionatorios administrativos o policivos verbales abreviados están excluidos.
+    - **Otros:** Asuntos que requieren apoderado judicial específico (contra funcionarios de alto rango) o temas no contemplados en la ley.
+
     --- FORMATO DE RESPUESTA OBLIGATORIO ---
     DEBES RESPONDER ÚNICAMENTE CON UN OBJETO JSON CON ESTA ESTRUCTURA EXACTA:
     {{
         "resumen_evidencia": "Resumen técnico de lo recibido, incluyendo análisis del contenido de audios y documentos si los hubiera. Menciona específicamente si se encontró información sobre condición socioeconómica o cédula en los documentos o audios.",
         "decision_triaje": "ADMISSIBLE | NO_ADMISSIBLE | FALTA_INFORMACION",
         "justificacion": "Análisis interno técnico citando la ley o el motivo. Debe incluir análisis de condición socioeconómica y fundamentación legal basada en el contexto RAG. NO cites nombres de archivos, sino las leyes y artículos específicos como 'Ley 2113 de 2021, Artículo 8' o 'Ley 2113 de 2021, Capítulo II'. Menciona si se encontró información sobre condición socioeconómica o cédula en los documentos o audios y cómo afectó la decisión.",
-        "mensaje_para_usuario": "EXPLICACIÓN CLARA PARA EL CIUDADANO. Si ACEPTAS: Di 'Tu caso fue aceptado porque [Razón basada en hechos/ley]'. Si RECHAZAS: Di 'No podemos aceptar el caso porque [Razón: faltan hechos/documentos/condición socioeconómica]'. Si PIDE MÁS INFO: Di 'Necesitamos [documento específico] para continuar.' y MENCIONA EXPLÍCITAMENTE si YA SE DETECTÓ ALGUNO (por ejemplo: 'Ya vi el certificado del Sisbén donde se confirma que es estrato {estrato_detectado}.' o 'Ya escuché en el audio que mencionó ser estrato {estrato_detectado}.').",
+        "mensaje_para_usuario": "EXPLICACIÓN CLARA PARA EL CIUDADANO. Si ACEPTAS: Di 'Tu caso fue aceptado porque [Razón basada en hechos/ley]'. Si RECHAZAS: Di 'No podemos aceptar el caso porque [Razón: faltan hechos/documentos/condición socioeconómica/según la Ley 2113 de 2021]'. Si PIDE MÁS INFO: Di 'Necesitamos [documento específico] para continuar.' y MENCIONA EXPLÍCITAMENTE si YA SE DETECTÓ ALGUNO (por ejemplo: 'Ya vi el certificado del Sisbén donde se confirma que es estrato {estrato_detectado}.' o 'Ya escuché en el audio que mencionó ser estrato {estrato_detectado}.').",
         "hechos_clave": "Resumen jurídico de los hechos (MÁX 2 PÁRRAFOS). Si decides ADMISSIBLE, este campo NO puede estar vacío."
     }}
     NO AGREGUES NADA MÁS QUE EL OBJETO JSON. NO USES MARCADORES DE CÓDIGO. RESPONDE DIRECTAMENTE CON EL JSON.
@@ -356,7 +365,8 @@ def nodo_agente_determinador_competencias(estado: EstadoDelGrafo) -> Dict[str, A
     Compara los "HECHOS DEL CASO" con el "CONTEXTO LEGAL" de cada área. Elige el área que mejor se ajuste al caso.
 
     AREAS VALIDAS para tu respuesta: "Derecho Privado", "Derecho Publico", "Derecho Laboral", "Derecho Penal", "No Clasificable".
-
+     --- REGLA DE CITAS ---
+    Basate en la "Base de Datos Vectorial Chroma DB". NUNCA menciones nombres de archivos con extensión (.txt, .pdf).
     Devuelve un objeto JSON con la siguiente estructura:
     {{
       "area_competencia": "string (una de las AREAS VALIDAS)",
@@ -493,7 +503,8 @@ def nodo_agente_juridico(estado: EstadoDelGrafo) -> Dict[str, Any]:
     # --- INICIO DE LA MODIFICACION FINAL: EL PROMPT DE TUTOR ESTRUCTURADO ---
     prompt_final = f"""
     Eres un Tutor Jurídico de IA, especializado en Derecho Privado colombiano. Tu propósito es proporcionar respuestas claras, estructuradas y concisas para guiar a estudiantes de derecho.
-
+     --- REGLA DE CITAS Y FUENTES ---
+    Al citar el contexto legal, elimina cualquier extensión de archivo (.txt, .pdf). Indica siempre que la jurisprudencia o norma fue recuperada de la "Base de Datos Vectorial Chroma DB".
     --- REGLAS DE ORO (APLICAN A TODAS LAS RESPUESTAS) ---
     1.  **Claridad y Estructura SIEMPRE:** Toda respuesta, sin importar la pregunta, debe estar formateada en Markdown. Utiliza encabezados (`###`), listas (`*` o `1.`) y negritas (`**`) para organizar la información.
     2.  **Concisión Profesional:** Tus respuestas NO DEBEN superar las 200 palabras, a menos que la tarea sea explícitamente un "análisis inicial". Ve directo al grano. Eres un abogado senior, tu tiempo es valioso.

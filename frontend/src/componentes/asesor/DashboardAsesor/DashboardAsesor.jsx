@@ -50,7 +50,9 @@ const DashboardAsesor = ({ onVerExpediente }) => {
   return (
     <div className={styles.dashboardContenedor}>
        <div className={styles.saludoContenedor}>
-        <h2 className={styles.titulo}>Bienvenido, Dr. {usuario?.nombre?.split(' ')[0]}</h2>
+        <h2 className={styles.titulo}>
+        Bienvenido, {usuario?.nombre_completo || usuario?.nombre || "Asesor"}
+      </h2>
         <p className={styles.subtitulo}>Panel de Supervisión y Control.</p>
       </div>
 
