@@ -6,6 +6,7 @@ from pathlib import Path
 from sqlmodel import Session, select
 from typing import List, Dict, Any
 import json
+import os
 
 from ..base_de_datos import obtener_sesion
 from .modelos_compartidos import (
@@ -21,6 +22,10 @@ from ..seguridad.jwt_manager import obtener_cuenta_actual
 
 from fpdf import FPDF
 from fastapi.responses import Response
+
+
+# URL REAL DE TU BACKEND EN RENDER (Sin barra al final)
+URL_BACKEND_PRODUCCION = "https://asistente-legal-backend-897g.onrender.com"
 
 router = APIRouter(
     prefix="/api/casos",
@@ -196,12 +201,10 @@ def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion),
     if caso.notas:
         notas_con_autor = []
         for nota in sorted(caso.notas, key=lambda n: n.fecha_creacion, reverse=True):
-            # Filtro de visibilidad para notas
             es_visible = (nota.rol_autor == 'usuario' or nota.rol_autor == 'sistema' or getattr(nota, 'es_publica', True))
             if not es_visible: continue
 
             nota_api = NotaLectura.model_validate(nota)
-            # ... lógica de nombres de autor ...
             cuenta_autor = sesion.get(Cuenta, nota.id_cuenta_autor)
             if cuenta_autor:
                  if cuenta_autor.rol == 'estudiante' and cuenta_autor.estudiante:
@@ -215,18 +218,28 @@ def obtener_caso_por_id(id_caso: int, sesion: Session = Depends(obtener_sesion),
             notas_con_autor.append(nota_api)
         respuesta.notas = notas_con_autor
     
-    # --- FILTRO DE EVIDENCIAS (CORREGIDO) ---
+    # --- FILTRO DE EVIDENCIAS (CORREGIDO PARA HTTPS) ---
     if caso.evidencias:
         evidencias_con_autor = []
         for ev in caso.evidencias:
-            # Usamos getattr para evitar el error si la BD no se actualizó bien
             es_publica = getattr(ev, 'es_publica', False)
             es_propia = ev.subido_por_id_cuenta == cuenta_actual.id
             
-            # SOLO AGREGAR SI ES PÚBLICA O ES DEL PROPIO USUARIO
             if es_publica or es_propia:
                 evidencia_api = EvidenciaLecturaSimple.model_validate(ev)
-                evidencia_api.ruta_archivo = str(ev.ruta_archivo).replace("\\", "/").replace("backend/", "/")
+                
+                # --- CIRUGÍA DE URL ---
+                # 1. Limpiamos la ruta guardada en BD (ej: "backend/archivos_subidos/1/foto.png")
+                ruta_limpia = str(ev.ruta_archivo).replace("\\", "/").replace("backend/", "")
+                # Aseguramos que no empiece con / para unirla bien
+                if ruta_limpia.startswith("/"): ruta_limpia = ruta_limpia[1:]
+                
+                # 2. Construimos la URL ABSOLUTA Y SEGURA
+                # Resultado: https://.../archivos_subidos/1/foto.png
+                url_final = f"{URL_BACKEND_PRODUCCION}/{ruta_limpia}"
+                
+                evidencia_api.ruta_archivo = url_final
+                # ---------------------
 
                 if ev.subido_por_id_cuenta:
                     cuenta_autor = sesion.get(Cuenta, ev.subido_por_id_cuenta)

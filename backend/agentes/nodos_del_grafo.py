@@ -41,6 +41,12 @@ def _extraer_info_de_audios(rutas_archivos: List[str]) -> str:
                     archivos_locales=[ruta]
                 )
                 
+                # --- [PARCHE DE SEGURIDAD 1] ---
+                # Si la IA devuelve una lista en vez de dict, tomamos el primer elemento
+                if isinstance(resultado_audio, list):
+                    resultado_audio = resultado_audio[0] if resultado_audio else {}
+                # -------------------------------
+                
                 if "error" not in resultado_audio:
                     transcripcion = resultado_audio.get("transcripcion_completa", "")
                     resumen_audio = resultado_audio.get("resumen_puntos_clave", "")
@@ -63,10 +69,7 @@ def _extraer_info_de_audios(rutas_archivos: List[str]) -> str:
 def nodo_agente_triaje(estado: dict) -> dict:
     """
     Nodo principal del Agente de Triaje ("Camila").
-    VERSIÓN CORREGIDA: Lógica estricta de validación de hechos y uso de RAG para justificación.
-    MEJORA: Ahora analiza activamente el contenido de los audios para extraer información crítica
-    y la incluye en el contexto del prompt. Tambien analiza imagenes/PDFs buscando documentos clave
-    como Sisben o cedula, actualizando su estado interno y respondiendo explicitamente sobre ellos.
+    VERSIÓN CORREGIDA: Incluye parche de seguridad para respuestas tipo lista de Gemini.
     """
     print("\n--- [AGENTE TRIAJE] Iniciando ejecucion del nodo ---")
     
@@ -98,6 +101,11 @@ def nodo_agente_triaje(estado: dict) -> dict:
                     prompt_usuario="Analiza este documento. Si es un certificado del Sisbén, extrae el estrato y el nombre del titular. Si es una cédula, extrae el número y el nombre. Resume brevemente los datos clave.",
                     archivos_locales=[ruta]
                 )
+                
+                # --- [PARCHE DE SEGURIDAD 2] ---
+                if isinstance(resultado_doc, list):
+                    resultado_doc = resultado_doc[0] if resultado_doc else {}
+                # -------------------------------
                 
                 if "error" not in resultado_doc:
                     tipo_doc_identificado = resultado_doc.get("tipo_documento_identificado", "")
@@ -229,6 +237,14 @@ def nodo_agente_triaje(estado: dict) -> dict:
             archivos_locales=rutas_archivos
         )
         print("--- [AGENTE TRIAJE] Análisis multimodal completado.")
+        
+        # --- [PARCHE DE SEGURIDAD 3: EL MÁS IMPORTANTE] ---
+        # Gemini a veces devuelve una lista con un solo objeto en vez del objeto directo.
+        # Esto soluciona el error 'list object has no attribute get'
+        if isinstance(resultado_analisis, list):
+            print(" [AGENTE TRIAJE] La IA devolvió una LISTA. Aplicando parche.")
+            resultado_analisis = resultado_analisis[0] if resultado_analisis else {}
+        # --------------------------------------------------
         
         if "error" in resultado_analisis:
             raise Exception(f"La herramienta de análisis devolvió un error: {resultado_analisis['error']}")
