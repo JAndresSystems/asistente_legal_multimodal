@@ -160,7 +160,7 @@ class Asignacion(SQLModel, table=True):
     id_estudiante: int = Field(foreign_key="estudiante.id")
     id_asesor: int = Field(foreign_key="asesor.id")
     estado: str = Field(default="pendiente", index=True)
-    calificacion: Optional[int] = Field(default=None) # Escala 1 a 5
+    calificacion: Optional[float] = Field(default=None) # Escala 1 a 5
     comentario_docente: Optional[str] = Field(default=None, sa_column=Column(Text))
     caso: "Caso" = Relationship(back_populates="asignaciones")
     estudiante: "Estudiante" = Relationship(back_populates="asignaciones")
@@ -324,9 +324,11 @@ class SolicitudReasignacion(SQLModel):
     """
     Docstring:
     Modelo para validar la peticion de reasignar un caso.
-    Espera recibir el ID del nuevo estudiante.
+    Ahora incluye la calificación del estudiante saliente.
     """
-    id_nuevo_estudiante: int    
+    calificacion_saliente: float # Nota del 1 al 5
+    comentario_saliente: str
+    # Ya no pedimos 'id_nuevo_estudiante' porque el sistema lo buscará automáticamente  
 
 
 class MetricaEstudiante(SQLModel):
@@ -437,7 +439,7 @@ class NotificacionCreacion(SQLModel):
 
 
 class SolicitudCierreCaso(SQLModel):
-    calificacion: int
+    calificacion: float
     comentario: str
 
 
@@ -452,5 +454,5 @@ class CasoEstudianteDashboard(SQLModel):
     estado: str
     descripcion_hechos: str
     # --- DATOS DE EVALUACIÓN ---
-    calificacion: Optional[int] = None
+    calificacion: Optional[float] = None 
     comentario_docente: Optional[str] = None    

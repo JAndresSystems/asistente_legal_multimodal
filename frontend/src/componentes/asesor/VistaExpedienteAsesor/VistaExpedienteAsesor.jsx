@@ -4,7 +4,7 @@ import {
   apiObtenerDetalleExpedienteAsesor, 
   apiCrearNotaAsesor, 
   apiFinalizarCaso,
-  apiObtenerEstudiantes,
+  //apiObtenerEstudiantes,
   apiReasignarCaso,
   apiAprobarDocumento,         // 1. Importamos las nuevas APIs
   apiSolicitarCambiosDocumento ,
@@ -29,8 +29,8 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
   const [finalizandoCaso, setFinalizandoCaso] = useState(false);
   const [errorFinalizar, setErrorFinalizar] = useState(null);
   const [modoReasignacion, setModoReasignacion] = useState(false);
-  const [listaEstudiantes, setListaEstudiantes] = useState([]);
-  const [estudianteSeleccionadoId, setEstudianteSeleccionadoId] = useState('');
+ // const [listaEstudiantes, setListaEstudiantes] = useState([]);
+  //const [estudianteSeleccionadoId, setEstudianteSeleccionadoId] = useState('');
   const [reasignandoCaso, setReasignandoCaso] = useState(false);
   const [errorReasignacion, setErrorReasignacion] = useState(null);
 
@@ -146,14 +146,21 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
       alert("Por favor ingrese un comentario de retroalimentación para el estudiante.");
       return;
     }
+
+    const notaFloat = parseFloat(calificacion);
+    if (isNaN(notaFloat) || notaFloat < 0 || notaFloat > 5) {
+        alert("La calificación debe ser un número entre 0.0 y 5.0");
+        return;
+    }
     
     setFinalizandoCaso(true);
     setErrorFinalizar(null);
     try {
-      // Llamamos a la API con los nuevos datos
-      await apiFinalizarCaso(expedienteId, calificacion, comentarioCierre);
+      // Llamamos a la API asegurando que la nota sea DECIMAL
+      await apiFinalizarCaso(expedienteId, notaFloat, comentarioCierre); // <--- USO DE parseFloat
+      
       setMostrarModalCalificacion(false);
-      await cargarExpediente(); // Recargar para ver el estado cerrado
+      await cargarExpediente(); 
     } catch (err) {
       setErrorFinalizar(err.message || "Error al finalizar el caso.");
     } finally {
@@ -161,37 +168,49 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
     }
   };
 
-  const handleIniciarReasignacion = async () => {
+const handleIniciarReasignacion = () => {
+    // Ya no necesitamos cargar la lista de estudiantes
     setModoReasignacion(true);
     setErrorReasignacion(null);
-    try {
-      const estudiantes = await apiObtenerEstudiantes();
-      const estudiantesFiltrados = estudiantes.filter(est => est.nombre_completo !== expediente.estudiante_asignado);
-      setListaEstudiantes(estudiantesFiltrados);
-    } catch (err) {
-      setErrorReasignacion(err.message || "Error al cargar la lista de estudiantes.");
-    }
+    // Reiniciamos los campos de calificación por si acaso
+    setCalificacion(5);
+    setComentarioCierre("");
   };
 
-  const handleCancelarReasignacion = () => {
+ const handleCancelarReasignacion = () => {
     setModoReasignacion(false);
-    setEstudianteSeleccionadoId('');
     setErrorReasignacion(null);
   };
 
-  const handleConfirmarReasignacion = async () => {
-    if (!estudianteSeleccionadoId) {
-      setErrorReasignacion("Por favor, seleccione un estudiante.");
+ const handleConfirmarReasignacion = async () => {
+    if (!comentarioCierre.trim()) {
+      setErrorReasignacion("Debe ingresar un motivo para la reasignación.");
       return;
     }
+    
+    // Validación extra: Que la nota esté en rango
+    const notaFloat = parseFloat(calificacion);
+    if (isNaN(notaFloat) || notaFloat < 0 || notaFloat > 5) {
+        setErrorReasignacion("La calificación debe ser un número entre 0.0 y 5.0");
+        return;
+    }
+
     setReasignandoCaso(true);
     setErrorReasignacion(null);
+    
     try {
-      const respuesta = await apiReasignarCaso(expedienteId, parseInt(estudianteSeleccionadoId));
+      // Preparamos el payload con la calificación DECIMAL
+      const datosReasignacion = {
+          calificacion_saliente: notaFloat, // <--- USO DE parseFloat
+          comentario_saliente: comentarioCierre
+      };
+      
+      const respuesta = await apiReasignarCaso(expedienteId, datosReasignacion);
+      
       alert(respuesta.mensaje);
-      onVolverADashboard();
+      onVolverADashboard(); 
     } catch (err) {
-      setErrorReasignacion(err.message || "Ocurrió un error durante la reasignación.");
+      setErrorReasignacion(err.message || "Error al reasignar.");
     } finally {
       setReasignandoCaso(false);
     }
@@ -402,23 +421,40 @@ const handleAprobar = async (idEvidencia) => {
               </button>
             ) : (
               <div className={styles.contenedorReasignacion}>
-                <p>Seleccione el nuevo estudiante a cargo:</p>
-                <select
-                  value={estudianteSeleccionadoId}
-                  onChange={(e) => setEstudianteSeleccionadoId(e.target.value)}
-                  className={styles.selectEstudiante}
-                >
-                  <option value="">-- Seleccionar estudiante --</option>
-                  {listaEstudiantes.map((est) => (
-                    <option key={est.id} value={est.id}>
-                      {est.nombre_completo} ({est.area_especialidad})
-                    </option>
-                  ))}
-                </select>
+                <h4 style={{marginTop:0, color:'#d35400'}}>Reasignación de Caso</h4>
+                <p style={{fontSize:'0.9rem'}}>Califique al estudiante actual antes de transferir el caso. El sistema buscará automáticamente un reemplazo.</p>
+                
+                {/* 1. Selector de Nota */}
+                <div style={{marginBottom:'10px'}}>
+                    <label style={{display:'block', fontWeight:'bold', fontSize:'0.85rem'}}>Calificación (Saliente):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      value={calificacion} 
+                      onChange={(e) => setCalificacion(e.target.value)}
+                      placeholder="Ej: 3.5"
+                      style={{width:'100%', padding:'5px', border:'1px solid #ccc', borderRadius:'4px'}}
+                    />
+                </div>
+
+                {/* 2. Comentario Obligatorio */}
+                <div style={{marginBottom:'10px'}}>
+                    <label style={{display:'block', fontWeight:'bold', fontSize:'0.85rem'}}>Motivo / Feedback:</label>
+                    <textarea
+                        value={comentarioCierre} // Reusamos estado comentarioCierre
+                        onChange={(e) => setComentarioCierre(e.target.value)}
+                        placeholder="¿Por qué se reasigna? Feedback para el estudiante..."
+                        rows="3"
+                        style={{width:'100%', padding:'5px', borderRadius:'4px', border:'1px solid #ccc'}}
+                    />
+                </div>
+
                 <div className={styles.botonesReasignacion}>
                   <button onClick={handleCancelarReasignacion} className={styles.botonCancelar}>Cancelar</button>
                   <button onClick={handleConfirmarReasignacion} disabled={reasignandoCaso} className={styles.botonConfirmar}>
-                    {reasignandoCaso ? 'Reasignando...' : 'Confirmar'}
+                    {reasignandoCaso ? 'Procesando...' : 'Confirmar y Reasignar'}
                   </button>
                 </div>
               </div>
@@ -455,18 +491,19 @@ const handleAprobar = async (idEvidencia) => {
                 <p>Califique el desempeño del estudiante para cerrar el caso.</p>
                 
                 <div className={styles.campoModal}>
-                    <label>Nota (1-5):</label>
-                    <select 
+                    <label>Nota (0.0 - 5.0):</label>
+                    {/* CAMBIO: Input numérico en vez de Select */}
+                    <input 
+                        type="number" 
+                        min="0" 
+                        max="5" 
+                        step="0.1" // Permite decimales
                         value={calificacion} 
                         onChange={(e) => setCalificacion(e.target.value)}
-                        className={styles.selectCalificacion}
-                    >
-                        <option value="5">5 - Excelente</option>
-                        <option value="4">4 - Bueno</option>
-                        <option value="3">3 - Aceptable</option>
-                        <option value="2">2 - Insuficiente</option>
-                        <option value="1">1 - Deficiente</option>
-                    </select>
+                        className={styles.inputCalificacion} // Asegúrate de tener estilo o usa style={{...}}
+                        style={{width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc'}}
+                        placeholder="Ej: 4.5"
+                    />
                 </div>
 
                 <div className={styles.campoModal}>

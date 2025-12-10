@@ -12,6 +12,8 @@ from .modelos_compartidos import (
     EstadoCaso, EstadoEvidencia, DashboardAsesorData, MetricaEstudiante,SolicitudCierreCaso 
 )
 
+from ..agentes.nodos_del_grafo import encontrar_persona_con_menos_carga
+
 # Se añade "/api" al prefijo para estandarizar todas las rutas del backend y
 # solucionar el error '404 Not Found' que estabas experimentando.
 router_asesor = APIRouter(
@@ -49,25 +51,29 @@ def obtener_dashboard_asesor(
     asesor_actual: Asesor = Depends(obtener_asesor_actual)
 ):
     """
-    Endpoint Dashboard Asesor:
-    Calcula métricas y detecta ALERTAS del sistema en los casos.
+    Endpoint Dashboard Asesor.
+    CORREGIDO: 
+    1. Filtra la lista para no mostrar duplicados (solo asignaciones activas).
+    2. Calcula la CARGA DE TRABAJO excluyendo casos cerrados.
     """
-    # 1. Obtener casos supervisados
+    # 1. Obtener casos supervisados (Lista principal)
+    # Mostramos lo que está activo O lo que está cerrado (para historial), pero evitamos duplicados de reasignaciones viejas.
     query_casos = (
         select(Caso, Estudiante.nombre_completo)
         .join(Asignacion, Caso.id == Asignacion.id_caso)
         .join(Estudiante, Asignacion.id_estudiante == Estudiante.id)
         .where(Asignacion.id_asesor == asesor_actual.id)
+        # Filtramos para ver solo la asignación vigente (pendiente/aceptado) o la final si se cerró.
+        # Excluimos las asignaciones viejas que dicen 'reasignado' o 'rechazado' para no ver duplicados.
+        .where(Asignacion.estado.in_(["pendiente", "aceptado"])) 
         .order_by(Caso.fecha_creacion.desc())
     )
     resultados_casos = sesion.exec(query_casos).all()
     
     lista_procesada = []
     
-    # 2. Procesar cada caso para detectar alertas
+    # 2. Procesar alertas
     for caso, nombre_est in resultados_casos:
-        # Lógica de detección: Buscamos notas creadas por el sistema (rol='sistema')
-        # que contengan la palabra 'ALERTA' o el emoji.
         tiene_alerta = False
         if caso.notas:
             for nota in caso.notas:
@@ -82,18 +88,26 @@ def obtener_dashboard_asesor(
                 estado=caso.estado, 
                 fecha_creacion=caso.fecha_creacion, 
                 nombre_estudiante=nombre_est,
-                tiene_alerta=tiene_alerta # <--- Aquí inyectamos la bandera
+                tiene_alerta=tiene_alerta
             )
         )
 
-    # 3. Métricas (Igual que antes)
-    estados_activos = [EstadoCaso.ASIGNADO.value, EstadoCaso.PENDIENTE_ACEPTACION.value]
+    # 3. Métricas de Carga (AQUÍ ESTÁ LA CORRECCIÓN DE LOS ACTIVOS)
+    # Solo contamos casos que ESTÉN VIVOS.
+    estados_que_suman_carga = [
+        EstadoCaso.ASIGNADO.value, 
+        EstadoCaso.PENDIENTE_ACEPTACION.value,
+        EstadoCaso.EN_REVISION.value
+        # NO incluimos CERRADO ni RECHAZADO
+    ]
+    
     query_metricas = (
         select(Estudiante.nombre_completo, func.count(Caso.id).label("total_casos"))
         .join(Asignacion, Estudiante.id == Asignacion.id_estudiante, isouter=True)
         .join(Caso, Asignacion.id_caso == Caso.id, isouter=True)
         .where(Asignacion.id_asesor == asesor_actual.id)
-        .where(Caso.estado.in_(estados_activos))
+        .where(Asignacion.estado.in_(["pendiente", "aceptado"])) # Solo asignación vigente
+        .where(Caso.estado.in_(estados_que_suman_carga)) # <--- FILTRO CLAVE: Solo casos abiertos
         .group_by(Estudiante.nombre_completo)
         .order_by(func.count(Caso.id).desc())
     )
@@ -217,45 +231,50 @@ def crear_nota_asesor(
 @router_asesor.post("/expedientes/{id_caso}/finalizar", status_code=status.HTTP_200_OK)
 def finalizar_caso(
     id_caso: int,
-    datos_cierre: SolicitudCierreCaso, # <--- Ahora recibimos datos
+    datos_cierre: SolicitudCierreCaso,
     sesion: Session = Depends(obtener_sesion),
     asesor_actual: Asesor = Depends(obtener_asesor_actual)
 ):
     """
-    Cierra el caso y guarda la calificación del estudiante.
+    Cierra el caso y guarda la calificación del estudiante ACTUAL.
     """
-    # 1. Buscar la asignación activa
+    # 1. Buscar la asignación ACTIVA (La que no ha sido reasignada ni rechazada)
+    # ESTO ES CRÍTICO: Si no filtramos por estado, podría calificar al estudiante anterior.
     asignacion = sesion.exec(
         select(Asignacion).where(
             Asignacion.id_caso == id_caso, 
-            Asignacion.id_asesor == asesor_actual.id
+            Asignacion.id_asesor == asesor_actual.id,
+            Asignacion.estado.in_(["pendiente", "aceptado", "en_progreso"]) # <--- FILTRO CLAVE
         )
     ).first()
     
     if not asignacion:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tiene permiso para modificar este caso.")
+        raise HTTPException(status_code=403, detail="No se encontró una asignación activa para calificar en este caso.")
 
     # 2. Buscar el caso
     caso = sesion.get(Caso, id_caso)
     if not caso:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Caso no encontrado.")
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
     
     # 3. Guardar la Evaluación Académica
-    if datos_cierre.calificacion < 1 or datos_cierre.calificacion > 5:
-        raise HTTPException(status_code=400, detail="La calificación debe ser entre 1 y 5.")
+    if datos_cierre.calificacion < 0 or datos_cierre.calificacion > 5:
+        raise HTTPException(status_code=400, detail="La calificación debe ser entre 0 y 5.")
 
     asignacion.calificacion = datos_cierre.calificacion
     asignacion.comentario_docente = datos_cierre.comentario
+    # Opcional: Cambiamos el estado de la asignación a 'cerrado' para limpieza interna
+    asignacion.estado = "cerrado" 
     
-    # 4. Cerrar el caso
+    # 4. Cerrar el caso globalmente
     caso.estado = EstadoCaso.CERRADO.value
     
     # 5. Crear nota automática de cierre en el historial
     nota_cierre = Nota(
         id_caso=id_caso,
-        contenido=f"Caso finalizado por Supervisor. Calificación otorgada: {datos_cierre.calificacion}/5. Comentario: {datos_cierre.comentario}",
-        id_cuenta_autor=asesor_actual.cuenta.id, # Asumimos que la cuenta está linkeada
-        rol_autor="sistema" # Para que quede como registro oficial
+        contenido=f"🏁 CASO FINALIZADO.\nCalificación Final: {datos_cierre.calificacion}/5.0\nComentario: {datos_cierre.comentario}",
+        id_cuenta_autor=asesor_actual.cuenta.id,
+        rol_autor="sistema",
+        es_publica=False # Privado para el equipo
     )
     
     sesion.add(asignacion)
@@ -298,25 +317,101 @@ def reasignar_caso(
     sesion: Session = Depends(obtener_sesion),
     asesor_actual: Asesor = Depends(obtener_asesor_actual)
 ):
-    """Permite a un asesor cambiar el estudiante asignado a un caso."""
-    asignacion = sesion.exec(select(Asignacion).where(Asignacion.id_caso == id_caso, Asignacion.id_asesor == asesor_actual.id)).first()
-    if not asignacion:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No supervisa este caso.")
+    """
+    Reasigna un caso automáticamente con lógica anti-bucle:
+    1. Califica al estudiante actual.
+    2. Busca un nuevo estudiante EXCLUYENDO a los que ya tuvieron este caso.
+    3. Si no quedan estudiantes disponibles, lanza un error.
+    """
+    # 1. Obtener la asignación actual (la que está activa)
+    asignacion_actual = sesion.exec(
+        select(Asignacion).where(
+            Asignacion.id_caso == id_caso, 
+            Asignacion.id_asesor == asesor_actual.id,
+            Asignacion.estado.in_(["pendiente", "aceptado", "en_progreso"]) # Estados activos
+        )
+    ).first()
+    
+    if not asignacion_actual:
+        raise HTTPException(status_code=403, detail="No se puede reasignar: No supervisa este caso o ya está cerrado.")
 
-    nuevo_estudiante = sesion.get(Estudiante, solicitud.id_nuevo_estudiante)
-    if not nuevo_estudiante:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El estudiante seleccionado no existe.")
+    estudiante_saliente = asignacion_actual.estudiante
+    id_area_caso = estudiante_saliente.id_area_especialidad
 
-    asignacion.id_estudiante = nuevo_estudiante.id
-    asignacion.estado = "pendiente"
+    # 2. Cerrar/Calificar la asignación actual
+    asignacion_actual.estado = "reasignado"
+    asignacion_actual.calificacion = solicitud.calificacion_saliente
+    asignacion_actual.comentario_docente = f"[REASIGNADO] {solicitud.comentario_saliente}"
+    sesion.add(asignacion_actual)
+
+    # --- LÓGICA INTELIGENTE DE BÚSQUEDA (ANTI-BUCLE) ---
+    
+    # A. Identificar a TODOS los estudiantes que ya han tenido este caso
+    historial_asignaciones = sesion.exec(
+        select(Asignacion).where(Asignacion.id_caso == id_caso)
+    ).all()
+    ids_estudiantes_excluidos = [a.id_estudiante for a in historial_asignaciones]
+    
+    # B. Buscar candidatos: Estudiantes del MISMO ÁREA que NO estén en la lista de excluidos
+    #    y ordenarlos por carga de trabajo (menor a mayor).
+    
+    # Consulta:
+    # 1. Traer estudiantes del área.
+    # 2. Filtrar los que NO están en la lista de excluidos.
+    # 3. Hacer un Left Join con Asignaciones activas para contar su carga actual.
+    query_candidatos = (
+        select(Estudiante, func.count(Asignacion.id).label("carga"))
+        .join(Asignacion, (Estudiante.id == Asignacion.id_estudiante) & (Asignacion.estado.in_(["pendiente", "aceptado"])), isouter=True)
+        .where(Estudiante.id_area_especialidad == id_area_caso)
+        .where(Estudiante.id.not_in(ids_estudiantes_excluidos)) # <--- EL FILTRO CLAVE
+        .group_by(Estudiante.id)
+        .order_by(func.count(Asignacion.id).asc()) # Menos carga primero
+    )
+    
+    candidato_optimo = sesion.exec(query_candidatos).first()
+
+    # C. Verificar si encontramos a alguien
+    if not candidato_optimo:
+        # Si no hay nadie, hacemos rollback de la calificación (opcional) o lanzamos error.
+        # Aquí lanzamos error para que el asesor sepa que no puede reasignar más.
+        raise HTTPException(
+            status_code=409, # Conflict
+            detail="No es posible reasignar: Ya no quedan más estudiantes disponibles en esta área que no hayan tenido este caso."
+        )
+
+    nuevo_estudiante = candidato_optimo[0] # El primer elemento de la tupla (Estudiante, carga)
+
+    # 4. Crear NUEVA asignación para el nuevo estudiante
+    nueva_asignacion = Asignacion(
+        id_caso=id_caso,
+        id_estudiante=nuevo_estudiante.id,
+        id_asesor=asesor_actual.id,
+        estado="pendiente"
+    )
+    sesion.add(nueva_asignacion)
+
+    # 5. Registrar en Historial del Caso
+    nota_sistema = Nota(
+        id_caso=id_caso,
+        contenido=(
+            f"🔄 CASO REASIGNADO por Supervisor.\n"
+            f"Saliente: {estudiante_saliente.nombre_completo} (Nota: {solicitud.calificacion_saliente}/5.0).\n"
+            f"Entrante: {nuevo_estudiante.nombre_completo}."
+        ),
+        id_cuenta_autor=asesor_actual.cuenta.id,
+        rol_autor="sistema",
+        es_publica=False
+    )
+    sesion.add(nota_sistema)
+
+    # Actualizar estado del caso
     caso = sesion.get(Caso, id_caso)
-    if caso:
-        caso.estado = EstadoCaso.PENDIENTE_ACEPTACION.value
-        sesion.add(caso)
-    sesion.add(asignacion)
-    sesion.commit()
-    return {"mensaje": f"Caso reasignado a {nuevo_estudiante.nombre_completo}."}
+    caso.estado = EstadoCaso.PENDIENTE_ACEPTACION.value
+    sesion.add(caso)
 
+    sesion.commit()
+    
+    return {"mensaje": f"Caso reasignado exitosamente a {nuevo_estudiante.nombre_completo}."}
 
 def validar_permiso_sobre_documento(id_evidencia: int, sesion: Session, asesor_actual: Asesor) -> Evidencia:
     """Función de utilidad para validar permisos del asesor sobre un documento."""

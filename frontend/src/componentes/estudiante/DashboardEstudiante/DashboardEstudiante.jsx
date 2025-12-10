@@ -52,13 +52,18 @@ function DashboardEstudiante({ onVerExpediente }) {
   };
 
   // --- FUNCIÓN AUXILIAR PARA RENDERIZAR ESTRELLAS ---
+// --- FUNCIÓN AUXILIAR PARA RENDERIZAR ESTRELLAS ---
   const renderizarEstrellas = (calificacion) => {
-    if (!calificacion) return <span className="sin-calificacion">-</span>;
-    // Crea un array de N elementos y los mapea a estrellas
+    // Verificamos si es null o undefined explícitamente
+    if (calificacion === null || calificacion === undefined) return <span className="sin-calificacion">-</span>;
+    
+    // Redondeamos para dibujar las estrellas (ej: 3.8 -> 4 estrellas visuales)
+    const notaRedondeada = Math.round(calificacion);
+    
     return (
         <span className="estrellas">
-            {"★".repeat(calificacion)}
-            {"☆".repeat(5 - calificacion)}
+            {"★".repeat(notaRedondeada)}
+            {"☆".repeat(5 - notaRedondeada)}
         </span>
     );
   };
@@ -95,53 +100,76 @@ function DashboardEstudiante({ onVerExpediente }) {
             </tr>
           </thead>
           <tbody>
-            {listaDeCasos.map((caso) => (
-              <tr key={caso.id} className={caso.estado === 'cerrado' ? 'fila-cerrada' : ''}>
-                <td>#{caso.id}</td>
-                <td>{new Date(caso.fecha_creacion).toLocaleDateString('es-ES')}</td>
-                <td>
-                  <span className={`estado-caso estado-${caso.estado.replace('_', '-')}`}>
-                    {caso.estado.replace('_', ' ')}
-                  </span>
-                </td>
-                
-                {/* --- CELDA DE EVALUACIÓN --- */}
-                <td>
-                    {caso.estado === 'cerrado' ? (
-                        <div className="celda-evaluacion" title={caso.comentario_docente || "Sin comentario"}>
-                            {renderizarEstrellas(caso.calificacion)}
-                            {caso.calificacion && <span className="nota-numerica">({caso.calificacion}/5)</span>}
-                        </div>
-                    ) : (
-                        <span className="pendiente-eval">En curso</span>
-                    )}
-                </td>
+            {listaDeCasos.map((caso) => {
+              
+              // Detectamos si el caso ya no está activo para este estudiante
+              const esInactivo = ['cerrado', 'reasignado', 'rechazado'].includes(caso.estado);
 
-                <td>
-                  <div className="acciones-contenedor">
-                    {procesandoId === caso.id ? (
-                      <span>Procesando...</span>
-                    ) : (
-                      <>
-                        {caso.estado === 'pendiente_aceptacion' && (
-                          <>
-                            <button onClick={() => handleAceptar(caso.id)} className="boton-accion aceptar">Aceptar</button>
-                            <button onClick={() => handleRechazar(caso.id)} className="boton-accion rechazar">Rechazar</button>
-                          </>
-                        )}
-                        
-                        {/* AHORA PERMITIMOS VER CASOS CERRADOS TAMBIÉN */}
-                        {(caso.estado === 'asignado' || caso.estado === 'cerrado') && (
-                          <button onClick={() => onVerExpediente(caso.id)} className="boton-accion ver">
-                            {caso.estado === 'cerrado' ? 'Ver Histórico' : 'Gestionar'}
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+              return (
+                <tr key={caso.id} className={esInactivo ? 'fila-cerrada' : ''}>
+                  <td>#{caso.id}</td>
+                  <td>{new Date(caso.fecha_creacion).toLocaleDateString('es-ES')}</td>
+                  
+                  {/* ESTADO */}
+                  <td>
+                    <span className={`estado-caso estado-${caso.estado.replace('_', '-')}`}>
+                      {caso.estado === 'reasignado' ? 'Reasignado (Cerrado)' : caso.estado.replace('_', ' ')}
+                    </span>
+                  </td>
+                  
+                  {/* EVALUACIÓN (Nota Decimal) */}
+                  <td>
+                      {caso.calificacion !== null ? (
+                          <div className="celda-evaluacion" title={caso.comentario_docente || "Sin comentario"}>
+                              {renderizarEstrellas(caso.calificacion)}
+                              <span className="nota-numerica" style={{marginLeft:'5px', fontWeight:'bold'}}>
+                                  ({caso.calificacion}/5.0)
+                              </span>
+                          </div>
+                      ) : (
+                          <span className="pendiente-eval" style={{color:'#999'}}>En curso</span>
+                      )}
+                  </td>
+
+                  {/* ACCIONES */}
+                  <td>
+                    <div className="acciones-contenedor">
+                      {procesandoId === caso.id ? (
+                        <span>Procesando...</span>
+                      ) : (
+                        <>
+                          {/* ACEPTAR / RECHAZAR (Solo si es nuevo) */}
+                          {caso.estado === 'pendiente_aceptacion' && (
+                            <>
+                              <button onClick={() => handleAceptar(caso.id)} className="boton-accion aceptar">Aceptar</button>
+                              <button onClick={() => handleRechazar(caso.id)} className="boton-accion rechazar">Rechazar</button>
+                            </>
+                          )}
+                          
+                          {/* GESTIONAR (Solo si está activo) */}
+                          {caso.estado === 'asignado' && (
+                            <button onClick={() => onVerExpediente(caso.id)} className="boton-accion ver">
+                              Gestionar
+                            </button>
+                          )}
+
+                          {/* VER HISTORIAL (Si está cerrado/reasignado) */}
+                          {esInactivo && (
+                             <button 
+                               onClick={() => onVerExpediente(caso.id)} 
+                               className="boton-accion ver"
+                               style={{backgroundColor:'#6c757d', borderColor:'#6c757d'}}
+                             >
+                               Ver Historial
+                             </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

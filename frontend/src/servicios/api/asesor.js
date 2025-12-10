@@ -145,14 +145,17 @@ export const apiObtenerEstudiantes = async () => {
  * @param {number} idCaso El ID del caso a reasignar.
  * @param {number} idNuevoEstudiante El ID del estudiante que recibirá el caso.
  */
-export const apiReasignarCaso = async (idCaso, idNuevoEstudiante) => {
-  console.log(`API: Asesor reasignando el caso ${idCaso} al estudiante ${idNuevoEstudiante}`);
+/**
+ * Llama al endpoint para reasignar un caso automáticamente.
+ * Ahora envía la calificación del estudiante saliente.
+ */
+export const apiReasignarCaso = async (idCaso, datosReasignacion) => {
+  console.log(`API: Asesor reasignando el caso ${idCaso}. Datos:`, datosReasignacion);
   try {
-    // MODIFICACION: Se añade /api al inicio de la ruta
     const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/expedientes/${idCaso}/reasignar`, {
       method: 'POST',
       headers: obtenerCabeceras(),
-      body: JSON.stringify({ id_nuevo_estudiante: idNuevoEstudiante }),
+      body: JSON.stringify(datosReasignacion), // Enviamos el objeto completo (calificacion, comentario)
     });
 
     if (!respuesta.ok) {
