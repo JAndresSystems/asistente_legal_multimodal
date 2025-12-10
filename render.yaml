@@ -21,10 +21,10 @@ services:
   - name: asistente-legal-backend
     type: web
     runtime: python
-    # --- CAMBIO 1: El build solo instala librerías (No toca la IA) ---
+    # --- CAMBIO CRÍTICO: El build solo instala librerías (No toca la IA) ---
     buildCommand: "pip install -r requirements.txt"
     
-    # --- CAMBIO 2: Movemos la lógica de IA al arranque (Donde sí hay llaves) ---
+    # --- CAMBIO CRÍTICO: Movemos la lógica de IA al arranque (Donde sí hay llaves) ---
     startCommand: |
       rm -rf backend/archivos_subidos/*
       rm -rf chroma_db_data
@@ -42,6 +42,8 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: 3.11.5
+      # ESTRATEGIA DE ARRANQUE: Usamos "*" para permitir que el nuevo frontend 
+      # se conecte inmediatamente sin importar qué URL le asigne Render.
       - key: CORS_ORIGINS
         value: "*"
 
@@ -59,6 +61,5 @@ services:
     envVars:
       # ESTRATEGIA DE ARRANQUE: Dejamos esto pendiente.
       # Render generará la URL del backend al crear el servicio.
-      # El frontend cargará, pero dará error de red hasta que hagamos el PASO 4.
       - key: VITE_URL_BASE_BACKEND
         value: "https://PENDIENTE_DE_ACTUALIZAR_TRAS_DESPLIEGUE.onrender.com"
