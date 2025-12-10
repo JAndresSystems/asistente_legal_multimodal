@@ -113,28 +113,22 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
   const handleCrearNota = async (e) => {
     e.preventDefault();
     if (!nuevaNota.trim()) return;
+    
     setEnviandoNota(true);
     setErrorNota(null);
+    
     try {
-      // 1. Capturamos la nota creada que devuelve el backend.
-      const notaCreada = await apiCrearNotaAsesor(expedienteId, nuevaNota);
+      // 1. Llamamos a la API para guardar la nota
+      await apiCrearNotaAsesor(expedienteId, nuevaNota);
+      
+      // 2. Limpiamos el campo de texto
       setNuevaNota("");
       
-      // 2. Actualizamos el estado local directamente, lo que es más rápido.
-      setExpediente(prev => {
-        // Añadimos el item formateado a la línea de tiempo
-        const nuevaLineaDeTiempo = [
-          ...prev.lineaDeTiempo,
-          { ...notaCreada, tipo: 'nota', fecha: new Date(notaCreada.fecha_creacion) }
-        ].sort((a, b) => new Date(a.fecha) - new Date(b.fecha)); // Re-ordenamos
-        
-        // Devolvemos el nuevo estado del expediente completo
-        return { 
-          ...prev, 
-          lineaDeTiempo: nuevaLineaDeTiempo, 
-          notas: [...prev.notas, notaCreada] 
-        };
-      });
+      // 3. ¡CORRECCIÓN CRÍTICA!
+      // En lugar de manipular el estado manualmente (lo que causaba el error),
+      // recargamos el expediente. Esto asegura que la nueva nota pase por
+      // la lógica de ordenamiento y formato de fecha de 'cargarExpediente'.
+      await cargarExpediente(); 
 
     } catch (err) {
       setErrorNota(err.message || "Error al guardar la nota.");
@@ -142,7 +136,6 @@ const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
       setEnviandoNota(false);
     }
   };
-
   const handleClicFinalizar = () => {
     // En lugar de cerrar directo, abrimos el modal
     setMostrarModalCalificacion(true);
@@ -371,7 +364,7 @@ const handleAprobar = async (idEvidencia) => {
                              <p className={styles.contenidoNota}>{item.contenido}</p>
                              
                             <span className={styles.fechaNota}>
-                                {item.fechaSort.toLocaleString()} {/* <--- ESTO ES LO NUEVO (fechaSort) */}
+                               {item.fechaSort ? item.fechaSort.toLocaleString() : 'Reciente'} {/* <--- ESTO ES LO NUEVO (fechaSort) */}
                              </span>
                         </div>
                     </>
