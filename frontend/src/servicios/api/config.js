@@ -9,10 +9,10 @@
 // Úsalo para cambiar entre tu PC y Render sin depender de variables ocultas.
 // ==============================================================================
 
-// OPCIÓN 1: MODO RENDER (Producción) -> ¡DESCOMENTA ESTA PARA SUBIR A LA NUBE!
+// OPCIÓN 1: MODO RENDER (Producción) -> ¡ACTIVA ESTA PARA SUBIR!
 export const URL_BASE_BACKEND = "https://asistente-legal-backend-897g.onrender.com";
 
-// OPCIÓN 2: MODO LOCAL (Tu PC) -> ¡DESCOMENTA ESTA PARA PROBAR EN TU MÁQUINA!
+// OPCIÓN 2: MODO LOCAL (Tu PC) -> Descomenta esta si pruebas en tu máquina
 // export const URL_BASE_BACKEND = "http://127.0.0.1:8000";
 
 // ==============================================================================

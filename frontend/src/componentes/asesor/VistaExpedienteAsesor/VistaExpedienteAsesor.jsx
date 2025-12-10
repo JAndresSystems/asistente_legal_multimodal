@@ -15,6 +15,14 @@ import AsistenteJuridico from './AsistenteJuridico/AsistenteJuridico';
 // 1. Importamos el nuevo componente del Generador de Documentos
 import GeneradorDocumentos from './GeneradorDocumentos/GeneradorDocumentos';
 import DocumentoConHilo from '../../compartidos/DocumentoConHilo';
+
+
+// OPCIÓN 1: MODO RENDER (Producción) -> ¡ACTIVA ESTA!
+const URL_BASE_BACKEND = "https://asistente-legal-backend-897g.onrender.com";
+
+// OPCIÓN 2: MODO LOCAL (Tu PC) -> Comentada
+// const URL_BASE_BACKEND = "http://127.0.0.1:8000";
+
 const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
   // ==========================================================================
   // 1. DECLARACIÓN DE ESTADOS
@@ -334,11 +342,13 @@ const handleAprobar = async (idEvidencia) => {
                     <DocumentoConHilo 
                         key={item.id}
                         documento={item}
-                        // Filtramos notas que pertenecen a este doc para mostrarlas en su hilo
                         notasRelacionadas={expediente.notas.filter(n => n.id_evidencia === item.id)}
                         onEnviarComentario={handleEnviarComentarioHilo}
-                        baseURL="http://127.0.0.1:8000"
-                        esAsesor={true} // Esto activa los botones de Aprobar/Rechazar dentro del componente
+                        
+                        // CORRECCIÓN: Usamos la variable del interruptor, NO "http://127.0.0.1:8000"
+                        baseURL={URL_BASE_BACKEND} 
+                        
+                        esAsesor={true} 
                         onAprobar={handleAprobar}
                         onSolicitarCambios={handleSolicitarCambios}
                     />
