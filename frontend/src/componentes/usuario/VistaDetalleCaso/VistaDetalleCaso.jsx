@@ -128,7 +128,9 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
   if (error) return <div className="detalle-contenedor"><p className="mensaje-error">{error}</p><button onClick={onVolverAlDashboard}>Volver</button></div>;
   if (!caso) return null;
   
-  const URL_BASE_BACKEND = "http://127.0.0.1:8000";
+  //const URL_BASE_BACKEND = "http://127.0.0.1:8000";<-local
+  // Usamos la variable de entorno que definimos en render.yaml
+const URL_BASE_BACKEND = import.meta.env.VITE_URL_BASE_BACKEND;
 
   // --- INICIO DE LA CORRECCIÓN DE LA LÍNEA DE TIEMPO (USUARIO) ---
   
@@ -208,8 +210,14 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
                     <div className="info-doc-wrapper">
                         <span style={{fontSize:'1.5rem', marginRight:'10px'}}>📄</span>
                         <div>
-                            <a href={`${URL_BASE_BACKEND}${item.ruta_archivo}`} target="_blank" rel="noopener noreferrer" className="enlace-evidencia">
-                            {item.nombre_archivo}
+                             {/* Lógica inteligente: Si ya trae http, úsala tal cual. Si no, agrégale la base. */}
+                            <a 
+                                href={item.ruta_archivo.startsWith('http') ? item.ruta_archivo : `${URL_BASE_BACKEND}${item.ruta_archivo}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="enlace-evidencia"
+                            >
+                                {item.nombre_archivo}
                             </a>
                             <p className="fecha-timeline">{item.fechaSort.toLocaleString('es-CO')}</p>
                         </div>
