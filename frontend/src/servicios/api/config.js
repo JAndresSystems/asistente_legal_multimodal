@@ -4,8 +4,18 @@
 // Configuracion Compartida
 // ==============================================================================
 
-export const URL_BASE_BACKEND = import.meta.env.VITE_URL_BASE_BACKEND || 'http://localhost:8000';
+// ==============================================================================
+// ⚙️ INTERRUPTOR DE ENTORNO (API GLOBAL)
+// Úsalo para cambiar entre tu PC y Render sin depender de variables ocultas.
+// ==============================================================================
 
+// OPCIÓN 1: MODO RENDER (Producción) -> ¡DESCOMENTA ESTA PARA SUBIR A LA NUBE!
+export const URL_BASE_BACKEND = "https://asistente-legal-backend-897g.onrender.com";
+
+// OPCIÓN 2: MODO LOCAL (Tu PC) -> ¡DESCOMENTA ESTA PARA PROBAR EN TU MÁQUINA!
+// export const URL_BASE_BACKEND = "http://127.0.0.1:8000";
+
+// ==============================================================================
 let authToken = null;
 
 /**

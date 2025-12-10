@@ -128,9 +128,18 @@ function VistaDetalleCaso({ casoId, onVolverAlDashboard }) {
   if (error) return <div className="detalle-contenedor"><p className="mensaje-error">{error}</p><button onClick={onVolverAlDashboard}>Volver</button></div>;
   if (!caso) return null;
   
-  //const URL_BASE_BACKEND = "http://127.0.0.1:8000";<-local
-  // Usamos la variable de entorno que definimos en render.yaml
-const URL_BASE_BACKEND = import.meta.env.VITE_URL_BASE_BACKEND;
+// =================================================================
+  // ⚙️ INTERRUPTOR DE ENTORNO (IMÁGENES)
+  // Descomenta la línea que necesites según donde estés probando.
+  // =================================================================
+
+  // OPCIÓN 1: MODO RENDER (Producción - Nube) -> ¡ACTIVA ESTA PARA SUBIR!
+  const URL_BASE_BACKEND = "https://asistente-legal-backend-897g.onrender.com";
+
+  // OPCIÓN 2: MODO LOCAL (Tu PC) -> Descomenta esta si pruebas en tu máquina
+  // const URL_BASE_BACKEND = "http://127.0.0.1:8000";
+
+  // =================================================================
 
   // --- INICIO DE LA CORRECCIÓN DE LA LÍNEA DE TIEMPO (USUARIO) ---
   
