@@ -128,5 +128,163 @@
 }
 
 
+/* ====================== RESPONSIVE - DASHBOARD USUARIO ====================== */
+
+@media (max-width: 1024px) {
+  .dashboard-contenedor {
+    margin: 1rem;
+    padding: 1.5rem;
+    max-width: none;
+  }
+
+  .dashboard-cabecera {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .boton-nuevo-caso {
+    width: 100%;
+    padding: 14px;
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-contenedor {
+    margin: 0.5rem;
+    padding: 1.3rem;
+    border-radius: 8px;
+  }
+
+  .dashboard-saludo h2 {
+    font-size: 1.6rem;
+  }
+
+  .dashboard-cabecera h1 {
+    font-size: 1.5rem;
+  }
+
+  .tabla-casos {
+    font-size: 15px;
+  }
+
+  .tabla-casos th,
+  .tabla-casos td {
+    padding: 10px 8px;
+  }
+
+  .boton-accion {
+    padding: 10px 14px;
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 580px) {
+  /* Tabla → Tarjetas en móvil */
+  .tabla-casos {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabla-casos thead {
+    display: none;
+  }
+
+  .tabla-casos tbody tr {
+    display: block;
+    margin-bottom: 1.2rem;
+    padding: 1.2rem;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  }
+
+  .tabla-casos td {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border: none;
+    text-align: right;
+  }
+
+  .tabla-casos td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    text-align: left;
+    color: #444;
+  }
+
+  /* Etiquetas para cada celda */
+  .tabla-casos td:nth-child(1)::before { content: "ID Caso"; }
+  .tabla-casos td:nth-child(2)::before { content: "Fecha"; }
+  .tabla-casos td:nth-child(3)::before { content: "Estado"; }
+  .tabla-casos td:nth-child(4) {
+    justify-content: center;
+    margin-top: 10px;
+  }
+
+  .boton-accion {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-contenedor {
+    margin: 0.3rem;
+    padding: 1.2rem;
+    border-radius: 10px;
+  }
+
+  .dashboard-saludo h2 {
+    font-size: 1.5rem;
+  }
+
+  .dashboard-cabecera h1 {
+    font-size: 1.4rem;
+  }
+
+  .boton-nuevo-caso {
+    padding: 16px;
+    font-size: 1.15rem;
+    border-radius: 10px;
+  }
+
+  .estado-caso {
+    font-size: 0.85rem;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .dashboard-contenedor {
+    padding: 1rem;
+    margin: 0.2rem;
+  }
+
+  .dashboard-saludo h2 {
+    font-size: 1.4rem;
+  }
+
+  .boton-nuevo-caso {
+    padding: 18px;
+    font-size: 1.2rem;
+  }
+
+  .tabla-casos tbody tr {
+    padding: 1.4rem;
+  }
+
+  .boton-accion {
+    padding: 14px;
+    font-size: 1.05rem;
+  }
+}
 
 

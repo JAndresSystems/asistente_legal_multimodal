@@ -266,3 +266,178 @@
 .grid-multiples-archivos {
   grid-template-columns: repeat(2, 1fr);
 }
+
+
+/* ====================== RESPONSIVE - VISTA CHAT (VERSIÓN FINAL REALMENTE CORREGIDA) ====================== */
+
+@media (max-width: 768px) {
+  .contenedor-chat {
+    height: 90vh;
+    border-radius: 16px;
+  }
+
+  .historial-mensajes {
+    padding: 20px 15px;
+    gap: 18px;
+  }
+
+  .mensaje p {
+    font-size: 16px;
+    padding: 14px 18px;
+  }
+
+  .mensaje {
+    max-width: 88%;
+  }
+
+  .contenedor-sugerencias {
+    gap: 8px;
+  }
+
+  .boton-sugerencia {
+    padding: 10px 14px;
+    font-size: 15px;
+  }
+
+  .area-acciones-chat {
+    padding: 1.2rem;
+  }
+
+  .formulario-chat textarea {
+    padding: 16px 20px;
+    font-size: 17px;
+    border-radius: 24px;
+  }
+
+  .formulario-chat button {
+    height: 56px;
+    width: 56px;
+    border-radius: 50%;
+    font-size: 18px;
+  }
+
+  .contenedor-acciones-secundarias {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .boton-principal-iniciar,
+  .boton-secundario-volver {
+    padding: 16px;
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 480px) {
+  .contenedor-chat {
+    height: 100vh;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .historial-mensajes {
+    padding: 15px 10px;
+    gap: 16px;
+  }
+
+  .mensaje p {
+    font-size: 17px;
+    padding: 16px 20px;
+    border-radius: 22px;
+  }
+
+  .mensaje {
+    max-width: 92%;
+  }
+
+  .area-subida-evidencias {
+    gap: 12px;
+  }
+
+  .lista-archivos-para-subir {
+    max-height: 120px;
+    padding: 12px;
+    font-size: 15px;
+  }
+
+  .archivo-item {
+    padding: 10px 0;
+  }
+
+  .botones-evidencia-contenedor {
+    gap: 12px;
+  }
+
+  .boton-accion-evidencia {
+    padding: 14px;
+    font-size: 16px;
+    border-radius: 12px;
+  }
+
+  .formulario-chat textarea {
+    padding: 18px 22px;
+    font-size: 18px;
+    min-height: 60px;
+    border-radius: 28px;
+  }
+
+  .formulario-chat button {
+    height: 60px;
+    width: 60px;
+    font-size: 20px;
+  }
+
+  .contenedor-acciones-secundarias {
+    gap: 14px;
+  }
+
+  .boton-principal-iniciar,
+  .boton-secundario-volver {
+    padding: 18px;
+    font-size: 18px;
+    border-radius: 12px;
+  }
+
+  .triaje-finalizado-info {
+    padding: 30px 20px;
+    border-radius: 16px;
+  }
+
+  .boton-principal-informe {
+    padding: 18px;
+    font-size: 18px;
+    border-radius: 12px;
+  }
+
+  .contenedor-multimedia-whatsapp {
+    max-width: 100%;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 360px) {
+  .historial-mensajes {
+    padding: 12px 8px;
+  }
+
+  .mensaje p {
+    font-size: 16.5px;
+    padding: 15px 18px;
+  }
+
+  .formulario-chat textarea {
+    font-size: 17.5px;
+    padding: 17px 20px;
+  }
+
+  .boton-accion-evidencia {
+    font-size: 15.5px;
+    padding: 16px;
+  }
+}
+
+/* Animación suave para el textarea */
+.formulario-chat textarea {
+  transition: height 0.2s ease, border-color 0.2s ease;
+}

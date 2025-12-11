@@ -650,3 +650,157 @@
   border-bottom: 1px solid #e0e0e0;
   margin: 0 10px;
 }
+
+
+/* ====================== RESPONSIVE - VISTA EXPEDIENTE ESTUDIANTE ====================== */
+
+@media (max-width: 1024px) {
+  .vista-expediente-contenedor {
+    margin: 1rem;
+    padding: 1.5rem;
+    max-width: none;
+  }
+
+  .formularios-accion-contenedor {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .vista-expediente-contenedor {
+    padding: 1.2rem;
+    margin: 0.5rem;
+    border-radius: 6px;
+  }
+
+  .expediente-metadata {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .linea-de-tiempo-contenedor {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .linea-de-tiempo-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .icono {
+    margin-bottom: 0.8rem;
+  }
+
+  .documento-formulario {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .documento-selector {
+    width: 100%;
+  }
+
+  .agente-formulario {
+    gap: 0.8rem;
+  }
+
+  .agente-textarea {
+    min-height: 120px;
+  }
+
+  .toggle-group {
+    width: 100%;
+  }
+
+  .toggle-btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .vista-expediente-contenedor {
+    padding: 1rem;
+    margin: 0.3rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  .expediente-seccion h3 {
+    font-size: 1.3rem;
+  }
+
+  .boton-volver,
+  .boton-accion-principal {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+  }
+
+  .formulario-accion textarea {
+    min-height: 100px;
+    font-size: 1rem; /* evita zoom en iOS */
+  }
+
+  .btn-enviar {
+    width: 100%;
+    padding: 14px;
+    font-size: 1.05rem;
+  }
+
+  .selector-destinatario {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toggle-group {
+    flex-direction: column;
+  }
+
+  .toggle-btn {
+    width: 100%;
+    border-radius: 8px !important;
+    margin: 4px 0;
+  }
+
+  .documento-enlace-descarga a {
+    font-size: 1rem;
+    word-break: break-all;
+    display: block;
+    padding: 10px 0;
+  }
+
+  .markdown-content {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .vista-expediente-contenedor {
+    padding: 0.8rem;
+  }
+
+  h2 {
+    font-size: 1.4rem;
+  }
+
+  .expediente-seccion {
+    padding: 1rem;
+  }
+
+  .btn-enviar,
+  .boton-accion-principal {
+    padding: 16px;
+    font-size: 1.1rem;
+  }
+
+  .agente-textarea,
+  .formulario-accion textarea {
+    min-height: 140px;
+  }
+}

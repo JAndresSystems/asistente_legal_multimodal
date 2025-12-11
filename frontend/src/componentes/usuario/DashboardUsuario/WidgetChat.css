@@ -77,3 +77,134 @@
   flex-direction: column;
   height: calc(100% - 60px); /* Ajustar según la altura del header */
 }
+
+
+/* ====================== RESPONSIVE - WIDGET CHAT (VERSIÓN FINAL 100% CORRECTA) ====================== */
+
+@media (max-width: 768px) {
+  .widget-toggler {
+    width: 70px;
+    height: 70px;
+    font-size: 32px;
+    bottom: 20px;
+    right: 20px;
+  }
+
+  .widget-chat-container {
+    width: 95vw;
+    max-width: 420px;
+    height: 85vh;
+    max-height: 700px;
+    bottom: 20px;
+    right: 50%;
+    transform: translateX(50%);
+    border-radius: 18px;
+  }
+
+  .widget-chat-header {
+    padding: 1.2rem 1rem;
+  }
+
+  .widget-chat-header h3 {
+    font-size: 1.2rem;
+  }
+
+  .widget-chat-header .close-button {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .widget-toggler {
+    width: 65px;
+    height: 65px;
+    font-size: 30px;
+    bottom: 18px;
+    right: 18px;
+  }
+
+  .widget-chat-container {
+    width: 98vw;
+    height: 90vh;
+    max-height: none;
+    bottom: 10px;
+    right: 50%;
+    transform: translateX(50%);
+    border-radius: 16px;
+  }
+
+  .widget-chat-header {
+    padding: 1.1rem 1rem;
+  }
+
+  .widget-chat-header h3 {
+    font-size: 1.15rem;
+  }
+
+  .widget-chat-content {
+    height: calc(100% - 65px);
+  }
+}
+
+@media (max-width: 360px) {
+  .widget-toggler {
+    width: 60px;
+    height: 60px;
+    font-size: 28px;
+    bottom: 15px;
+    right: 15px;
+  }
+
+  .widget-chat-container {
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    max-height: none;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    transform: none;
+    border-radius: 0;
+  }
+
+  .widget-chat-header {
+    padding: 1rem;
+  }
+
+  .widget-chat-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .widget-chat-content {
+    height: calc(100% - 60px);
+  }
+}
+
+/* Animación suave al abrir el widget */
+.widget-chat-container {
+  animation: widgetAppear 0.3s ease-out forwards;
+}
+
+@keyframes widgetAppear {
+  from {
+    opacity: 0;
+    transform: translateX(50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(50%) scale(1);
+  }
+}
+
+@media (max-width: 480px) {
+  @keyframes widgetAppear {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

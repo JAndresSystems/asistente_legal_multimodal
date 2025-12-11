@@ -76,3 +76,112 @@
   text-align: center;
   margin-top: 2rem;
 }
+
+
+/* ====================== RESPONSIVE - LISTA DE CASOS (VERSIÓN FINAL CORREGIDA) ====================== */
+
+@media (max-width: 1024px) {
+  .lista-casos-contenedor {
+    padding: 1.2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .lista-casos-contenedor {
+    padding: 1rem;
+    border-radius: 10px;
+  }
+
+  .lista-casos-contenedor h4 {
+    font-size: 1.3rem;
+    text-align: center;
+  }
+
+  .item-caso {
+    padding: 1.1rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .item-caso-id {
+    font-size: 0.85rem;
+  }
+
+  .item-caso-descripcion {
+    font-size: 1rem;
+    white-space: normal;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    line-clamp: 3;           /* Propiedad estándar (soporte moderno) */
+    box-orient: vertical;    /* Necesario para algunos navegadores */
+    line-height: 1.5;
+  }
+}
+
+@media (max-width: 480px) {
+  .lista-casos-contenedor {
+    padding: 1rem;
+    margin: 0.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+
+  .lista-casos-contenedor h4 {
+    font-size: 1.25rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .item-caso {
+    padding: 1.3rem;
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+  }
+
+  .item-caso:hover,
+  .item-caso.activo {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(13,110,253,0.15);
+  }
+
+  .item-caso-id {
+    font-size: 0.9rem;
+    font-weight: 600;
+    opacity: 0.8;
+  }
+
+  .item-caso.activo .item-caso-id {
+    opacity: 1;
+    font-weight: 700;
+  }
+
+  .item-caso-descripcion {
+    font-size: 1.05rem;
+    margin-top: 8px;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    line-height: 1.6;
+  }
+
+  .lista-vacia-mensaje {
+    font-size: 1.1rem;
+    padding: 2rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .lista-casos-contenedor {
+    padding: 0.9rem;
+    margin: 0.3rem;
+  }
+
+  .item-caso {
+    padding: 1.4rem;
+  }
+
+  .item-caso-descripcion {
+    font-size: 1.05rem;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+  }
+}

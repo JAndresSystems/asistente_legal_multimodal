@@ -23,3 +23,45 @@
   line-height: 1;
   color: #555;
 }
+
+
+/* ====================== RESPONSIVE - CAMPO CONTRASEÑA ====================== */
+
+@media (max-width: 768px) {
+  .campo-contrasena-contenedor input {
+    padding-right: 48px !important;
+    font-size: 1rem;
+  }
+
+  .boton-ojo {
+    font-size: 1.4rem;
+    right: 8px;
+    padding: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .campo-contrasena-contenedor input {
+    padding: 14px 50px 14px 12px !important;
+    font-size: 1rem;
+    height: 48px;
+  }
+
+  .boton-ojo {
+    font-size: 1.5rem;
+    right: 10px;
+    padding: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .campo-contrasena-contenedor input {
+    padding-right: 55px !important;
+    height: 52px;
+  }
+
+  .boton-ojo {
+    font-size: 1.6rem;
+    right: 12px;
+  }
+}

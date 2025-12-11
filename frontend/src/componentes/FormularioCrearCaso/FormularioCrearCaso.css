@@ -83,3 +83,78 @@
   background-color: #a0c7e4;
   cursor: not-allowed;
 }
+
+
+/* ====================== RESPONSIVE - FORMULARIO CREAR CASO ====================== */
+
+@media (max-width: 768px) {
+  .formulario-crear-caso-contenedor {
+    margin: 1rem;
+    padding: 20px;
+    border-radius: 10px;
+  }
+
+  .formulario-crear-caso-contenedor h3 {
+    font-size: 20px;
+  }
+
+  .grupo-formulario label {
+    font-size: 15px;
+  }
+
+  .grupo-formulario textarea {
+    font-size: 16px; /* evita zoom en iOS al enfocar */
+    padding: 14px;
+  }
+
+  .formulario-crear-caso button {
+    width: 100%;
+    padding: 16px;
+    font-size: 17px;
+    border-radius: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .formulario-crear-caso-contenedor {
+    margin: 0.5rem;
+    padding: 18px;
+    border: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+
+  .formulario-crear-caso-contenedor h3 {
+    font-size: 19px;
+    margin-bottom: 18px;
+  }
+
+  .grupo-formulario textarea {
+    min-height: 180px;
+    font-size: 17px;
+    border-radius: 10px;
+  }
+
+  .formulario-crear-caso button {
+    padding: 18px;
+    font-size: 18px;
+    font-weight: 600;
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .formulario-crear-caso-contenedor {
+    margin: 0.3rem;
+    padding: 16px;
+  }
+
+  .grupo-formulario textarea {
+    min-height: 200px;
+    font-size: 17.5px;
+  }
+
+  .formulario-crear-caso button {
+    padding: 20px;
+    font-size: 19px;
+  }
+} 

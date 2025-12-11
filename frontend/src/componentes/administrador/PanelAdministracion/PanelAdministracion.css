@@ -294,3 +294,214 @@
     margin-bottom: 15px;
     font-style: italic;
 }
+
+
+
+
+
+/* ====================== RESPONSIVE ====================== */
+
+/* Tablets grandes y pantallas medianas */
+@media (max-width: 1024px) {
+  .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-saludo h1 {
+    font-size: 2rem;
+  }
+
+  .tabla-personal th,
+  .tabla-personal td {
+    padding: 10px 6px;
+    font-size: 0.95rem;
+  }
+
+  .celda-acciones {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+
+  .celda-acciones button {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Tablets y móviles grandes */
+@media (max-width: 768px) {
+  .panel-admin-contenedor {
+    padding: 1rem;
+  }
+
+  .admin-tabs {
+    flex-direction: column;
+    gap: 8px;
+    border-bottom: none;
+  }
+
+  .tab-btn {
+    width: 100%;
+    text-align: left;
+    padding: 14px 16px;
+    border-radius: 6px;
+    border-bottom: none;
+  }
+
+  .tab-btn.active {
+    border-bottom: none;
+    background-color: #e6f4f1;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .boton-crear-personal {
+    grid-column: 1;
+  }
+
+  .asignacion-contenedor {
+    flex-direction: column;
+  }
+
+  .asignacion-columna {
+    width: 100%;
+  }
+
+  .lista-estudiantes-checkbox {
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+  }
+
+  .gestion-seccion {
+    margin-bottom: 2rem;
+  }
+
+  .admin-saludo h1 {
+    font-size: 1.8rem;
+  }
+
+  .admin-saludo p {
+    font-size: 1rem;
+  }
+}
+
+/* Móviles */
+@media (max-width: 480px) {
+  .panel-admin-contenedor {
+    padding: 0.8rem;
+  }
+
+  .admin-saludo h1 {
+    font-size: 1.6rem;
+  }
+
+  }
+
+  .form-creacion-seccion {
+    padding: 1rem;
+  }
+
+  .form-grupo input,
+  .form-grupo select {
+    font-size: 1rem; /* evita zoom en iOS */
+  }
+
+  .tabla-personal,
+  .tabla-areas {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabla-personal thead,
+  .tabla-areas thead {
+    display: none;
+  }
+
+  .tabla-personal tbody tr,
+  .tabla-areas tbody tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    background: #fff;
+  }
+
+  .tabla-personal td,
+  .tabla-areas td {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border: none;
+    text-align: right;
+  }
+
+  .tabla-personal td::before,
+  .tabla-areas td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    text-align: left;
+    flex: 1;
+  }
+
+  /* Añadimos data-label a las celdas importantes para móvil */
+  .tabla-personal td:nth-child(1)::before { content: "Nombre"; }
+  .tabla-personal td:nth-child(2)::before { content: "Rol"; }
+  .tabla-personal td:nth-child(3)::before { content: "Especialidad"; }
+  .tabla-personal td:nth-child(4)::before { content: "Supervisor"; }
+  .tabla-personal td:nth-child(5)::before { content: "Estado"; }
+  .tabla-personal td:nth-child(6) { justify-content: flex-end; }
+
+  .celda-acciones {
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+  }
+
+  .celda-acciones button {
+    padding: 0.5rem;
+    font-size: 1.2rem;
+  }
+
+  .modal-contenido {
+    width: 95%;
+    padding: 1.5rem;
+  }
+
+  .modal-acciones {
+    flex-direction: column;
+  }
+
+  .modal-acciones button {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .area-creacion-fila .area-form {
+    flex-direction: column;
+  }
+
+  .area-creacion-fila input {
+    margin-bottom: 0.5rem;
+  }
+
+
+/* Extra pequeño (iPhone SE, etc.) */
+@media (max-width: 360px) {
+  .admin-saludo h1 {
+    font-size: 1.4rem;
+  }
+
+  .tab-btn {
+    font-size: 0.95rem;
+    padding: 12px;
+  }
+}

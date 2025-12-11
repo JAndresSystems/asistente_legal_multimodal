@@ -106,3 +106,84 @@
   margin-bottom: 0.3rem;
   word-break: break-all; /* Para evitar que las fuentes largas rompan el layout */
 }
+
+
+/* ====================== RESPONSIVE - ASISTENTE JURÍDICO ====================== */
+
+@media (max-width: 768px) {
+  .contenedorPrincipal {
+    padding: 1.2rem;
+    margin-top: 1.5rem;
+  }
+
+  .contenedorPrincipal h3 {
+    font-size: 1.4rem;
+  }
+
+  .descripcion {
+    font-size: 0.95rem;
+  ;
+  }
+
+  .textareaPregunta {
+    font-size: 1rem; /* Evita zoom en iOS al enfocar */
+    min-height: 120px;
+  }
+
+  .botonConsultar {
+    padding: 14px;
+    font-size: 1.05rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .contenedorPrincipal {
+    padding: 1rem;
+    border-radius: 6px;
+  }
+
+  .contenedorPrincipal h3 {
+    font-size: 1.3rem;
+  }
+
+  .descripcion {
+    font-size: 0.className="0.9rem;
+  }
+
+  .contenidoRespuesta {
+    padding: 0.9rem;
+    font-size: 0.95rem;
+  }
+
+  .contenidoRespuesta h3 {
+    font-size: 1.15rem;
+  }
+
+  .fuentes {
+    font-size: 0.8rem;
+  }
+
+  .fuentes h5 {
+    font-size: 1rem;
+  }
+
+  .error {
+    font-size: 0.9rem;
+    padding: 0.8rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .contenedorPrincipal {
+    padding: 0.9rem;
+  }
+
+  .botonConsultar {
+    padding: 16px;
+    font-size: 1.1rem;
+  }
+
+  .textareaPregunta {
+    min-height: 140px;
+  }
+}

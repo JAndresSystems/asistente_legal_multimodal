@@ -63,3 +63,150 @@
 .markdown-cell ul, .markdown-cell ol {
   padding-left: 20px;
 }
+
+
+/* ====================== RESPONSIVE - VISOR REPORTE ====================== */
+
+@media (max-width: 1024px) {
+  .visor-reporte-contenedor {
+    padding: 1.3rem;
+  }
+
+  .tabla-reporte th,
+  .tabla-reporte td {
+    padding: 0.7rem 0.9rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .visor-reporte-contenedor {
+    padding: 1.2rem;
+    border-radius: 12px;
+    margin: 0.monitor 1rem;
+  }
+
+  .tabla-reporte th {
+    width: 35%;
+    font-size: 0.95rem;
+  }
+
+  .tabla-reporte td {
+    font-size: 0.95rem;
+  }
+
+  .fila-seccion-titulo td {
+    font-size: 1.15rem;
+    padding: 1rem 0.9rem;
+  }
+
+  .markdown-cell {
+    font-size: 0.98rem;
+    line-height: 1.7;
+  }
+}
+
+@media (max-width: 580px) {
+  /* Tabla → Tarjetas en móviles */
+  .tabla-reporte {
+    display: block;
+    width: 100%;
+  }
+
+  .tabla-reporte tbody {
+    display: block;
+  }
+
+  .tabla-reporte tr {
+    display: block;
+    margin-bottom: 1.5rem;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .fila-seccion-titulo {
+    background-color: #005a4b !important;
+    color: white;
+    border-radius: 10px 10px 0 0 !important;
+    margin: -1rem -1rem 1rem -1rem;
+    padding: 1rem !important;
+  }
+
+  .fila-seccion-titulo td {
+    font-size: 1.1rem !important;
+    font-weight: bold;
+    text-align: center;
+    padding: 0.8rem 1rem !important;
+  }
+
+  .tabla-reporte th,
+  .tabla-reporte td {
+    display: block;
+    width: 100%;
+    padding: 0.6rem 0;
+    border: none;
+    text-align: left;
+  }
+
+  .tabla-reporte th {
+    font-weight: bold;
+    color: #005a4b;
+    font-size: 0.95rem;
+    margin-top: 0.8rem 0 0.3rem 0;
+    padding-top: 1rem;
+    border-top: 1px dashed #ccc;
+  }
+
+  .tabla-reporte th:first-child {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  .markdown-cell {
+    padding: 1rem 0;
+    background-color: #f8fffe;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .visor-reporte-contenedor {
+    padding: 1rem 0.8rem;
+    margin: 0.5rem;
+  }
+
+  .fila-seccion-titulo td {
+    font-size: 1.05rem;
+  }
+
+  .tabla-reporte th {
+    font-size: 0.93rem;
+  }
+
+  .tabla-reporte td {
+    font-size: 0.96rem;
+  }
+
+  .markdown-cell {
+    font-size: 0.96rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .visor-reporte-contenedor {
+    padding: 0.9rem 0.7rem;
+    margin: 0.3rem;
+  }
+
+  .fila-seccion-titulo td {
+    font-size: 1rem;
+  }
+
+  .markdown-cell h3 {
+    font-size: 1.15rem;
+  }
+}

@@ -144,3 +144,162 @@
     font-size: 0.75rem;
     color: #888;
 }
+
+
+/* ====================== RESPONSIVE - DOCUMENTO CON HILO ====================== */
+
+@media (max-width: 768px) {
+  .documento-cabecera {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .info-doc {
+    width: 100%;
+  }
+
+  .acciones-doc {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .btn-descargar,
+  .btn-comentarios {
+    flex: 100%;
+    text-align: center;
+  }
+
+  .estado-doc {
+    width: 100%;
+    text-align: right;
+  }
+
+  .botones-revision-mini {
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .burbuja-hilo {
+    max-width: 95%;
+    margin-left: 5px !important;
+    margin-right: 5px !important;
+  }
+
+  .burbuja-hilo.asesor {
+    margin-right: 5% !important;
+  }
+
+  .burbuja-hilo.estudiante {
+    margin-left: 5% !important;
+  }
+
+  .form-hilo {
+    flex-direction: column;
+  }
+
+  .form-hilo input {
+    margin-bottom: 8px;
+  }
+
+  .form-hilo button {
+    align-self: flex-end;
+    width: 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .documento-item-contenedor {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+
+  .documento-cabecera {
+    gap: 10px;
+  }
+
+  .icono-doc {
+    font-size: 1.8rem;
+  }
+
+  .info-doc strong {
+    font-size: 1rem;
+  }
+
+  .metadata-doc {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .separador {
+    display: none;
+  }
+
+  .acciones-doc {
+    flex-direction: column;
+  }
+
+  .btn-descargar,
+  .btn-comentarios {
+    width: 100%;
+    padding: 10px;
+    font-size: 0.95rem;
+  }
+
+  .badge-estado {
+    font-size: 0.75rem;
+    padding: 100%;
+    text-align: center;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .botones-revision-mini {
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .btn-ok,
+  .btn-x {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    min-width: 100px;
+  }
+
+  .hilo-comentarios {
+    padding: 12px;
+  }
+
+  .burbuja-header {
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-start;
+  }
+
+  .burbuja-fecha {
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .documento-item-contenedor {
+    padding: 10px;
+  }
+
+  .info-doc strong {
+    font-size: 0.95rem;
+  }
+
+  .btn-ok,
+  .btn-x {
+    padding: 10px;
+    font-size: 0.9rem;
+    width: 100%;
+  }
+
+  .botones-revision-mini {
+    flex-direction: column;
+    gap: 8px;
+  }
+}

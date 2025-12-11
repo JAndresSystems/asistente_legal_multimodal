@@ -82,3 +82,122 @@
   line-height: 1.6;
   color: #343a40;
 }
+
+
+/* ====================== RESPONSIVE - REPORTE ADMISION ====================== */
+
+@media (max-width: 1024px) {
+  .reporte-contenedor {
+    padding: 1.2rem;
+  }
+
+  .reporte-titulo-principal {
+    font-size: 1.45rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .reporte-contenedor {
+    padding: 1rem;
+    border-radius: 10px;
+  }
+
+  .reporte-titulo-principal {
+    font-size: 1.4rem;
+    text-align: center;
+  }
+
+  .panel-cabecera {
+    padding: 1.2rem 1.3rem;
+    font-size: 1.05rem;
+  }
+
+  .indicador-acordeon {
+    font-size: 1.8rem;
+  }
+
+  .panel-contenido {
+    padding: 1.3rem;
+  }
+
+  .json-viewer {
+    font-size: 0.88rem;
+    padding: 1.2rem;
+    border-radius: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .reporte-contenedor {
+    padding: 1rem 0.8rem;
+    margin: 0.5rem;
+  }
+
+  .reporte-titulo-principal {
+    font-size: 1.35rem;
+    padding: 0 0.5rem;
+  }
+
+  .panel-cabecera {
+    padding: 1.3rem 1rem;
+    font-size: 1.05rem;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .panel-cabecera span:first-child {
+    flex: 1;
+    text-align: left;
+    padding-right: 10px;
+  }
+
+  .indicador-acordeon {
+    font-size: 2rem;
+    min-width: 40px;
+  }
+
+  .panel-contenido {
+    padding: 1.4rem 1rem;
+  }
+
+  .json-viewer {
+    font-size: 0.92rem;
+    line-height: 1.5;
+    padding: 1.3rem;
+    border-radius: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .texto-plano {
+    font-size: 1rem;
+    line-height: 1.7;
+    padding: 0 0.5rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .reporte-contenedor {
+    padding: 0.9rem 0.7rem;
+    margin: 0.3rem;
+  }
+
+  .reporte-titulo-principal {
+    font-size: 1.3rem;
+  }
+
+  .panel-cabecera {
+    padding: 1.4rem 0.9rem;
+    font-size: 1rem;
+  }
+
+  .json-viewer {
+    font-size: 0.9rem;
+    padding: 1.2rem;
+  }
+
+  .texto-plano {
+    font-size: 0.98rem;
+  }
+}

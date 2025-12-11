@@ -206,3 +206,174 @@
   background-color: #007aff;
   transition: width 0.3s ease-in-out;
 }
+
+
+/* ====================== RESPONSIVE - FORMULARIO SUBIR EVIDENCIA ====================== */
+
+@media (max-width: 768px) {
+  .formulario-subir-evidencia-contenedor {
+    margin: 1rem;
+    padding: 20px;
+    border-radius: 12px;
+  }
+
+  .formulario-subir-evidencia-contenedor h3 {
+    font-size: 20px;
+  }
+
+  .formulario-subir-evidencia-contenedor h4 {
+    font-size: 17px;
+  }
+
+  .zona-seleccion-archivo {
+    padding: 25px 15px;
+  }
+
+  .zona-seleccion-archivo p {
+    font-size: 15px;
+  }
+
+  .area-de-grabacion {
+    padding: 18px 0;
+  }
+
+  .boton-grabar,
+  .boton-detener {
+    padding: 14px 24px;
+    font-size: 16px;
+    min-width: 180px;
+  }
+
+  .reproductor-audio audio {
+    width: 100%;
+    height: 45px;
+  }
+
+  .lista-archivos-seleccionados {
+    max-height: 180px;
+  }
+
+  .item-archivo {
+    padding: 12px;
+    font-size: 15px;
+  }
+
+  .nombre-archivo {
+    font-size: 14.5px;
+  }
+
+  .boton-subir {
+    padding: 16px 30px;
+    font-size: 17px;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .progreso-subida {
+    height: 10px;
+    margin-top: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .formulario-subir-evidencia-contenedor {
+    margin: 0.5rem;
+    padding: 18px;
+    border: none;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  }
+
+  .formulario-subir-evidencia-contenedor h3 {
+    font-size: 19px;
+    line-height: 1.3;
+  }
+
+  .zona-seleccion-archivo {
+    padding: 30px 10px;
+    margin-bottom: 18px;
+  }
+
+  .zona-seleccion-archivo p {
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .area-de-grabacion {
+    padding: 20px 0;
+  }
+
+  .texto-grabacion {
+    font-size: 15px;
+  }
+
+  .boton-grabar,
+  .boton-detener {
+    padding: 16px;
+    font-size: 17px;
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .reproductor-audio p {
+    font-size: 15px;
+  }
+
+  .item-archivo {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .nombre-archivo {
+    width: 100%;
+    font-size: 15px;
+    word-break: break-all;
+  }
+
+  .boton-eliminar-archivo {
+    align-self: flex-end;
+    font-size: 22px;
+  }
+
+  .boton-subir {
+    padding: 18px;
+    font-size: 18px;
+    border-radius: 12px;
+  }
+
+  .mensaje-feedback {
+    font-size: 15px;
+    padding: 0 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .formulario-subir-evidencia-contenedor {
+    margin: 0.3rem;
+    padding: 16px;
+  }
+
+  .formulario-subir-evidencia-contenedor h3 {
+    font-size: 18px;
+  }
+
+  .zona-seleccion-archivo p {
+    font-size: 15.5px;
+  }
+
+  .boton-grabar,
+  .boton-detener {
+    padding: 18px;
+    font-size: 18px;
+  }
+
+  .boton-subir {
+    padding: 20px;
+    font-size: 19px;
+  }
+
+  .reproductor-audio audio {
+    height: 50px;
+  }
+}

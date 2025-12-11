@@ -181,3 +181,156 @@
     font-style: italic;
     font-size: 0.9rem;
 }
+
+
+/* ====================== RESPONSIVE - DASHBOARD ESTUDIANTE ====================== */
+
+@media (max-width: 1024px) {
+  .dashboard-estudiante-contenedor {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+
+  .dashboard-cabecera h1 {
+    font-size: 1.7rem;
+  }
+
+  .tabla-casos-estudiante th,
+  .tabla-casos-estudiante td {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-estudiante-contenedor {
+    margin: 0.5rem;
+    padding: 1.2rem;
+    border-radius: 6px;
+  }
+
+  .dashboard-saludo h2 {
+    font-size: 1.6rem;
+  }
+
+  .dashboard-cabecera h1 {
+    font-size: 1.6rem;
+  }
+
+  .acciones-contenedor {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .boton-accion {
+    width: 100%;
+    padding: 10px;
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 580px) {
+  /* Convertimos la tabla en tarjetas tipo móvil */
+  .tabla-casos-estudiante {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabla-casos-estudiante thead {
+    display: none;
+  }
+
+  .tabla-casos-estudiante tbody tr {
+    display: block;
+    margin-bottom: 1.2rem;
+    padding: 1rem;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+
+  .tabla-casos-estudiante td {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border: none;
+    text-align: right;
+  }
+
+  .tabla-casos-estudiante td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    text-align: left;
+    color: #444;
+  }
+
+  /* Etiquetas para cada columna */
+  .tabla-casos-estudiante td:nth-child(1)::before { content: "Caso"; }
+  .tabla-casos-estudiante td:nth-child(2)::before { content: "Fecha"; }
+  .tabla-casos-estudiante td:nth-child(3)::before { content: "Estado"; }
+  .tabla-casos-estudiante td:nth-child(4)::before { content: "Evaluación"; }
+  .tabla-casos-estudiante td:nth-child(5) { justify-content: center; }
+
+  .acciones-contenedor {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .boton-accion {
+    flex: 1;
+    min-width: 120px;
+    margin: 4px;
+  }
+
+  .estrellas {
+    font-size: 1.3rem;
+  }
+
+  .nota-numerica {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-estudiante-contenedor {
+    padding: 1rem;
+    margin: 0.3rem;
+  }
+
+  .dashboard-saludo h2 {
+    font-size: 1.5rem;
+  }
+
+  .dashboard-cabecera h1 {
+    font-size: 1.5rem;
+  }
+
+  .estado-caso {
+    font-size: 0.75rem;
+    padding: 5px 8px;
+  }
+
+  .celda-evaluacion {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 360px) {
+  .dashboard-estudiante-contenedor {
+    padding: 0.8rem;
+  }
+
+  .boton-accion {
+    font-size: 0.9rem;
+    padding: 12px;
+  }
+
+  .acciones-contenedor {
+    gap: 6px;
+  }
+} 

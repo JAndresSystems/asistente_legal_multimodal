@@ -377,3 +377,197 @@ hr.separador-seccion {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+
+/* ====================== RESPONSIVE - VISTA DETALLE CASO (VERSIÓN FINAL CORREGIDA) ====================== */
+
+@media (max-width: 1024px) {
+  .detalle-contenedor {
+    margin: 1rem;
+    padding: 1.5rem;
+    max-width: none;
+  }
+
+  .info-resumen {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .detalle-contenedor {
+    padding: 1.3rem;
+    margin: 0.5rem;
+    border-radius: 10px;
+  }
+
+  .detalle-contenedor h1 {
+    font-size: 1.6rem;
+  }
+
+  .info-resumen {
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+  }
+
+  .linea-de-tiempo-usuario {
+    max-height: 600px;
+  }
+
+  .item-timeline-usuario {
+    padding: 1.2rem;
+  }
+
+  .formulario-crear-nota-usuario textarea {
+    min-height: 120px;
+    font-size: 16px;
+  }
+
+  /* Widget flotante más grande y fácil de tocar */
+  .boton-flotante-abrir {
+    padding: 18px 28px;
+    font-size: 17px;
+    border-radius: 50px;
+  }
+
+  .ventana-chat-flotante {
+    width: 95vw;
+    max-width: 420px;
+    height: 85vh;
+    bottom: 90px;
+    right: 50%;
+    transform: translateX(50%);
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .detalle-contenedor {
+    padding: 1rem;
+    margin: 0.3rem;
+    border-radius: 12px;
+  }
+
+  .detalle-contenedor h1 {
+    font-size: 1.5rem;
+  }
+
+  .seccion-detalle h2 {
+    font-size: 1.3rem;
+  }
+
+  .descripcion-hechos {
+    font-size: 16px;
+    padding: 16px;
+  }
+
+  .item-timeline-usuario {
+    padding: 1.3rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    border: 1px solid #e9ecef;
+  }
+
+  .tarjeta-documento-usuario {
+    padding: 1rem;
+  }
+
+  .enlace-evidencia {
+    font-size: 15px;
+    word-break: break-all;
+  }
+
+  .formulario-crear-nota-usuario textarea {
+    min-height: 140px;
+    font-size: 17px;
+  }
+
+  .boton-flotante-abrir {
+    padding: 20px 30px;
+    font-size: 18px;
+    bottom: 20px;
+    right: 20px;
+  }
+
+  .ventana-chat-flotante {
+    width: 98vw;
+    height: 90vh;
+    bottom: 15px;
+    right: 50%;
+    transform: translateX(50%);
+    border-radius: 16px;
+  }
+
+  .chat-header h3 {
+    font-size: 1.15rem;
+  }
+
+  .chat-body {
+    padding: 15px;
+  }
+
+  .burbuja {
+    font-size: 16.5px;
+    padding: 14px 18px;
+  }
+
+  .chat-footer input {
+    padding: 14px 18px;
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 360px) {
+  .detalle-contenedor {
+    padding: 0.9rem;
+    margin: 0.2rem;
+  }
+
+  .detalle-contenedor h1 {
+    font-size: 1.4rem;
+  }
+
+  .seccion-detalle h2 {
+    font-size: 1.25rem;
+  }
+
+  .boton-flotante-abrir {
+    padding: 18px 26px;
+    font-size: 17px;
+    bottom: 15px;
+    right: 15px;
+  }
+
+  .ventana-chat-flotante {
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    max-height: none;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    transform: none;
+    border-radius: 0;
+  }
+
+  .chat-header {
+    padding: 16px;
+  }
+
+  .chat-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .chat-body {
+    padding: 12px;
+  }
+
+  .burbuja {
+    font-size: 16px;
+    padding: 13px 16px;
+  }
+
+  .chat-footer input {
+    padding: 16px;
+    font-size: 17px;
+  }
+}

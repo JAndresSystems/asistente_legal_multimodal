@@ -508,3 +508,163 @@
     background-color: #28a745;
     color: white;
 }
+
+
+/* ====================== RESPONSIVE - VISTA EXPEDIENTE ASESOR ====================== */
+
+@media (max-width: 1024px) {
+  .contenidoGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .columnaLateral {
+    order: -1; /* Sube la columna lateral arriba en tablets */
+  }
+
+  .vistaContenedor {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+
+  .cabecera {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .cabeceraBotones {
+    width: 100%;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .botonFinalizar,
+  .botonDescargar {
+    flex: 1;
+    min-width: 160px;
+  }
+}
+
+@media (max-width: 768px) {
+  .vistaContenedor {
+    padding: 1rem;
+    margin: 0.5rem;
+    border-radius: 6px;
+  }
+
+  .titulo {
+    font-size: 1.7rem;
+  }
+
+  .estadoCaso {
+    font-size: 0.9rem;
+    padding: 5px 10px;
+  }
+
+  .lineaDeTiempo {
+    max-height: none;
+    overflow-y: visible;
+    padding: 0.8rem;
+  }
+
+  .itemTimeline {
+    flex-direction: column;
+  }
+
+  .iconoTimeline {
+    margin-bottom: 0.8rem;
+    align-self: flex-start;
+  }
+
+  .contenidoItem {
+    padding: 1rem;
+  }
+
+  .documentoEstadoContenedor {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .botonesRevision {
+    width: 100%;
+  }
+
+  .botonAprobar,
+  .botonRechazar {
+    flex: 1;
+  }
+
+  .modalCalificacion {
+    width: 90%;
+    max-width: 400px;
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .vistaContenedor {
+    padding: 0.8rem;
+  }
+
+  .titulo {
+    font-size: 1.5rem;
+  }
+
+  .cabeceraBotones {
+    flex-direction: column;
+  }
+
+  .botonFinalizar,
+  .botonDescargar {
+    width: 100%;
+  }
+
+  .columnaPrincipal h3,
+  .resumen h3,
+  .formularioNotas h3 {
+    font-size: 1.3rem;
+  }
+
+  .textareaNota {
+    min-height: 120px;
+    font-size: 1rem; /* evita zoom en iOS */
+  }
+
+  .botonesReasignacion {
+    flex-direction: column;
+  }
+
+  .botonCancelar,
+  .botonConfirmar {
+    width: 100%;
+  }
+
+  .alertaSistema,
+  .notaInterna,
+  .notaPublica {
+    padding: 1rem;
+    border-radius: 8px;
+  }
+
+  .tituloAlerta {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .vistaContenedor {
+    padding: 0.6rem;
+  }
+
+  .titulo {
+    font-size: 1.4rem;
+  }
+
+  .botonVolver {
+    width: 100%;
+    text-align: center;
+  }
+}

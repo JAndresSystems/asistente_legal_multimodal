@@ -284,3 +284,148 @@
     50% { transform: scale(1.2); }
     100% { transform: scale(1); }
 }
+
+
+
+
+/* ====================== RESPONSIVE DASHBOARD ASESOR ====================== */
+
+@media (max-width: 1024px) {
+  .dashboardContenedor {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+
+  .cabeceraTabla {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filtros {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboardContenedor {
+    padding: 1rem;
+    margin: 0.5rem;
+    border-radius: 6px;
+  }
+
+  .titulo {
+    font-size: 1.6rem;
+  }
+
+  .subtitulo {
+    font-size: 1rem;
+  }
+
+  .panelMetricas,
+  .panelCasos {
+    padding: 1.2rem;
+  }
+
+  .itemMetrica {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .barraProgresoFondo {
+    width: 100%;
+  }
+
+  .cargaTrabajo {
+    align-self: flex-end;
+  }
+
+  .filtros {
+    flex-wrap: wrap;
+  }
+
+  .btnFiltro {
+    font-size: 0.85rem;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 580px) {
+  /* Tabla responsive: pasa a tarjetas en móvil */
+  .tablaCasos {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tablaCasos thead {
+    display: none;
+  }
+
+  .tablaCasos tbody tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    background: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+
+  .tablaCasos td {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.6rem 0;
+    border: none;
+    text-align: right;
+  }
+
+  .tablaCasos td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    text-align: left;
+    color: #555;
+  }
+
+  /* Asignamos etiquetas a cada celda */
+  .tablaCasos td:nth-child(1)::before { content: "Alerta"; }
+  .tablaCasos td:nth-child(2)::before { content: "ID Caso"; }
+  .tablaCasos td:nth-child(3)::before { content: "Estudiante"; }
+  .tablaCasos td:nth-child(4)::before { content: "Estado"; }
+  .tablaCasos td:nth-child(5)::before { content: "Fecha"; }
+  .tablaCasos td:nth-child(6) {
+    justify-content: center;
+    margin-top: 0.8rem;
+  }
+
+  .botonAccion {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+  }
+
+  .filaAlerta {
+    border-left: 6px solid #dc3545;
+  }
+}
+
+@media (max-width: 420px) {
+  .titulo {
+    font-size: 1.4rem;
+  }
+
+  .panelMetricas h3,
+  .panelCasos h3 {
+    font-size: 1.2rem;
+  }
+
+  .btnFiltro {
+    width: 100%;
+    text-align: center;
+  }
+
+  .filtros {
+    flex-direction: column;
+  }
+}

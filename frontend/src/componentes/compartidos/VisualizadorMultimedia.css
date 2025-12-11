@@ -97,3 +97,85 @@
   font-size: 10px;
   color: #666;
 }
+
+
+
+/* ====================== RESPONSIVE - VISUALIZADOR MULTIMEDIA ====================== */
+
+@media (max-width: 768px) {
+  .vm-imagen-contenedor {
+    height: 140px;
+  }
+
+  .vm-doc-nombre {
+    font-size: 11.5px;
+    max-width: 180px;
+  }
+
+  .vm-documento-link {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .vm-imagen-contenedor {
+    height: 160px;
+    border-radius: 10px;
+  }
+
+  .vm-audio-contenedor {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .vm-audio-player audio {
+    height: 36px;
+  }
+
+  .vm-audio-etiqueta {
+    font-size: 10px;
+  }
+
+  .vm-documento-link {
+    padding: 12px 10px;
+    gap: 10px;
+  }
+
+  .vm-doc-info {
+    flex: 1;
+  }
+
+  .vm-doc-nombre {
+    font-size: 13px;
+    max-width: none;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.3;
+  }
+
+  .vm-doc-ext {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 360px) {
+  .vm-imagen-contenedor {
+    height: 150px;
+  }
+
+  .vm-documento-link {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+
+  .vm-doc-nombre {
+    font-size: 12.5px;
+    text-align: center;
+  }
+
+  .vm-doc-ext {
+    font-size: 10.5px;
+  }
+}

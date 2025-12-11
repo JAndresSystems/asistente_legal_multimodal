@@ -84,3 +84,84 @@
 .enlaceDescarga:hover {
   text-decoration: underline;
 }
+
+
+
+/* ====================== RESPONSIVE - GENERADOR DOCUMENTOS ====================== */
+
+@media (max-width: 768px) {
+  .contenedorPrincipal {
+    padding: 1.3rem;
+    margin-top: 1.5rem;
+  }
+
+  .contenedorPrincipal h3 {
+    font-size: 1.4rem;
+  }
+
+  .descripcion {
+    font-size: 0.95rem;
+  }
+
+  .selectPlantilla {
+    font-size: 1rem; /* Evita zoom en iOS */
+    padding: 12px;
+  }
+
+  .botonGenerar {
+    padding: 14px;
+    font-size: 1.05rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .contenedorPrincipal {
+    padding: 1rem;
+    border-radius: 7px;
+  }
+
+  .contenedorPrincipal h3 {
+    font-size: 1.3rem;
+  }
+
+  .descripcion {
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .selectPlantilla,
+  .botonGenerar {
+    font-size: 1rem;
+  }
+
+  .contenedorResultado {
+    padding: 1rem;
+  }
+
+  .enlaceDescarga {
+    font-size: 1rem;
+    word-break: break-all;
+    display: block;
+    padding: 10px 0;
+  }
+
+  .error {
+    font-size: 0.9rem;
+    padding: 0.8rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .contenedorPrincipal {
+    padding: 0.9rem;
+  }
+
+  .botonGenerar {
+    padding: 16px;
+    font-size: 1.1rem;
+  }
+
+  .selectPlantilla {
+    padding: 14px;
+  }
+}

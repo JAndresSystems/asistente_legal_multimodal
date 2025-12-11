@@ -131,3 +131,134 @@
 /* ====================================================================== */
 /* FIN DE LA CORRECCION */
 /* ====================================================================== */
+
+
+/* ====================== RESPONSIVE - VISTA REPORTE FINAL (100% CORREGIDO) ====================== */
+
+@media (max-width: 1024px) {
+  .vista-reporte-contenedor {
+    padding: 1.5rem;
+    margin: 1rem;
+    max-width: none;
+  }
+
+  .vista-reporte-contenedor h3 {
+    font-size: 1.6rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .vista-reporte-contenedor {
+    padding: 1.3rem;
+    margin: 0.8rem;
+    border-radius: 14px;
+  }
+
+  .vista-reporte-contenedor h3 {
+    font-size: 1.55rem;
+    line-height: 1.3;
+  }
+
+  .vista-reporte-contenedor p {
+    font-size: 1.05rem;
+  }
+
+  .titulo-seccion {
+    font-size: 1.25rem;
+    padding-bottom: 10px;
+  }
+
+  .contenido-json-legible p,
+  .contenido-texto-plano {
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+
+  .contenido-texto-plano {
+    padding: 1.2rem;
+    border-radius: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .vista-reporte-contenedor {
+    padding: 1.2rem;
+    margin: 0.5rem;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  }
+
+  .vista-reporte-contenedor h3 {
+    font-size: 1.5rem;
+  }
+
+  .vista-reporte-contenedor p {
+    font-size: 1.1rem;
+  }
+
+  .seccion-reporte {
+    margin-bottom: 2rem;
+  }
+
+  .titulo-seccion {
+    font-size: 1.3rem;
+    border-bottom-width: 3px;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+
+  .contenido-json-legible p {
+    font-size: 1.05rem;
+    margin-bottom: 14px;
+  }
+
+  .contenido-json-legible strong {
+    font-size: 1.1rem;
+  }
+
+  .contenido-texto-plano {
+    font-size: 1.05rem;
+    padding: 1.4rem;
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .vista-reporte-contenedor {
+    padding: 1rem;
+    margin: 0.3rem;
+    border-radius: 18px;
+  }
+
+  .vista-reporte-contenedor h3 {
+    font-size: 1.45rem;
+  }
+
+  .vista-reporte-contenedor p {
+    font-size: 1.05rem;
+  }
+
+  .titulo-seccion {
+    font-size: 1.25rem;
+  }
+
+  .contenido-json-legible p,
+  .contenido-texto-plano {
+    font-size: 1.02rem;
+    line-height: 1.8;
+  }
+
+  .contenido-texto-plano {
+    padding: 1.3rem;
+  }
+}
+
+/* Mejora extra: mejor legibilidad en móviles pequeños */
+@media (max-width: 480px) {
+  .contenido-json-legible strong {
+    display: block;
+    margin-top: 1rem;
+    margin-bottom: 0.4rem;
+    color: #005a4b;
+  }
+}

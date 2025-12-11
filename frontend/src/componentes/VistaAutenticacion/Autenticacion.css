@@ -103,3 +103,108 @@
   border-radius: 4px;
   text-align: center;
 }
+
+
+/* ====================== RESPONSIVE - AUTENTICACIÓN (LOGIN / REGISTRO) ====================== */
+
+@media (max-width: 768px) {
+  .contenedor-autenticacion {
+    margin: 1rem;
+    padding: 2rem 1.8rem;
+    max-width: 420px;
+    border-radius: 14px;
+  }
+
+  .formulario-autenticacion h2 {
+    font-size: 1.8rem;
+  }
+
+  .formulario-autenticacion p {
+    font-size: 1rem;
+  }
+
+  .campo-formulario label {
+    font-size: 1rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .campo-formulario input {
+    padding: 1rem;
+    font-size: 17px; /* Evita zoom en iOS */
+    border-radius: 10px;
+  }
+
+  .boton-principal {
+    padding: 1.1rem;
+    font-size: 18px;
+    border-radius: 10px;
+  }
+
+  .boton-enlace {
+    font-size: 1.05rem;
+  }
+
+  .mensaje-error {
+    padding: 1.1rem;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .contenedor-autenticacion {
+    margin: 0.5rem;
+    padding: 2rem 1.5rem;
+    border-radius: 16px;
+    box-shadow: 0 0 8px 25px rgba(0,0,0,0.15);
+  }
+
+  .formulario-autenticacion h2 {
+    font-size: 1.7rem;
+  }
+
+  .campo-formulario input {
+    padding: 1.1rem;
+    font-size: 18px;
+    border-radius: 12px;
+  }
+
+  .boton-principal {
+    padding: 1.3rem;
+    font-size: 19px;
+    border-radius: 12px;
+  }
+
+  .enlace-cambio p {
+    font-size: 1rem;
+  }
+
+  .boton-enlace {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .contenedor-autenticacion {
+    margin: 0.3rem;
+    padding: 1.8rem 1.2rem;
+    border-radius: 18px;
+  }
+
+  .formulario-autenticacion h2 {
+    font-size: 1.6rem;
+  }
+
+  .campo-formulario input {
+    padding: 1.2rem;
+    font-size: 18px;
+  }
+
+  .boton-principal {
+    padding: 1.4rem;
+    font-size: 19.5px;
+  }
+
+  .mensaje-error {
+    font-size: 0.98rem;
+  }
+}

@@ -238,15 +238,12 @@ export const apiCrearCasoInicial = async () => {
 
 
 
+// REEMPLAZA LA FUNCIÓN FINAL 'enviarMensajeOrientacion' POR ESTA:
+
 export const enviarMensajeOrientacion = async (casoId, pregunta) => {
   
   // 1. RECUPERACIÓN CORRECTA DEL TOKEN
-  // CORRECCIÓN: Tu ContextoAutenticacion usa 'authToken'. Lo ponemos de primero.
   let token = localStorage.getItem('authToken') || localStorage.getItem('token_auth') || localStorage.getItem('token');
-
-  // Diagnóstico en consola (puedes borrarlo después si quieres)
-  console.log("--- DEBUG TOKEN ---");
-  console.log("Token encontrado:", token ? "SÍ (Oculto por seguridad)" : "NO");
 
   if (!token) {
     console.error("API Error: No se encontró el token 'authToken' en localStorage.");
@@ -254,11 +251,11 @@ export const enviarMensajeOrientacion = async (casoId, pregunta) => {
   }
 
   try {
-    const respuesta = await fetch(`http://127.0.0.1:8000/api/casos/${casoId}/chat-orientacion`, {
+    // CORRECCIÓN: Usamos la variable de entorno, NO la IP fija.
+    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/casos/${casoId}/chat-orientacion`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // 2. Enviar el token correctamente
         'Authorization': `Bearer ${token}` 
       },
       body: JSON.stringify({ pregunta: pregunta })
