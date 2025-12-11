@@ -122,7 +122,6 @@
 
   .descripcion {
     font-size: 0.95rem;
-  ;
   }
 
   .textareaPregunta {
@@ -146,9 +145,11 @@
     font-size: 1.3rem;
   }
 
+  /* --- AQUÍ ESTABA EL ERROR --- */
   .descripcion {
-    font-size: 0.className="0.9rem;
+    font-size: 0.9rem; 
   }
+  /* ---------------------------- */
 
   .contenidoRespuesta {
     padding: 0.9rem;
