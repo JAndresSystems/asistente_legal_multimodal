@@ -2,7 +2,11 @@
 import React, { useState } from 'react';
 import './VisualizadorMultimedia.css'; // <--- Importamos el CSS nuevo
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"; 
+// MODO RENDER (Nube) -> ¡ACTIVO!
+const API_URL = "https://asistente-legal-backend-897g.onrender.com";
+
+// MODO LOCAL (PC) -> Comentado
+// const API_URL = "http://localhost:8000";
 
 const VisualizadorMultimedia = ({ nombreArchivo, casoId }) => {
   const [errorCarga, setErrorCarga] = useState(false);
