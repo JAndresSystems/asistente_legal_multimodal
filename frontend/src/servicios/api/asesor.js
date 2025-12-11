@@ -213,30 +213,3 @@ export const apiSolicitarCambiosDocumento = async (idEvidencia) => {
   }
 };
 
-/**
- * 📥 DESCARGAR REPORTE PDF
- * Genera el documento oficial del caso en formato PDF y fuerza la descarga en el navegador.
- */
-export const apiDescargarReporteExpedientePDF = async (idCaso) => {
-    console.log("Descargando reporte PDF asesor...");
-    try {
-        const respuesta = await fetch(`${URL_BASE_BACKEND}/api/casos/${idCaso}/reporte-pdf`, {
-            method: 'GET',
-            headers: obtenerCabeceras(),
-        });
-        if (!respuesta.ok) throw new Error("Error al descargar PDF");
-        
-        // Convertimos la respuesta en un archivo descargable
-        const blob = await respuesta.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Reporte_Caso_${idCaso}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        return { exito: true };
-    } catch (e) {
-        return { exito: false, mensaje: e.message };
-    }
-};
