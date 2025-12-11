@@ -1,8 +1,10 @@
-//C:\react\asistente_legal_multimodal\frontend\src\servicios\api\asesor.js
+// frontend/src/servicios/api/asesor.js
 import { URL_BASE_BACKEND, obtenerCabeceras } from './config.js';
 
 /**
- * Llama al endpoint para obtener los datos del dashboard del asesor.
+ * 📊 DASHBOARD ASESOR
+ * Obtiene el resumen de casos activos, pendientes de revisión y métricas de carga
+ * para el panel principal del Asesor.
  */
 export const apiObtenerDashboardAsesor = async () => {
   console.log("API: Solicitando datos completos del dashboard para el asesor.");
@@ -11,6 +13,7 @@ export const apiObtenerDashboardAsesor = async () => {
       method: 'GET',
       headers: obtenerCabeceras(),
     });
+
     if (!respuesta.ok) {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
@@ -23,8 +26,9 @@ export const apiObtenerDashboardAsesor = async () => {
 };
 
 /**
- * Llama al endpoint para que un asesor obtenga los detalles de un expediente.
- * @param {number} idCaso El ID del caso a consultar.
+ * 📂 DETALLE DE EXPEDIENTE
+ * Recupera la información completa de un caso específico: hechos, línea de tiempo,
+ * evidencias y notas, para la vista de detalle.
  */
 export const apiObtenerDetalleExpedienteAsesor = async (idCaso) => {
   console.log(`API: Asesor solicitando detalles para el expediente ID: ${idCaso}`);
@@ -33,6 +37,7 @@ export const apiObtenerDetalleExpedienteAsesor = async (idCaso) => {
       method: 'GET',
       headers: obtenerCabeceras(),
     });
+
     if (!respuesta.ok) {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
@@ -45,65 +50,78 @@ export const apiObtenerDetalleExpedienteAsesor = async (idCaso) => {
 };
 
 /**
- * Llama al endpoint para que un asesor cree una nota de supervisión.
- * @param {number} idCaso El ID del caso.
- * @param {string} contenido El texto de la nota.
+ * 📝 CREAR NOTA / FEEDBACK
+ * Permite al asesor dejar comentarios en el expediente.
+ * - Puede ser una nota general o atada a una evidencia (idEvidencia).
+ * - Puede ser pública (visible al ciudadano) o privada (solo equipo).
  */
-// En frontend/src/servicios/api/asesor.js
-
 export const apiCrearNotaAsesor = async (idCaso, contenido, esPublica = false, idEvidencia = null) => {
-  try {
-    const response = await fetch(`${URL_BASE_BACKEND}/api/asesor/expedientes/${idCaso}/crear-nota`, {
-      method: 'POST',
-      headers: obtenerCabeceras(), // Usamos la función helper que ya maneja el token correctamente
-      body: JSON.stringify({ 
-          contenido: contenido,
-          es_publica: esPublica,
-          id_evidencia: idEvidencia 
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Error al crear nota de asesor');
-    }
-    return await response.json();
-  } catch (error) {
-    console.error("API: Error al crear nota de asesor:", error);
-    throw error;
+  
+  // Seguridad: Validación manual del token para asegurar la sesión
+  const token = localStorage.getItem('authToken') || localStorage.getItem('token_auth');
+  
+  if (!token) {
+      throw new Error("No se encontró sesión activa.");
   }
+
+  // CORRECCIÓN: Usamos URL_BASE_BACKEND en lugar de 127.0.0.1
+  const response = await fetch(`${URL_BASE_BACKEND}/api/asesor/expedientes/${idCaso}/crear-nota`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ 
+        contenido: contenido,
+        es_publica: esPublica,
+        id_evidencia: idEvidencia 
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Error al crear nota de asesor');
+  }
+  return await response.json();
 };
 
 /**
- * Llama al endpoint para que un asesor marque un caso como 'cerrado'.
- * @param {number} idCaso El ID del caso a finalizar.
+ * ⚖️ FINALIZAR CASO
+ * Cierra el expediente y asigna una calificación académica al estudiante.
+ * Requiere una nota (float) y un comentario de retroalimentación.
  */
-
 export const apiFinalizarCaso = async (idCaso, calificacion, comentario) => {
   console.log(`API: Finalizando caso ${idCaso} con nota ${calificacion}`);
-  try {
-    const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/expedientes/${idCaso}/finalizar`, {
-      method: 'POST',
-      headers: obtenerCabeceras(),
-      body: JSON.stringify({
-          calificacion: parseFloat(calificacion), // Aseguramos float
-          comentario: comentario
-      })
-    });
-
-    if (!respuesta.ok) {
-      const errorData = await respuesta.json();
-      throw new Error(errorData.detail || 'Error al finalizar el caso');
-    }
-    return await respuesta.json();
-  } catch (error) {
-    console.error("API: Error al finalizar caso:", error);
-    throw error;
+  
+  const token = localStorage.getItem('authToken') || localStorage.getItem('token_auth');
+  
+  if (!token) {
+      throw new Error("No se encontró el token de sesión. Por favor inicie sesión nuevamente.");
   }
+
+  // CORRECCIÓN: Usamos URL_BASE_BACKEND en lugar de 127.0.0.1
+  const respuesta = await fetch(`${URL_BASE_BACKEND}/api/asesor/expedientes/${idCaso}/finalizar`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+        calificacion: parseFloat(calificacion),
+        comentario: comentario
+    })
+  });
+
+  if (!respuesta.ok) {
+    const errorData = await respuesta.json();
+    throw new Error(errorData.detail || 'Error al finalizar el caso');
+  }
+  return await respuesta.json();
 };
 
 /**
- * Llama al endpoint para obtener una lista de todos los estudiantes disponibles.
+ * 👥 LISTAR ESTUDIANTES
+ * Obtiene la lista de estudiantes disponibles (útil para consultas de carga).
  */
 export const apiObtenerEstudiantes = async () => {
   console.log("API: Solicitando la lista de todos los estudiantes.");
@@ -112,6 +130,7 @@ export const apiObtenerEstudiantes = async () => {
       method: 'GET',
       headers: obtenerCabeceras(),
     });
+
     if (!respuesta.ok) {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
@@ -123,15 +142,10 @@ export const apiObtenerEstudiantes = async () => {
   }
 };
 
-
 /**
- * Llama al endpoint para que un asesor reasigne un caso a un nuevo estudiante.
- * @param {number} idCaso El ID del caso a reasignar.
- * @param {number} idNuevoEstudiante El ID del estudiante que recibirá el caso.
- */
-/**
- * Llama al endpoint para reasignar un caso automáticamente.
- * Ahora envía la calificación del estudiante saliente.
+ * 🔄 REASIGNACIÓN INTELIGENTE
+ * Libera al estudiante actual (con calificación) y solicita al sistema
+ * que asigne uno nuevo automáticamente basado en la carga laboral.
  */
 export const apiReasignarCaso = async (idCaso, datosReasignacion) => {
   console.log(`API: Asesor reasignando el caso ${idCaso}. Datos:`, datosReasignacion);
@@ -141,6 +155,7 @@ export const apiReasignarCaso = async (idCaso, datosReasignacion) => {
       headers: obtenerCabeceras(),
       body: JSON.stringify(datosReasignacion),
     });
+
     if (!respuesta.ok) {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
@@ -153,8 +168,8 @@ export const apiReasignarCaso = async (idCaso, datosReasignacion) => {
 };
 
 /**
- * Llama al endpoint para que un asesor apruebe un documento.
- * @param {number} idEvidencia El ID del documento a aprobar.
+ * ✅ APROBAR DOCUMENTO
+ * Cambia el estado de una evidencia a "Aprobado", validando el trabajo del estudiante.
  */
 export const apiAprobarDocumento = async (idEvidencia) => {
   console.log(`API: Asesor aprobando el documento ID: ${idEvidencia}`);
@@ -163,6 +178,7 @@ export const apiAprobarDocumento = async (idEvidencia) => {
       method: 'POST',
       headers: obtenerCabeceras(),
     });
+
     if (!respuesta.ok) {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
@@ -175,8 +191,8 @@ export const apiAprobarDocumento = async (idEvidencia) => {
 };
 
 /**
- * Llama al endpoint para que un asesor solicite cambios en un documento.
- * @param {number} idEvidencia El ID del documento a rechazar.
+ * ❌ SOLICITAR CAMBIOS
+ * Rechaza un documento y notifica al estudiante que debe subir una nueva versión.
  */
 export const apiSolicitarCambiosDocumento = async (idEvidencia) => {
   console.log(`API: Asesor solicitando cambios para el documento ID: ${idEvidencia}`);
@@ -185,6 +201,7 @@ export const apiSolicitarCambiosDocumento = async (idEvidencia) => {
       method: 'POST',
       headers: obtenerCabeceras(),
     });
+
     if (!respuesta.ok) {
       const errorData = await respuesta.json();
       throw new Error(errorData.detail || `Error del servidor: ${respuesta.status}`);
@@ -194,4 +211,32 @@ export const apiSolicitarCambiosDocumento = async (idEvidencia) => {
     console.error(`API: Error al solicitar cambios para el documento ${idEvidencia}:`, error);
     throw error;
   }
+};
+
+/**
+ * 📥 DESCARGAR REPORTE PDF
+ * Genera el documento oficial del caso en formato PDF y fuerza la descarga en el navegador.
+ */
+export const apiDescargarReporteExpedientePDF = async (idCaso) => {
+    console.log("Descargando reporte PDF asesor...");
+    try {
+        const respuesta = await fetch(`${URL_BASE_BACKEND}/api/casos/${idCaso}/reporte-pdf`, {
+            method: 'GET',
+            headers: obtenerCabeceras(),
+        });
+        if (!respuesta.ok) throw new Error("Error al descargar PDF");
+        
+        // Convertimos la respuesta en un archivo descargable
+        const blob = await respuesta.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Reporte_Caso_${idCaso}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return { exito: true };
+    } catch (e) {
+        return { exito: false, mensaje: e.message };
+    }
 };
