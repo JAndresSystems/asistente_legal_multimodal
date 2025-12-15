@@ -21,7 +21,7 @@ import DocumentoConHilo from '../../compartidos/DocumentoConHilo';
 const URL_BASE_BACKEND = "https://asistente-legal-backend-897g.onrender.com";
 
 // OPCIÓN 2: MODO LOCAL (Tu PC) -> Comentada
-// const URL_BASE_BACKEND = "http://127.0.0.1:8000";
+ //const URL_BASE_BACKEND = "http://127.0.0.1:8000";
 
 const VistaExpedienteAsesor = ({ expedienteId, onVolverADashboard }) => {
   // ==========================================================================

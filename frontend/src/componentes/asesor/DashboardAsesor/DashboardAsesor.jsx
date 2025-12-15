@@ -39,7 +39,12 @@ const DashboardAsesor = ({ onVerExpediente }) => {
     if (filtroActual === 'pendientes') {
       return casosSupervisados.filter(c => c.estado === 'pendiente_aceptacion' || c.estado === 'en_revision');
     }
-    return casosSupervisados;
+    // NUEVO FILTRO
+    if (filtroActual === 'cerrados') {
+      return casosSupervisados.filter(c => c.estado === 'cerrado' || c.estado === 'rechazado');
+    }
+    // Por defecto (Todos los activos)
+    return casosSupervisados.filter(c => c.estado !== 'cerrado' && c.estado !== 'rechazado');
   };
 
   const casosVisibles = obtenerCasosFiltrados();
@@ -100,6 +105,13 @@ const DashboardAsesor = ({ onVerExpediente }) => {
                     onClick={() => setFiltroActual('alertas')}
                 >
                     🚨 Con Alertas ({casosSupervisados.filter(c => c.tiene_alerta).length})
+                </button>
+                <button 
+                    className={`${styles.btnFiltro} ${filtroActual === 'cerrados' ? styles.activo : ''}`}
+                    onClick={() => setFiltroActual('cerrados')}
+                    style={{backgroundColor: filtroActual === 'cerrados' ? '#6c757d' : ''}} 
+                >
+                    Historial Cerrados
                 </button>
             </div>
         </div>

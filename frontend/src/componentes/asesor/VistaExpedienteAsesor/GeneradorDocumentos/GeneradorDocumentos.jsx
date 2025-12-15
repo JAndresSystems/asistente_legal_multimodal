@@ -2,17 +2,21 @@ import React, { useState } from 'react';
 import { apiGenerarDocumento } from '../../../../servicios/api';
 import styles from './GeneradorDocumentos.module.css';
 
-// Lista de plantillas disponibles. En un futuro, esto podría venir de la API.
+
+
+// MODO RENDER (Nube) -> ¡ACTIVA ESTA PARA SUBIR!
+ const URL_BASE = "https://asistente-legal-backend-897g.onrender.com";
+
+// MODO LOCAL (Tu PC) -> ¡DESCOMENTA ESTA PARA PROBAR EN TU MÁQUINA!
+//const URL_BASE = "http://127.0.0.1:8000";
+
+// =================================================================
+
 const plantillasDisponibles = [
   { nombre: "Derecho de Petición", archivo: "derecho_de_peticion.docx" },
   { nombre: "Acción de Tutela", archivo: "accion_de_tutela.docx" },
 ];
 
-/**
- * Docstring:
- * Componente de UI para interactuar con el Agente Generador de Documentos.
- * Permite al asesor seleccionar una plantilla y generar un borrador de documento.
- */
 const GeneradorDocumentos = ({ idCaso }) => {
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState('');
   const [documentoGenerado, setDocumentoGenerado] = useState(null);
@@ -32,7 +36,7 @@ const GeneradorDocumentos = ({ idCaso }) => {
 
     try {
       const data = await apiGenerarDocumento(idCaso, plantillaSeleccionada);
-      setDocumentoGenerado(data); // data = { url_descarga, nombre_archivo }
+      setDocumentoGenerado(data);
     } catch (err) {
       setError(err.message || "Ocurrió un error al generar el documento.");
     } finally {
@@ -70,8 +74,9 @@ const GeneradorDocumentos = ({ idCaso }) => {
       {documentoGenerado && (
         <div className={styles.contenedorResultado}>
           <h4>Documento Generado:</h4>
+          {/* CORRECCIÓN: Usamos la variable URL_BASE del interruptor */}
           <a 
-            href={`http://127.0.0.1:8000${documentoGenerado.url_descarga}`}
+            href={`${URL_BASE}${documentoGenerado.url_descarga}`}
             target="_blank"
             rel="noopener noreferrer"
             className={styles.enlaceDescarga}

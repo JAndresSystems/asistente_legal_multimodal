@@ -1,433 +1,260 @@
-/* C:\react\asistente_legal_multimodal\frontend\src\componentes\administrador\PanelAdministracion\PanelAdministracion.css */
-
+/* CONTENEDOR PRINCIPAL */
 .panel-admin-contenedor {
   padding: 2rem;
-  font-family: sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f4f6f8;
+  min-height: 100vh;
 }
 
-.form-creacion-seccion {
+.admin-saludo {
   margin-bottom: 2rem;
-  padding: 1.5rem;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background-color: #f9f9f9;
+  border-bottom: 2px solid #005a4b;
+  padding-bottom: 1rem;
 }
 
-.form-creacion-seccion h2 {
+.admin-saludo h1 {
+  margin: 0;
+  color: #005a4b;
+  font-size: 2rem;
+}
+
+.admin-saludo p {
+  margin: 0.5rem 0 0;
+  color: #666;
+}
+
+/* MENSAJES */
+.mensaje-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 1rem;
+  border-radius: 5px;
+  margin-bottom: 1rem;
+  border: 1px solid #f5c6cb;
+  cursor: pointer;
+}
+
+.indicador-carga {
+  text-align: center;
+  color: #005a4b;
+  font-weight: bold;
+  padding: 1rem;
+  background-color: #e6f4f1;
+  border-radius: 5px;
+  margin-bottom: 1rem;
+}
+
+/* PESTAÑAS (TABS) */
+.admin-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #ddd;
+  overflow-x: auto; /* Scroll horizontal en móvil */
+  padding-bottom: 5px;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #555;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.tab-btn.active {
+  color: #005a4b;
+  border-bottom-color: #005a4b;
+}
+
+/* SECCIONES DE GESTIÓN */
+.gestion-seccion {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  margin-bottom: 2rem;
+}
+
+.gestion-seccion h2 {
   margin-top: 0;
+  color: #333;
+  font-size: 1.4rem;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #005a4b;
+  padding-left: 10px;
+}
+
+/* FORMULARIOS GRID */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
 }
 
 .form-grupo {
-  margin-bottom: 1rem;
   display: flex;
   flex-direction: column;
 }
 
 .form-grupo label {
-  margin-bottom: 0.25rem;
-  font-weight: bold;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #444;
 }
 
-.form-grupo input,
-.form-grupo select {
-  padding: 0.5rem;
+.form-grupo input, .form-grupo select {
+  padding: 10px;
   border: 1px solid #ccc;
-  border-radius: 4px;
+  border-radius: 5px;
+  font-size: 1rem;
 }
 
-.mensaje-error {
-  color: red;
-  margin-bottom: 1rem;
+.boton-crear-personal {
+  grid-column: 1 / -1; /* Ocupa todo el ancho */
+  background-color: #005a4b;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 1rem;
 }
 
-.tabla-personal {
+.boton-crear-personal:hover {
+  background-color: #004236;
+}
+
+/* TABLAS RESPONSIVE */
+.tabla-personal, .tabla-areas {
   width: 100%;
   border-collapse: collapse;
 }
 
-.tabla-personal thead tr {
-  border-bottom: 2px solid black;
-}
-
-.tabla-personal th,
-.tabla-personal td {
+.tabla-personal th, .tabla-areas th {
   text-align: left;
-  padding: 12px 8px;
-}
-
-.tabla-personal tbody tr {
-  border-bottom: 1px solid #eee;
-}
-
-.tabla-personal tbody tr:hover {
-  background-color: #f5f5f5;
-}
-
-
-
-
-/* Estilos para la insignia de estado (Activo/Inactivo) */
-.estado-activo,
-.estado-inactivo {
-  padding: 0.2rem 0.5rem;
-  border-radius: 12px;
-  font-weight: bold;
-  font-size: 0.8em;
-  color: white;
-}
-
-.estado-activo {
-  background-color: #28a745; /* Verde */
-}
-
-.estado-inactivo {
-  background-color: #6c757d; /* Gris */
-}
-
-/* Estilos base para los botones de acción */
-.boton-activar,
-.boton-desactivar {
-  padding: 0.4rem 0.8rem;
-  border: none;
-  border-radius: 4px;
-  color: white;
-  cursor: pointer;
-  font-size: 0.9em;
-}
-
-.boton-activar {
-  background-color: #007bff; /* Azul */
-}
-
-.boton-activar:hover {
-  background-color: #0056b3;
-}
-
-.boton-desactivar {
-  background-color: #dc3545; /* Rojo */
-}
-
-.boton-desactivar:hover {
-  background-color: #c82333;
-}
-
-
-
-
-
-/* Celda de acciones para alinear los botones */
-.celda-acciones {
-  display: flex;
-  gap: 0.5rem; /* Espacio entre los botones */
-  align-items: center;
-}
-
-/* Botón de Editar */
-.boton-editar {
-  background-color: #ffc107; /* Amarillo */
-  color: #212529;
-  padding: 0.4rem 0.8rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.boton-editar:hover {
-  background-color: #e0a800;
-}
-
-/* Botón de Eliminar */
-.boton-eliminar {
-  background-color: #a4000f; /* Rojo más oscuro */
-  color: white;
-  padding: 0.4rem 0.8rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.boton-eliminar:hover {
-  background-color: #83000c;
-}
-
-/* --- Estilos para el Modal --- */
-
-/* El fondo oscuro que cubre toda la pantalla */
-.modal-overlay {
-  position: fixed; /* Se queda fijo incluso si se hace scroll */
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.6); /* Negro semitransparente */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000; /* Asegura que esté por encima de todo */
-}
-
-/* La caja blanca que contiene el formulario */
-.modal-contenido {
-  background-color: white;
-  padding: 2rem;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 500px; /* Ancho máximo para el modal */
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-}
-
-.modal-contenido h2 {
-  margin-top: 0;
-}
-
-/* Contenedor para los botones de acción dentro del modal */
-.modal-acciones {
-  margin-top: 1.5rem;
-  display: flex;
-  justify-content: flex-end; /* Alinea los botones a la derecha */
-  gap: 1rem;
-}
-
-/* Botón de Guardar Cambios (dentro del modal) */
-.boton-guardar {
-  background-color: #28a745; /* Verde */
-  color: white;
-  padding: 0.6rem 1rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.boton-guardar:hover {
-  background-color: #218838;
-}
-
-.admin-saludo {
-  margin-bottom: 2.5rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px solid #007bff; /* Un borde más prominente para el admin */
-}
-
-.admin-saludo h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 2.2rem; /* Ligeramente más grande */
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #ddd;
   font-weight: 600;
-  color: #212529;
+  color: #333;
 }
 
-.admin-saludo p {
-  margin: 0;
-  color: #495057;
-  font-size: 1.1rem;
+.tabla-personal td, .tabla-areas td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
 }
 
-
-
-
-
-/* --- ESTILOS DE PESTAÑAS --- */
-.admin-tabs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    border-bottom: 2px solid #ddd;
-    padding-bottom: 0;
-}
-
-.tab-btn {
-    padding: 12px 20px;
-    background: none;
-    border: none;
-    font-size: 1rem;
-    font-weight: 500;
-    color: #555;
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    transition: all 0.2s;
-}
-
-.tab-btn:hover {
-    color: #333;
-    background-color: #f9f9f9;
-}
-
-.tab-btn.active {
-    color: #005a4b;
-    border-bottom-color: #005a4b;
-    font-weight: bold;
-}
-
-.admin-contenido-pestana {
-    animation: fadeIn 0.3s ease-in;
-}
-
-/* --- BADGES DE ROL --- */
+/* BADGES Y BOTONES */
 .badge-rol {
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-transform: uppercase;
 }
 .badge-rol.estudiante { background-color: #e3f2fd; color: #0d47a1; }
 .badge-rol.asesor { background-color: #fff3e0; color: #e65100; }
 
-/* --- FORM GRID --- */
-.form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-}
-.boton-crear-personal {
-    grid-column: span 2;
-    background-color: #005a4b;
-    color: white;
-    padding: 10px;
-    border: none;
-    cursor: pointer;
+.estado-activo { color: #28a745; font-weight: bold; }
+.estado-inactivo { color: #dc3545; font-weight: bold; }
+
+.celda-acciones {
+  display: flex;
+  gap: 8px;
 }
 
+.boton-editar, .boton-estado, .boton-eliminar {
+  border: 1px solid #ddd;
+  background: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+.boton-editar:hover { background-color: #fff3cd; }
+.boton-eliminar:hover { background-color: #f8d7da; }
 
-.indicador-carga {
-    text-align: center;
-    color: #666;
-    background-color: #f8f9fa;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 15px;
-    font-style: italic;
+/* ASIGNACIÓN SUPERVISORES */
+.asignacion-contenedor {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 1rem;
 }
 
-
-
-
-
-/* ====================== RESPONSIVE ====================== */
-
-/* Tablets grandes y pantallas medianas */
-@media (max-width: 1024px) {
-  .form-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .admin-saludo h1 {
-    font-size: 2rem;
-  }
-
-  .tabla-personal th,
-  .tabla-personal td {
-    padding: 10px 6px;
-    font-size: 0.95rem;
-  }
-
-  .celda-acciones {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.4rem;
-  }
-
-  .celda-acciones button {
-    width: 100%;
-    text-align: center;
-  }
+.lista-estudiantes-checkbox {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  padding: 10px;
+  border-radius: 5px;
+  background: #fdfdfd;
 }
 
-/* Tablets y móviles grandes */
+.checkbox-item {
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.boton-guardar-asignacion {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* MODAL */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.modal-contenido {
+  background: white;
+  padding: 2rem;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+}
+
+.modal-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 1.5rem;
+}
+
+.boton-guardar { background-color: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; }
+.boton-cancelar { background-color: #6c757d; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; }
+
+/* ====================== RESPONSIVE MOBILE ====================== */
 @media (max-width: 768px) {
-  .panel-admin-contenedor {
-    padding: 1rem;
-  }
-
-  .admin-tabs {
-    flex-direction: column;
-    gap: 8px;
-    border-bottom: none;
-  }
-
-  .tab-btn {
-    width: 100%;
-    text-align: left;
-    padding: 14px 16px;
-    border-radius: 6px;
-    border-bottom: none;
-  }
-
-  .tab-btn.active {
-    border-bottom: none;
-    background-color: #e6f4f1;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .boton-crear-personal {
-    grid-column: 1;
-  }
-
-  .asignacion-contenedor {
-    flex-direction: column;
-  }
-
-  .asignacion-columna {
-    width: 100%;
-  }
-
-  .lista-estudiantes-checkbox {
-    max-height: 300px;
-    overflow-y: auto;
-    padding: 10px;
-    background: #f8f9fa;
-    border-radius: 6px;
-  }
-
-  .gestion-seccion {
-    margin-bottom: 2rem;
-  }
-
-  .admin-saludo h1 {
-    font-size: 1.8rem;
-  }
-
-  .admin-saludo p {
-    font-size: 1rem;
-  }
-}
-
-/* Móviles */
-@media (max-width: 480px) {
-  .panel-admin-contenedor {
-    padding: 0.8rem;
-  }
-
-  .admin-saludo h1 {
-    font-size: 1.6rem;
-  }
-
-  }
-
-  .form-creacion-seccion {
-    padding: 1rem;
-  }
-
-  .form-grupo input,
-  .form-grupo select {
-    font-size: 1rem; /* evita zoom en iOS */
-  }
-
-  .tabla-personal,
-  .tabla-areas {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .tabla-personal thead,
-  .tabla-areas thead {
-    display: none;
-  }
-
-  .tabla-personal tbody tr,
-  .tabla-areas tbody tr {
+  .panel-admin-contenedor { padding: 1rem; }
+  
+  .asignacion-contenedor { grid-template-columns: 1fr; }
+  
+  /* TABLAS RESPONSIVE (Tipo Tarjeta) */
+  .tabla-personal thead, .tabla-areas thead { display: none; }
+  
+  .tabla-personal tr, .tabla-areas tr {
     display: block;
     margin-bottom: 1rem;
     border: 1px solid #ddd;
@@ -435,73 +262,25 @@
     padding: 1rem;
     background: #fff;
   }
-
-  .tabla-personal td,
-  .tabla-areas td {
+  
+  .tabla-personal td, .tabla-areas td {
     display: flex;
     justify-content: space-between;
-    padding: 0.5rem 0;
+    padding: 5px 0;
     border: none;
     text-align: right;
   }
-
-  .tabla-personal td::before,
-  .tabla-areas td::before {
-    content: attr(data-label);
+  
+  .tabla-personal td::before {
+    content: attr(data-label); /* Necesitarás agregar data-label en el JSX si quieres etiquetas */
     font-weight: bold;
     text-align: left;
-    flex: 1;
   }
-
-  /* Añadimos data-label a las celdas importantes para móvil */
-  .tabla-personal td:nth-child(1)::before { content: "Nombre"; }
-  .tabla-personal td:nth-child(2)::before { content: "Rol"; }
-  .tabla-personal td:nth-child(3)::before { content: "Especialidad"; }
-  .tabla-personal td:nth-child(4)::before { content: "Supervisor"; }
-  .tabla-personal td:nth-child(5)::before { content: "Estado"; }
-  .tabla-personal td:nth-child(6) { justify-content: flex-end; }
 
   .celda-acciones {
     justify-content: flex-end;
-    margin-top: 0.5rem;
-  }
-
-  .celda-acciones button {
-    padding: 0.5rem;
-    font-size: 1.2rem;
-  }
-
-  .modal-contenido {
-    width: 95%;
-    padding: 1.5rem;
-  }
-
-  .modal-acciones {
-    flex-direction: column;
-  }
-
-  .modal-acciones button {
-    width: 100%;
-    margin-bottom: 0.5rem;
-  }
-
-  .area-creacion-fila .area-form {
-    flex-direction: column;
-  }
-
-  .area-creacion-fila input {
-    margin-bottom: 0.5rem;
-  }
-
-
-/* Extra pequeño (iPhone SE, etc.) */
-@media (max-width: 360px) {
-  .admin-saludo h1 {
-    font-size: 1.4rem;
-  }
-
-  .tab-btn {
-    font-size: 0.95rem;
-    padding: 12px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
   }
 }

@@ -52,20 +52,19 @@ def obtener_dashboard_asesor(
 ):
     """
     Endpoint Dashboard Asesor.
-    CORREGIDO: 
-    1. Filtra la lista para no mostrar duplicados (solo asignaciones activas).
-    2. Calcula la CARGA DE TRABAJO excluyendo casos cerrados.
+    CORREGIDO: Muestra TODOS los casos (incluidos cerrados) en la lista principal,
+    pero calcula la carga de trabajo SOLO con los activos.
     """
-    # 1. Obtener casos supervisados (Lista principal)
-    # Mostramos lo que está activo O lo que está cerrado (para historial), pero evitamos duplicados de reasignaciones viejas.
+    # 1. LISTA PRINCIPAL (Historial completo sin duplicados)
+    # Buscamos asignaciones que sean la "última vigente" o la "histórica cerrada".
+    # Filtramos para que NO muestre "reasignado" (que son del pasado y ya no le tocan).
     query_casos = (
         select(Caso, Estudiante.nombre_completo)
         .join(Asignacion, Caso.id == Asignacion.id_caso)
         .join(Estudiante, Asignacion.id_estudiante == Estudiante.id)
         .where(Asignacion.id_asesor == asesor_actual.id)
-        # Filtramos para ver solo la asignación vigente (pendiente/aceptado) o la final si se cerró.
-        # Excluimos las asignaciones viejas que dicen 'reasignado' o 'rechazado' para no ver duplicados.
-        .where(Asignacion.estado.in_(["pendiente", "aceptado"])) 
+        # CORRECCIÓN: Permitimos 'cerrado' para que aparezca en el historial
+        .where(Asignacion.estado.in_(["pendiente", "aceptado", "en_progreso", "cerrado"])) 
         .order_by(Caso.fecha_creacion.desc())
     )
     resultados_casos = sesion.exec(query_casos).all()
@@ -92,13 +91,11 @@ def obtener_dashboard_asesor(
             )
         )
 
-    # 3. Métricas de Carga (AQUÍ ESTÁ LA CORRECCIÓN DE LOS ACTIVOS)
-    # Solo contamos casos que ESTÉN VIVOS.
-    estados_que_suman_carga = [
+    # 3. Métricas de Carga (SOLO ACTIVOS)
+    estados_activos = [
         EstadoCaso.ASIGNADO.value, 
         EstadoCaso.PENDIENTE_ACEPTACION.value,
         EstadoCaso.EN_REVISION.value
-        # NO incluimos CERRADO ni RECHAZADO
     ]
     
     query_metricas = (
@@ -106,8 +103,8 @@ def obtener_dashboard_asesor(
         .join(Asignacion, Estudiante.id == Asignacion.id_estudiante, isouter=True)
         .join(Caso, Asignacion.id_caso == Caso.id, isouter=True)
         .where(Asignacion.id_asesor == asesor_actual.id)
-        .where(Asignacion.estado.in_(["pendiente", "aceptado"])) # Solo asignación vigente
-        .where(Caso.estado.in_(estados_que_suman_carga)) # <--- FILTRO CLAVE: Solo casos abiertos
+        .where(Asignacion.estado.in_(["pendiente", "aceptado"]))
+        .where(Caso.estado.in_(estados_activos)) # Solo cuenta casos vivos
         .group_by(Estudiante.nombre_completo)
         .order_by(func.count(Caso.id).desc())
     )
