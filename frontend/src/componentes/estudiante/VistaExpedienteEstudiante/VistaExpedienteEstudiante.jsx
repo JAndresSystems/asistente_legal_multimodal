@@ -311,7 +311,11 @@ const handleCrearNota = async (e) => {
     return <div className="vista-expediente-cargando">No se encontró el expediente.</div>;
   }
 
-  const baseURL = 'http://127.0.0.1:8000';
+   // OPCIÓN 1: MODO RENDER (Nube) -> ¡ACTIVA!
+  const baseURL = "https://asistente-legal-backend-897g.onrender.com";
+
+  // OPCIÓN 2: MODO LOCAL (PC) -> ¡COMENTADA!
+  // const baseURL = "http://127.0.0.1:8000";
 
 
 
